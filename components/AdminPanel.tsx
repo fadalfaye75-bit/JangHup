@@ -3,7 +3,7 @@ import { User, UserRole, SchoolClass, AuditLog, Announcement, Exam } from '../ty
 import { supabase } from '../lib/supabaseClient';
 import { 
   UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, Search, 
-  School, Mail, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, GraduationCap, X, Copy, Eye, EyeOff, Key, Megaphone, Calendar
+  School, Mail, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, GraduationCap, X, Copy, Eye, EyeOff, Key, Megaphone, Calendar, Clock, Plus
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -28,10 +28,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // Edit & Delete States
+  // Delete Confirmation State
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'USER' | 'CLASS', id: string, name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Edit States
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   
   // UI States
   const [showPassword, setShowPassword] = useState(false);
@@ -100,6 +103,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
     }
   };
 
+  // --- DELETE LOGIC ---
+  const requestDeleteClass = (cls: SchoolClass) => {
+      setDeleteConfirmation({ type: 'CLASS', id: cls.id, name: cls.name });
+  };
+
+  const requestDeleteUser = (user: User) => {
+      setDeleteConfirmation({ type: 'USER', id: user.id, name: user.name });
+  };
+
+  const executeDelete = async () => {
+      if (!deleteConfirmation) return;
+      setIsDeleting(true);
+      setMessage(null);
+
+      try {
+          if (deleteConfirmation.type === 'CLASS') {
+              const { error } = await supabase.from('classes').delete().eq('id', deleteConfirmation.id);
+              if (error) throw error;
+              setClassesList(classesList.filter(c => c.id !== deleteConfirmation.id));
+              setMessage({ type: 'success', text: `Classe "${deleteConfirmation.name}" supprimée.` });
+          } else {
+              const { error } = await supabase.from('profiles').delete().eq('id', deleteConfirmation.id);
+              if (error) throw error;
+              setUsersList(usersList.filter(u => u.id !== deleteConfirmation.id));
+              setMessage({ type: 'success', text: `Utilisateur "${deleteConfirmation.name}" supprimé.` });
+          }
+      } catch (err: any) {
+          console.error(err);
+          setMessage({ type: 'error', text: "Impossible de supprimer. Vérifiez qu'il n'y a pas de données liées (examens, etc.)." });
+      } finally {
+          setIsDeleting(false);
+          setDeleteConfirmation(null);
+      }
+  };
+
   // --- CLASSES LOGIC ---
 
   const handleEditClass = (cls: SchoolClass) => {
@@ -111,22 +149,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
   const handleCancelClassEdit = () => {
       setEditingClassId(null);
       setNewClass({ name: '', delegateId: '' });
-  };
-
-  const handleDeleteClass = async (id: string) => {
-      if (deleteConfirmId === id) {
-          const { error } = await supabase.from('classes').delete().eq('id', id);
-          if (error) {
-              setMessage({ type: 'error', text: 'Erreur lors de la suppression.' });
-          } else {
-              setClassesList(classesList.filter(c => c.id !== id));
-              setMessage({ type: 'success', text: 'Classe supprimée.' });
-          }
-          setDeleteConfirmId(null);
-      } else {
-          setDeleteConfirmId(id);
-          setTimeout(() => setDeleteConfirmId(null), 3000);
-      }
   };
 
   const handleSubmitClass = async (e: React.FormEvent) => {
@@ -179,22 +201,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
       setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '', password: '' });
   };
 
-  const handleDeleteUser = async (id: string) => {
-      if (deleteConfirmId === id) {
-          const { error } = await supabase.from('profiles').delete().eq('id', id);
-          if (error) {
-              setMessage({ type: 'error', text: 'Impossible de supprimer (Contraintes DB probable).' });
-          } else {
-              setUsersList(usersList.filter(u => u.id !== id));
-              setMessage({ type: 'success', text: 'Utilisateur supprimé.' });
-          }
-          setDeleteConfirmId(null);
-      } else {
-          setDeleteConfirmId(id);
-          setTimeout(() => setDeleteConfirmId(null), 3000);
-      }
-  };
-
   const handleSubmitUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -215,6 +221,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
             // 2. Update Password if provided
             if (newUser.password && newUser.password.trim() !== '') {
+                // Here we can use window.confirm as it is a modification, not a deletion, 
+                // but for consistency we could upgrade it later. Stick to simple confirm for password reset to avoid too much UI complexity.
                 if (window.confirm("Attention : Vous êtes sur le point de changer le mot de passe de cet utilisateur. Confirmer ?")) {
                     const { error: pwdError } = await supabase.rpc('admin_reset_password', {
                         target_user_id: editingUserId,
@@ -285,6 +293,13 @@ Rôle: ${createdCredentials.role}
       });
   };
 
+  const copyUserCredentials = (u: User) => {
+      const text = `Email: ${u.email}\nMot de passe: passer25`;
+      navigator.clipboard.writeText(text).then(() => {
+          setMessage({ type: 'success', text: 'Identifiants (défaut) copiés.' });
+      });
+  };
+
   const StatCard = ({ title, value, icon: Icon, color }: any) => (
       <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
           <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${color} text-white`}>
@@ -299,6 +314,43 @@ Rôle: ${createdCredentials.role}
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteConfirmation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in" onClick={() => setDeleteConfirmation(null)}></div>
+              <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+                  <div className="flex flex-col items-center text-center">
+                      <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mb-4">
+                          <AlertOctagon size={24} />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Confirmer la suppression</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                          Êtes-vous sûr de vouloir supprimer <strong className="text-slate-800 dark:text-white">{deleteConfirmation.name}</strong> ? 
+                          <br/><span className="text-xs mt-1 block text-red-500">Cette action est irréversible.</span>
+                      </p>
+                      
+                      <div className="flex gap-3 w-full">
+                          <button 
+                              onClick={() => setDeleteConfirmation(null)}
+                              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
+                          >
+                              Annuler
+                          </button>
+                          <button 
+                              onClick={executeDelete}
+                              disabled={isDeleting}
+                              className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-sm disabled:opacity-70"
+                          >
+                              {isDeleting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
+                              Supprimer
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
         <div>
@@ -400,6 +452,103 @@ Rôle: ${createdCredentials.role}
                          Aucune classe configurée.
                      </div>
                  )}
+              </div>
+          </div>
+      )}
+
+      {/* --- CLASSES TAB --- */}
+      {activeTab === 'classes' && (
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-card p-6">
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <School className="text-university dark:text-sky-400" size={20} /> Gestion des Classes
+                 </h3>
+                 {editingClassId && (
+                     <button onClick={handleCancelClassEdit} className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1">
+                         <X size={14} /> Annuler
+                     </button>
+                 )}
+              </div>
+              
+              <form onSubmit={handleSubmitClass} className="mb-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-3 items-end">
+                  <div className="flex-1 w-full">
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nom de la Classe</label>
+                      <input 
+                         placeholder="ex: Tle S2, L1 Informatique..." 
+                         className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                         value={newClass.name} onChange={e => setNewClass({...newClass, name: e.target.value})} required
+                      />
+                  </div>
+                  <div className="flex-1 w-full">
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Délégué Responsable</label>
+                      <select 
+                         className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                         value={newClass.delegateId} onChange={e => setNewClass({...newClass, delegateId: e.target.value})}
+                      >
+                          <option value="">-- Sélectionner un élève --</option>
+                          {usersList.filter(u => u.role === UserRole.STUDENT || u.role === UserRole.RESPONSIBLE).map(u => (
+                              <option key={u.id} value={u.id}>{u.name} ({u.classLevel})</option>
+                          ))}
+                      </select>
+                  </div>
+                  <button className="w-full md:w-auto bg-university dark:bg-sky-600 text-white font-bold rounded-lg hover:bg-university-dark dark:hover:bg-sky-700 transition-colors px-6 py-2.5 text-xs shadow-sm flex items-center justify-center gap-2">
+                      {editingClassId ? <Save size={14} /> : <Plus size={14} />} 
+                      {editingClassId ? 'Mettre à jour' : 'Ajouter'}
+                  </button>
+              </form>
+
+              <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-600 dark:text-slate-400">
+                     <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
+                         <tr>
+                             <th className="p-4">Nom</th>
+                             <th className="p-4">Délégué</th>
+                             <th className="p-4">Statistiques</th>
+                             <th className="p-4">Création</th>
+                             <th className="p-4 text-right">Actions</th>
+                         </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                         {classesList.map(cls => (
+                             <tr key={cls.id} className={`transition-colors ${editingClassId === cls.id ? 'bg-university/5 dark:bg-sky-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                                 <td className="p-4 font-bold text-slate-700 dark:text-slate-200 text-sm">
+                                     {cls.name}
+                                     <div className="text-[10px] text-slate-400 font-normal mt-0.5">{cls.email}</div>
+                                 </td>
+                                 <td className="p-4">
+                                     {cls.delegateName !== 'Non assigné' ? (
+                                         <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded w-fit">
+                                             <CheckCircle2 size={12} /> {cls.delegateName}
+                                         </span>
+                                     ) : (
+                                         <span className="text-slate-400 italic">Non assigné</span>
+                                     )}
+                                 </td>
+                                 <td className="p-4">
+                                     <div className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+                                         <Users size={14} /> {usersList.filter(u => u.classLevel === cls.name).length} inscrits
+                                     </div>
+                                 </td>
+                                 <td className="p-4 text-slate-500 font-mono text-[10px]">
+                                     {new Date(cls.createdAt).toLocaleDateString()}
+                                 </td>
+                                 <td className="p-4 flex gap-1 justify-end items-center">
+                                     <button onClick={() => handleEditClass(cls)} className="p-1.5 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all">
+                                         <Edit size={14}/>
+                                     </button>
+                                     <button onClick={() => requestDeleteClass(cls)} className="p-1.5 text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10 rounded transition-all">
+                                         <Trash2 size={14}/>
+                                     </button>
+                                 </td>
+                             </tr>
+                         ))}
+                         {classesList.length === 0 && (
+                             <tr>
+                                 <td colSpan={5} className="p-8 text-center text-slate-400 italic">Aucune classe pour le moment.</td>
+                             </tr>
+                         )}
+                     </tbody>
+                  </table>
               </div>
           </div>
       )}
@@ -523,16 +672,23 @@ Rôle: ${createdCredentials.role}
                                   <td className="p-4 font-medium">{u.classLevel}</td>
                                   <td className="p-4 flex gap-1 justify-end items-center">
                                       <button 
+                                        onClick={() => copyUserCredentials(u)}
+                                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded transition-all"
+                                        title="Copier les identifiants"
+                                      >
+                                          <Copy size={14}/>
+                                      </button>
+                                      <button 
                                         onClick={() => handleEditUser(u)}
                                         className="p-1.5 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"
                                       >
                                           <Edit size={14}/>
                                       </button>
                                       <button 
-                                        onClick={() => handleDeleteUser(u.id)}
-                                        className={`p-1.5 rounded transition-all flex items-center gap-1 ${deleteConfirmId === u.id ? 'bg-alert text-white px-2' : 'text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10'}`}
+                                        onClick={() => requestDeleteUser(u)}
+                                        className="p-1.5 text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10 rounded transition-all"
                                       >
-                                          {deleteConfirmId === u.id ? <Trash2 size={14} /> : <Trash2 size={14}/>}
+                                          <Trash2 size={14}/>
                                       </button>
                                   </td>
                               </tr>

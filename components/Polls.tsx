@@ -20,12 +20,11 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReformulating, setIsReformulating] = useState(false);
 
   // Admin cannot create polls (Pedagogical content)
-  const canCreate = user.role === UserRole.RESPONSIBLE;
+  const canCreate = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
   
   // Delete/Edit Rights: Admin OR (Responsible AND Same Class)
   const canModify = (poll: Poll) => {
@@ -151,13 +150,9 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
   };
 
   const handleDelete = async (poll: Poll) => {
-    if (deleteConfirmId === poll.id) {
+    if (window.confirm("Voulez-vous vraiment supprimer ce sondage ?")) {
        await supabase.from('polls').delete().eq('id', poll.id);
-       setDeleteConfirmId(null);
        votePoll('refresh', 'refresh'); // Trigger refresh in parent
-    } else {
-       setDeleteConfirmId(poll.id);
-       setTimeout(() => setDeleteConfirmId(null), 3000);
     }
   }
 
@@ -239,8 +234,8 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                              <button onClick={() => handleEdit(poll)} className="p-2 text-action-edit bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/40 rounded-xl transition-colors" title="Modifier">
                                 <Edit2 size={18} className="text-sky-600 dark:text-sky-400" />
                              </button>
-                             <button onClick={() => handleDelete(poll)} className={`p-2 rounded-xl transition-all ${deleteConfirmId === poll.id ? 'bg-alert text-white' : 'text-slate-300 hover:text-alert hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
-                                 {deleteConfirmId === poll.id ? <AlertOctagon size={18} /> : <Trash2 size={18} />}
+                             <button onClick={() => handleDelete(poll)} className="p-2 rounded-xl transition-all text-slate-300 hover:text-alert hover:bg-red-50 dark:hover:bg-red-900/20">
+                                 <Trash2 size={18} />
                              </button>
                             </>
                         )}

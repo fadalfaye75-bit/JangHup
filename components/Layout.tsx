@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Moon,
   Sun,
-  Search
+  Search,
+  HelpCircle
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -39,6 +40,7 @@ export const Layout: React.FC<LayoutProps> = ({
   darkMode, toggleTheme, onOpenSearch
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   // Shortcut listener for Ctrl+K
   useEffect(() => {
@@ -113,6 +115,42 @@ export const Layout: React.FC<LayoutProps> = ({
   return (
     <div className="min-h-screen bg-[#F4F6F8] dark:bg-slate-950 flex font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300">
       
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in" onClick={() => setShowLogoutConfirm(false)}></div>
+            <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xs w-full p-6 animate-in zoom-in-95 duration-200">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full flex items-center justify-center mb-4">
+                        <LogOut size={24} className="ml-0.5" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Déconnexion</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                        Êtes-vous sûr de vouloir vous déconnecter de JàngHub ?
+                    </p>
+                    
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={() => setShowLogoutConfirm(false)}
+                            className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs uppercase tracking-wider"
+                        >
+                            Annuler
+                        </button>
+                        <button 
+                            onClick={() => {
+                                setShowLogoutConfirm(false);
+                                onLogout();
+                            }}
+                            className="flex-1 py-2.5 rounded-xl bg-alert hover:bg-red-700 text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
+                        >
+                            Confirmer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* --- DESKTOP SIDEBAR --- */}
       <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 fixed h-full z-30 transition-colors duration-300">
         <div className="flex flex-col h-full">
@@ -183,7 +221,7 @@ export const Layout: React.FC<LayoutProps> = ({
                  </div>
               </div>
               <button 
-                onClick={onLogout}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="flex items-center justify-center gap-2 p-2.5 w-full text-slate-600 dark:text-slate-400 hover:text-alert-text hover:bg-alert-light dark:hover:bg-alert/10 hover:border-alert/20 border border-slate-200 dark:border-slate-700 rounded-lg transition-all font-bold text-xs"
               >
                 <LogOut size={16} />
@@ -272,7 +310,10 @@ export const Layout: React.FC<LayoutProps> = ({
                          </button>
 
                          <button 
-                            onClick={onLogout}
+                            onClick={() => {
+                                setIsMobileMenuOpen(false);
+                                setShowLogoutConfirm(true);
+                            }}
                             className="w-full py-3.5 flex items-center justify-center gap-2 text-alert font-bold bg-alert-light dark:bg-alert/10 rounded-xl transition-all"
                          >
                             <LogOut size={18} /> Déconnexion

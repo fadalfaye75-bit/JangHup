@@ -133,16 +133,13 @@ function App() {
     if (!user) return;
     
     try {
+        // En prod, on devrait filtrer via RLS ou WHERE clause ici pour optimiser la bande passante
+        // Pour l'instant, on récupère tout et on filtre côté client via getFilteredData pour la réactivité
         const annQuery = supabase.from('announcements').select('*').order('date', { ascending: false });
         const examQuery = supabase.from('exams').select('*').order('date', { ascending: true });
         const meetQuery = supabase.from('meetings').select('*').order('date', { ascending: true });
+        const scheduleQuery = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
         
-        // Fetch Schedules globally now for search
-        let scheduleQuery = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
-        if (user.role !== UserRole.ADMIN) {
-             scheduleQuery = scheduleQuery.eq('class_level', user.classLevel);
-        }
-
         // Pour les sondages, on récupère aussi les options
         const pollQuery = supabase.from('polls').select('*, poll_options(*)').order('created_at', { ascending: false });
 
@@ -217,10 +214,17 @@ function App() {
     setUser(null);
   };
 
-  // --- Filtering Logic for Admin Supervision (Client Side refinement) ---
+  // --- Filtering Logic for Roles (Security & UX) ---
   const getFilteredData = <T extends { classLevel: string }>(data: T[]) => {
-      if (user?.role !== UserRole.ADMIN || adminClassFilter === 'ALL') return data;
-      return data.filter(item => item.classLevel === adminClassFilter);
+      // 1. ADMIN : Accès total, filtré par l'interface de supervision
+      if (user?.role === UserRole.ADMIN) {
+          if (adminClassFilter === 'ALL') return data;
+          return data.filter(item => item.classLevel === adminClassFilter);
+      }
+      
+      // 2. RESPONSABLE & ÉTUDIANT : Accès strict à leur classe uniquement
+      // (Plus les items globaux si on en avait, mais ici classLevel est requis)
+      return data.filter(item => item.classLevel === user?.classLevel);
   };
 
   // Compute available classes for Admin filter based on current data

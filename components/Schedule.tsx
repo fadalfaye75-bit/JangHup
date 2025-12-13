@@ -15,10 +15,9 @@ interface ScheduleProps {
 
 export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule, deleteSchedule }) => {
   const [viewingItem, setViewingItem] = useState<ScheduleItem | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const canEdit = user.role === UserRole.RESPONSIBLE;
+  const canEdit = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
 
   const canDelete = (item: ScheduleItem) => {
       if (user.role === UserRole.ADMIN) return true;
@@ -71,13 +70,9 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
   };
 
   const handleDelete = async (id: string) => {
-    if (deleteConfirmId === id) {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce planning ?")) {
       const { error } = await supabase.from('schedules').delete().eq('id', id);
       if (!error) deleteSchedule(id);
-      setDeleteConfirmId(null);
-    } else {
-      setDeleteConfirmId(id);
-      setTimeout(() => setDeleteConfirmId(null), 3000);
     }
   };
 
@@ -132,9 +127,9 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
                         {canDelete(item) && (
                             <button 
                                 onClick={() => handleDelete(item.id)}
-                                className={`p-2 rounded-lg transition-all text-xs font-bold ${deleteConfirmId === item.id ? 'bg-alert text-white' : 'text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10'}`}
+                                className="p-2 rounded-lg transition-all text-xs font-bold text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10"
                             >
-                                {deleteConfirmId === item.id ? "Confirmer" : <Trash2 size={18} />}
+                                <Trash2 size={18} />
                             </button>
                         )}
                     </div>

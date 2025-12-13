@@ -16,7 +16,6 @@ interface MeetProps {
 export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMeeting, deleteMeeting }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
@@ -25,8 +24,8 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
   const [link, setLink] = useState('');
   const [platform, setPlatform] = useState<'Google Meet' | 'Zoom' | 'Teams' | 'Autre'>('Google Meet');
 
-  // Admin cannot create meetings (Pedagogical content)
-  const canEdit = user.role === UserRole.RESPONSIBLE;
+  // Admin and Responsible can create
+  const canEdit = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
   
   // Delete/Edit Rights: Admin OR (Responsible AND Same Class)
   const canModify = (meeting: Meeting) => {
@@ -102,14 +101,10 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
   };
 
   const handleDelete = async (id: string) => {
-    if (deleteConfirmId === id) {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette réunion ?")) {
       const { error } = await supabase.from('meetings').delete().eq('id', id);
       if (!error) deleteMeeting(id);
       else alert("Impossible de supprimer cette réunion.");
-      setDeleteConfirmId(null);
-    } else {
-      setDeleteConfirmId(id);
-      setTimeout(() => setDeleteConfirmId(null), 3000);
     }
   };
 
@@ -193,8 +188,8 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
                                  <button onClick={() => handleEdit(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-edit transition-colors p-2">
                                     <Edit2 size={18} />
                                  </button>
-                                 <button onClick={() => handleDelete(meeting.id)} className={`transition-all p-2 rounded-xl flex items-center gap-1 ${deleteConfirmId === meeting.id ? 'bg-alert text-white' : 'text-slate-300 dark:text-slate-600 hover:text-alert'}`}>
-                                    {deleteConfirmId === meeting.id ? <AlertOctagon size={18} /> : <Trash2 size={18} />}
+                                 <button onClick={() => handleDelete(meeting.id)} className="transition-all p-2 rounded-xl flex items-center gap-1 text-slate-300 dark:text-slate-600 hover:text-alert">
+                                    <Trash2 size={18} />
                                  </button>
                                 </>
                              )}

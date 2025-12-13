@@ -17,7 +17,6 @@ interface ExamsProps {
 export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, deleteExam }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   const [subject, setSubject] = useState('');
@@ -27,7 +26,7 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
   const [room, setRoom] = useState('');
   const [notes, setNotes] = useState('');
 
-  const canEdit = user.role === UserRole.RESPONSIBLE;
+  const canCreate = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
   
   const canModify = (exam: Exam) => {
       if (user.role === UserRole.ADMIN) return true;
@@ -96,13 +95,9 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
   };
 
   const handleDelete = async (id: string) => {
-    if (deleteConfirmId === id) {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cet examen ?")) {
       const { error } = await supabase.from('exams').delete().eq('id', id);
       if (!error) deleteExam(id);
-      setDeleteConfirmId(null);
-    } else {
-      setDeleteConfirmId(id);
-      setTimeout(() => setDeleteConfirmId(null), 3000);
     }
   };
 
@@ -135,7 +130,7 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
            </div>
            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Devoirs surveillés, partiels et examens.</p>
         </div>
-        {canEdit && !isAdding && (
+        {canCreate && !isAdding && (
           <button 
             onClick={() => setIsAdding(true)}
             className="bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-sm"
@@ -302,8 +297,8 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
                                     <button onClick={() => handleEdit(exam)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all" title="Modifier">
                                         <Edit2 size={16} />
                                     </button>
-                                    <button onClick={() => handleDelete(exam.id)} className={`p-2 rounded-lg transition-all ${deleteConfirmId === exam.id ? 'bg-alert text-white shadow-sm' : 'text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10'}`}>
-                                        {deleteConfirmId === exam.id ? <Trash2 size={16} /> : <Trash2 size={16} />}
+                                    <button onClick={() => handleDelete(exam.id)} className="p-2 rounded-lg transition-all text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10">
+                                        <Trash2 size={16} />
                                     </button>
                                  </>
                              )}

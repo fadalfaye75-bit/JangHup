@@ -18,7 +18,6 @@ interface AnnouncementsProps {
 export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcements, addAnnouncement, updateAnnouncement, deleteAnnouncement }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -43,7 +42,17 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const canCreate = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
+  // Permissions
+  const canCreate = user.role === UserRole.ADMIN || user.role === UserRole.RESPONSIBLE;
+
+  const hasRights = (ann: Announcement) => {
+    // Admin has all rights
+    if (user.role === UserRole.ADMIN) return true;
+    // Responsible has rights on their class content
+    if (user.role === UserRole.RESPONSIBLE && ann.classLevel === user.classLevel) return true;
+    // Fallback: Author ownership (should match logic above usually)
+    return user.id === ann.authorId;
+  };
 
   const resetForm = () => {
     setContent('');
@@ -218,13 +227,9 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   };
 
   const handleDelete = async (id: string) => {
-    if (deleteConfirmId === id) {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.")) {
       const { error } = await supabase.from('announcements').delete().eq('id', id);
       if (!error) deleteAnnouncement(id);
-      setDeleteConfirmId(null);
-    } else {
-      setDeleteConfirmId(id);
-      setTimeout(() => setDeleteConfirmId(null), 3000);
     }
   };
 
@@ -257,12 +262,6 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
       case 'DRIVE': return 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/20 dark:text-sky-300 dark:border-sky-800';
       default: return 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
     }
-  };
-
-  const hasRights = (ann: Announcement) => {
-    if (user.role === UserRole.ADMIN) return true;
-    if (user.role === UserRole.RESPONSIBLE && ann.classLevel === user.classLevel) return true;
-    return user.id === ann.authorId;
   };
 
   return (
@@ -463,9 +462,9 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                                 </button>
                                 <button 
                                     onClick={() => handleDelete(ann.id)} 
-                                    className={`p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold ${deleteConfirmId === ann.id ? 'bg-alert text-white' : 'text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10'}`}
+                                    className="p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10"
                                 >
-                                    {deleteConfirmId === ann.id ? <><AlertOctagon size={14} /> Confirmer</> : <Trash2 size={16} />}
+                                    <Trash2 size={16} />
                                 </button>
                             </>
                         )}

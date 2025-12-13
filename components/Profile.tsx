@@ -3,7 +3,8 @@ import { User, UserRole } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { 
   LogOut, User as UserIcon, Mail, Shield, GraduationCap, Settings, 
-  Bell, ChevronDown, Users, AtSign, Key, Eye, EyeOff, Loader2, CheckCircle2, Lock
+  Bell, ChevronDown, Users, AtSign, Key, Eye, EyeOff, Loader2, CheckCircle2, Lock,
+  Award, Calendar, Hash, HelpCircle
 } from 'lucide-react';
 
 interface ProfileProps {
@@ -21,20 +22,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
   
   // UI State for toggle
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-
-  const getRoleBadge = (role: UserRole) => {
-    switch (role) {
-      case UserRole.ADMIN:
-        return { color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800', icon: Shield, label: 'Administrateur' };
-      case UserRole.RESPONSIBLE:
-        return { color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800', icon: GraduationCap, label: 'Délégué de Classe' };
-      default:
-        return { color: 'bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800', icon: UserIcon, label: 'Élève' };
-    }
-  };
-
-  const roleInfo = getRoleBadge(user.role);
-  const RoleIcon = roleInfo.icon;
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const classEmail = user.classLevel 
     ? `${user.classLevel.toLowerCase().replace(/[^a-z0-9]/g, '.')}@janghub.sn`
@@ -73,176 +61,226 @@ export const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-      <div className="flex items-center gap-3 mb-2">
-          <h2 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">Mon Profil</h2>
-          <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold rounded-full border border-slate-200 dark:border-slate-700">
-             Compte {user.role === 'ADMIN' ? 'Administrateur' : 'Étudiant'}
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+       
+       {/* Logout Confirmation Modal */}
+       {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in" onClick={() => setShowLogoutConfirm(false)}></div>
+            <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xs w-full p-6 animate-in zoom-in-95 duration-200">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full flex items-center justify-center mb-4">
+                        <LogOut size={24} className="ml-0.5" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Déconnexion</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                        Êtes-vous sûr de vouloir vous déconnecter ?
+                    </p>
+                    
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={() => setShowLogoutConfirm(false)}
+                            className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs uppercase tracking-wider"
+                        >
+                            Annuler
+                        </button>
+                        <button 
+                            onClick={() => {
+                                setShowLogoutConfirm(false);
+                                onLogout();
+                            }}
+                            className="flex-1 py-2.5 rounded-xl bg-alert hover:bg-red-700 text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
+                        >
+                            Confirmer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+       {/* Header Section */}
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">Dossier Académique</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Gérez vos informations personnelles et vos préférences de compte.</p>
+          </div>
+          <span className="self-start md:self-auto px-4 py-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-100 dark:border-emerald-800 flex items-center gap-2 shadow-sm">
+             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Compte Actif
           </span>
-      </div>
-      
-      {/* Carte d'identité */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 md:p-10 shadow-card border border-slate-200 dark:border-slate-800 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-university/5 dark:bg-sky-500/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-university/10"></div>
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-brand/10 dark:bg-brand/5 rounded-full -ml-10 -mb-10 blur-3xl"></div>
-        
-        <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
-          <div className="relative">
-             <div className="w-28 h-28 md:w-32 md:h-32 rounded-full p-1.5 bg-white dark:bg-slate-800 shadow-lg border border-slate-100 dark:border-slate-700">
-                <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
-             </div>
-             <div className="absolute bottom-1 right-1 bg-emerald-500 w-8 h-8 rounded-full border-[3px] border-white dark:border-slate-800 shadow-sm flex items-center justify-center">
-                <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
-             </div>
+       </div>
+
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column: ID Card & Details */}
+          <div className="lg:col-span-2 space-y-6">
+              
+              {/* Identity Card */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-card border border-slate-200 dark:border-slate-800 group">
+                  {/* University Banner */}
+                  <div className="h-32 bg-gradient-to-r from-university to-university-dark dark:from-sky-900 dark:to-slate-950 relative overflow-hidden">
+                      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                      <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-32"></div>
+                  </div>
+
+                  <div className="px-8 pb-8 relative">
+                      <div className="flex justify-between items-end -mt-12 mb-6">
+                          <div className="relative">
+                              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-slate-800 p-1 shadow-lg ring-4 ring-white dark:ring-slate-900">
+                                  <img src={user.avatar} alt={user.name} className="w-full h-full rounded-xl object-cover bg-slate-100 dark:bg-slate-800" />
+                              </div>
+                              <div className="absolute -bottom-2 -right-2 bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-700">
+                                  <div className={`p-1.5 rounded-full ${user.role === UserRole.ADMIN ? 'bg-purple-100 text-purple-600' : 'bg-sky-100 text-sky-600'}`}>
+                                      {user.role === UserRole.ADMIN ? <Shield size={14} /> : <GraduationCap size={14} />}
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+
+                      <div>
+                          <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight">{user.name}</h2>
+                          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm mb-8">
+                              <Mail size={14} /> {user.email}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col gap-1 hover:border-university/20 dark:hover:border-sky-500/20 transition-colors">
+                                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Niveau / Classe</p>
+                                  <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200 text-lg">
+                                      <Users size={20} className="text-university dark:text-sky-400" />
+                                      {user.classLevel || 'Non assigné'}
+                                  </div>
+                              </div>
+                              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col gap-1 hover:border-university/20 dark:hover:border-sky-500/20 transition-colors">
+                                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rôle Système</p>
+                                  <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200 text-lg">
+                                      {user.role === UserRole.ADMIN ? <Shield size={20} className="text-purple-500" /> : <UserIcon size={20} className="text-emerald-500" />}
+                                      {user.role === 'ADMIN' ? 'Administrateur' : user.role === 'RESPONSIBLE' ? 'Délégué' : 'Étudiant'}
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              {/* Security Settings Block */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                          <Lock size={18} className="text-slate-400" /> Sécurité & Connexion
+                      </h3>
+                  </div>
+                  
+                  {/* Password Accordion */}
+                  <div className={`transition-all ${isEditingPassword ? 'bg-slate-50/50 dark:bg-slate-800/30' : ''}`}>
+                      <button 
+                          onClick={() => setIsEditingPassword(!isEditingPassword)}
+                          className="w-full px-6 py-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                          <div className="text-left">
+                              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Mot de passe</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pour sécuriser votre accès au portail</p>
+                          </div>
+                          <div className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all ${isEditingPassword ? 'bg-slate-200 dark:bg-slate-700 border-transparent text-slate-700 dark:text-white' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
+                              {isEditingPassword ? 'Annuler' : 'Modifier'}
+                          </div>
+                      </button>
+
+                      {isEditingPassword && (
+                          <div className="px-6 pb-8 animate-in slide-in-from-top-2">
+                              <form onSubmit={handleUpdatePassword} className="space-y-5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                  {message && (
+                                      <div className={`p-4 rounded-xl text-xs font-bold flex items-center gap-2 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border border-red-100 dark:border-red-800'}`}>
+                                          {message.type === 'success' ? <CheckCircle2 size={16}/> : <Shield size={16}/>}
+                                          {message.text}
+                                      </div>
+                                  )}
+                                  <div className="grid md:grid-cols-2 gap-5">
+                                      <div className="space-y-1.5">
+                                          <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">Nouveau mot de passe</label>
+                                          <div className="relative">
+                                              <input 
+                                                  type={showPassword ? "text" : "password"}
+                                                  value={newPassword}
+                                                  onChange={e => setNewPassword(e.target.value)}
+                                                  className="w-full p-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-slate-800 dark:text-white transition-all"
+                                                  placeholder="Min. 6 caractères"
+                                              />
+                                              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                                                  {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
+                                              </button>
+                                          </div>
+                                      </div>
+                                      <div className="space-y-1.5">
+                                          <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">Confirmer</label>
+                                          <input 
+                                              type={showPassword ? "text" : "password"}
+                                              value={confirmPassword}
+                                              onChange={e => setConfirmPassword(e.target.value)}
+                                              className="w-full p-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-slate-800 dark:text-white transition-all"
+                                              placeholder="Répéter le mot de passe"
+                                          />
+                                      </div>
+                                  </div>
+                                  <div className="flex justify-end">
+                                      <button disabled={loading} type="submit" className="w-full md:w-auto px-8 py-3 bg-university dark:bg-sky-600 hover:bg-university-dark dark:hover:bg-sky-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-university/20 dark:shadow-sky-900/20 active:scale-95 transition-all disabled:opacity-70 disabled:scale-100">
+                                          {loading && <Loader2 className="animate-spin" size={16}/>} Enregistrer les modifications
+                                      </button>
+                                  </div>
+                              </form>
+                          </div>
+                      )}
+                  </div>
+              </div>
           </div>
-          
-          <div className="text-center md:text-left flex-1 space-y-4">
-             <div>
-                 <h3 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">{user.name}</h3>
-                 <div className="flex items-center justify-center md:justify-start gap-2 text-slate-500 dark:text-slate-400 font-medium mt-1">
-                   <Mail size={14} /> {user.email}
-                 </div>
-             </div>
-             
-             <div className="flex gap-3 justify-center md:justify-start flex-wrap">
-                 <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ${roleInfo.color}`}>
-                    <RoleIcon size={16} /> {roleInfo.label}
-                 </div>
-                 {user.classLevel && (
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800">
-                        <Users size={16} /> {user.classLevel}
-                    </div>
-                 )}
-             </div>
-             
-             {user.role !== UserRole.ADMIN && (
-                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 inline-flex flex-col items-center md:items-start w-full">
-                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 text-xs font-bold bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 w-full md:w-auto justify-center md:justify-start">
-                        <AtSign size={14} className="text-university dark:text-sky-400" /> 
-                        <span className="opacity-70">Email de classe :</span> 
-                        <span className="select-all">{classEmail}</span>
-                    </div>
-                 </div>
-             )}
+
+          {/* Right Column: Preferences & Actions */}
+          <div className="space-y-6">
+              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden p-6 md:p-8">
+                  <h3 className="font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                      <Settings size={20} className="text-slate-400" /> Préférences
+                  </h3>
+                  
+                  <div className="space-y-8">
+                      {/* Notifications Toggle */}
+                      <div className="flex items-center justify-between group cursor-pointer" onClick={() => setNotificationsEnabled(!notificationsEnabled)}>
+                          <div>
+                              <p className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-university dark:group-hover:text-sky-400 transition-colors">Notifications</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Emails pour examens et avis</p>
+                          </div>
+                          <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${notificationsEnabled ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ${notificationsEnabled ? 'left-[calc(100%-20px)]' : 'left-1'}`}></div>
+                          </div>
+                      </div>
+                      
+                      {user.role !== UserRole.ADMIN && (
+                          <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Email de classe</p>
+                              <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 group hover:border-university/30 dark:hover:border-sky-500/30 transition-colors">
+                                  <div className="p-2 bg-white dark:bg-slate-900 rounded-lg text-university dark:text-sky-400 shadow-sm">
+                                      <AtSign size={16} />
+                                  </div>
+                                  <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 truncate select-all">{classEmail}</span>
+                              </div>
+                          </div>
+                      )}
+                  </div>
+              </div>
+
+              {/* Logout Button */}
+              <button 
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className="w-full p-5 flex items-center justify-center gap-3 text-alert dark:text-red-400 font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-alert-light dark:hover:bg-red-900/10 hover:border-alert/30 rounded-3xl shadow-card transition-all active:scale-[0.98] group"
+              >
+                  <LogOut size={20} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" /> Se déconnecter
+              </button>
+              
+              <div className="text-center pt-2">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest">
+                      JàngHub Université • v1.0.2
+                  </p>
+              </div>
           </div>
-        </div>
-      </div>
-
-      {/* Paramètres */}
-      <div>
-        <h4 className="font-bold text-slate-800 dark:text-white text-lg mb-4 flex items-center gap-2 px-2">
-            <Settings size={20} className="text-university dark:text-sky-400" /> Paramètres du compte
-        </h4>
-        
-        <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-soft border border-slate-200 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
-            
-             {/* Security Section */}
-             <div className={`transition-colors duration-300 ${isEditingPassword ? 'bg-slate-50/50 dark:bg-slate-800/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-                <button 
-                    onClick={() => setIsEditingPassword(!isEditingPassword)}
-                    className="w-full p-6 flex items-center justify-between group outline-none"
-                >
-                    <div className="flex items-center gap-5">
-                       <div className="bg-university/10 dark:bg-sky-500/10 p-3.5 rounded-2xl text-university dark:text-sky-400 shadow-sm border border-university/10 dark:border-sky-500/10 group-hover:scale-105 transition-transform duration-300">
-                          <Lock size={24} strokeWidth={2.5} />
-                       </div>
-                       <div className="text-left">
-                          <p className="font-bold text-slate-800 dark:text-white text-base">Sécurité & Connexion</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Modifier votre mot de passe</p>
-                       </div>
-                    </div>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 transition-all duration-300 ${isEditingPassword ? 'rotate-180 bg-university text-white border-university' : 'group-hover:border-university/50 group-hover:text-university'}`}>
-                        <ChevronDown size={18} />
-                    </div>
-                </button>
-
-                <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isEditingPassword ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <form onSubmit={handleUpdatePassword} className="px-6 pb-8 pt-2">
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm space-y-5">
-                            {message && (
-                                <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                                    {message.type === 'success' ? <CheckCircle2 size={16}/> : <Shield size={16}/>}
-                                    {message.text}
-                                </div>
-                            )}
-                            
-                            <div className="grid md:grid-cols-2 gap-5">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 ml-1">Nouveau mot de passe</label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Key className="text-slate-400 group-focus-within:text-university dark:group-focus-within:text-sky-400 transition-colors" size={16} />
-                                        </div>
-                                        <input 
-                                            type={showPassword ? "text" : "password"}
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            placeholder="••••••••"
-                                            className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 outline-none text-sm font-bold text-slate-800 dark:text-white transition-all"
-                                        />
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1">
-                                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 ml-1">Confirmer</label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Key className="text-slate-400 group-focus-within:text-university dark:group-focus-within:text-sky-400 transition-colors" size={16} />
-                                        </div>
-                                        <input 
-                                            type={showPassword ? "text" : "password"}
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            placeholder="••••••••"
-                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 outline-none text-sm font-bold text-slate-800 dark:text-white transition-all"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="flex justify-end pt-2">
-                                <button disabled={loading} type="submit" className="bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-md active:scale-95 transition-all flex items-center gap-2 disabled:opacity-70">
-                                    {loading ? <Loader2 className="animate-spin" size={16}/> : 'Enregistrer le nouveau mot de passe'}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-             </div>
-
-             {/* Notifications Section */}
-             <div className="p-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer" onClick={() => setNotificationsEnabled(!notificationsEnabled)}>
-                <div className="flex items-center gap-5">
-                   <div className="bg-brand/10 dark:bg-sky-400/10 p-3.5 rounded-2xl text-brand dark:text-sky-400 shadow-sm border border-brand/10 dark:border-sky-400/10 group-hover:scale-105 transition-transform duration-300">
-                      <Bell size={24} strokeWidth={2.5} />
-                   </div>
-                   <div className="text-left">
-                      <p className="font-bold text-slate-800 dark:text-white text-base">Notifications</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Alertes emails pour les examens et annonces</p>
-                   </div>
-                </div>
-                
-                {/* Custom Toggle Switch */}
-                <div className={`w-12 h-7 rounded-full relative transition-colors duration-300 shadow-inner ${notificationsEnabled ? 'bg-brand dark:bg-sky-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                   <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ease-spring ${notificationsEnabled ? 'left-[calc(100%-24px)]' : 'left-1'}`}></div>
-                </div>
-             </div>
-        </div>
-      </div>
-        
-      <div className="pt-2">
-           <button 
-             onClick={onLogout}
-             className="w-full py-4 flex items-center justify-center gap-2 text-alert dark:text-red-400 font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-alert-light dark:hover:bg-red-900/10 hover:border-alert/30 rounded-2xl transition-all active:scale-[0.99]"
-           >
-              <LogOut size={18} strokeWidth={2.5} /> Se déconnecter
-           </button>
-           <p className="text-center text-[10px] text-slate-400 dark:text-slate-600 mt-4 uppercase font-bold tracking-widest">
-               JàngHub Université • v1.0.2
-           </p>
-      </div>
+       </div>
     </div>
   );
 };

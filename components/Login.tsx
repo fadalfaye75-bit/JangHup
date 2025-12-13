@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import { Loader2, ArrowRight, Mail, Lock, AlertCircle, Eye, EyeOff, KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 interface LoginProps {
@@ -101,6 +101,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
         <div className="p-8 pt-6">
             {view === 'LOGIN' ? (
+                <>
                 <form onSubmit={handleAuth} className="space-y-5 animate-in slide-in-from-right-4 duration-300">
                     {error && (
                         <div className="bg-alert-light dark:bg-alert/10 border border-alert/20 text-alert-text dark:text-alert p-3 rounded-lg text-sm flex items-start gap-2 font-medium">
@@ -172,6 +173,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         {!loading && <ArrowRight size={18} />}
                     </button>
                 </form>
+                </>
             ) : (
                 <form onSubmit={handleResetPassword} className="space-y-5 animate-in slide-in-from-right-4 duration-300">
                     <div className="text-center mb-6">
