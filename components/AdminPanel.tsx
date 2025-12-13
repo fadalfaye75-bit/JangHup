@@ -202,28 +202,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
     try {
         if (editingUserId) {
-            // Update Profile
-            // Note: Password update via admin requires specific Admin API rights or the user to do it themselves.
-            // Here we update profile metadata. 
-            // If admin wants to reset password, standard flow is sending reset email or using service key in backend.
-            const { error } = await supabase.from('profiles').update({
+            // 1. Update Profile Metadata
+            const { error: profileError } = await supabase.from('profiles').update({
                 full_name: newUser.name,
                 role: newUser.role,
                 class_level: newUser.classLevel
             }).eq('id', editingUserId);
 
-            if (error) throw error;
-            setMessage({ type: 'success', text: `Profil mis à jour.` });
+            if (profileError) throw profileError;
+
+            let successText = "Profil mis à jour.";
+
+            // 2. Update Password if provided
+            if (newUser.password && newUser.password.trim() !== '') {
+                if (window.confirm("Attention : Vous êtes sur le point de changer le mot de passe de cet utilisateur. Confirmer ?")) {
+                    const { error: pwdError } = await supabase.rpc('admin_reset_password', {
+                        target_user_id: editingUserId,
+                        new_password: newUser.password
+                    });
+
+                    if (pwdError) {
+                        throw new Error(`Erreur mot de passe: ${pwdError.message}`);
+                    }
+                    successText = "Profil et mot de passe mis à jour.";
+                }
+            }
+
+            setMessage({ type: 'success', text: successText });
             setEditingUserId(null);
             fetchAdminData();
         } else {
-            // Create User via RPC (Standard pattern: 'admin_create_user' security definer function)
-            // Utilisation du mot de passe par défaut 'passer25' si aucun n'est fourni
+            // Create User via RPC
             const generatedPassword = newUser.password || 'passer25';
-            
-            // In a real Supabase setup, you need an RPC function that uses security definer to call auth.admin.createUser
-            // Or use the JS library with service_role key.
-            // For this UI, we assume the RPC 'create_user_with_profile' exists.
             
             const { data, error } = await supabase.rpc('create_user_with_profile', {
                 user_email: newUser.email,

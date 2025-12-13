@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, UserRole, ScheduleItem } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { 
@@ -8,10 +8,12 @@ import {
 
 interface ScheduleProps {
   user: User;
+  schedules: ScheduleItem[];
+  addSchedule: (s: ScheduleItem) => void;
+  deleteSchedule: (id: string) => void;
 }
 
-export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule, deleteSchedule }) => {
   const [viewingItem, setViewingItem] = useState<ScheduleItem | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -22,23 +24,6 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
       if (user.role === UserRole.ADMIN) return true;
       if (user.role === UserRole.RESPONSIBLE && item.classLevel === user.classLevel) return true;
       return false;
-  };
-
-  useEffect(() => {
-    fetchSchedules();
-  }, [user.classLevel]);
-
-  const fetchSchedules = async () => {
-    let query = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
-    if (user.role !== UserRole.ADMIN) {
-        query = query.eq('class_level', user.classLevel);
-    }
-    const { data } = await query;
-    if (data) {
-        setSchedules(data.map(d => ({
-            id: d.id, title: d.title, classLevel: d.class_level, semester: d.semester, url: d.url, uploadedAt: d.uploaded_at, version: d.version || 1
-        })));
-    }
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,9 +46,21 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
             version: 1,
             author_id: user.id
           };
-          const { error: dbError } = await supabase.from('schedules').insert(newItem);
+          
+          const { data, error: dbError } = await supabase.from('schedules').insert(newItem).select().single();
           if (dbError) throw dbError;
-          fetchSchedules();
+          
+          if (data) {
+              addSchedule({
+                  id: data.id,
+                  title: data.title,
+                  classLevel: data.class_level,
+                  semester: data.semester,
+                  url: data.url,
+                  uploadedAt: data.uploaded_at,
+                  version: data.version
+              });
+          }
       } catch (error: any) {
           console.error("Upload failed", error);
           alert(`Erreur lors de l'envoi : ${error.message}`);
@@ -76,7 +73,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
   const handleDelete = async (id: string) => {
     if (deleteConfirmId === id) {
       const { error } = await supabase.from('schedules').delete().eq('id', id);
-      if (!error) setSchedules(schedules.filter(s => s.id !== id));
+      if (!error) deleteSchedule(id);
       setDeleteConfirmId(null);
     } else {
       setDeleteConfirmId(id);

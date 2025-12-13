@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Announcement, User, UserRole } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { generateAnnouncement } from '../services/geminiService';
 import { 
   MessageCircle, Link as LinkIcon, Image as ImageIcon, Trash2, Mail, Copy, 
-  Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertOctagon, Loader2, Users, School
+  Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertOctagon, Loader2, Users, School, Sparkles, PenTool, AlertCircle
 } from 'lucide-react';
 
 interface AnnouncementsProps {
@@ -33,6 +34,14 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   const [linkUrl, setLinkUrl] = useState('');
   const [linkTitle, setLinkTitle] = useState('');
   const [linkType, setLinkType] = useState<'MEET' | 'FORMS' | 'DRIVE' | 'OTHER'>('OTHER');
+  
+  // AI Generation State
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Upload Progress State
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const canCreate = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
 
@@ -48,6 +57,9 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     setEditingId(null);
     setShowLinkInput(false);
     setIsSubmitting(false);
+    setUploadProgress(0);
+    setUploadStatus('');
+    setUploadError(null);
   };
 
   const handleEdit = (ann: Announcement) => {
@@ -58,7 +70,21 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
       setExistingAttachments(ann.attachments || []);
       if (user.role === UserRole.ADMIN) setTargetClass(ann.classLevel);
       setIsCreating(true);
+      setUploadError(null);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAiGeneration = async () => {
+      if (!content.trim()) return;
+      setIsGenerating(true);
+      try {
+          const generated = await generateAnnouncement(content, user.role);
+          setContent(generated);
+      } catch (e) {
+          alert("Erreur de l'IA. Vérifiez votre connexion.");
+      } finally {
+          setIsGenerating(false);
+      }
   };
 
   const handleAddLink = () => {
@@ -71,8 +97,16 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'IMAGE' | 'PDF') => {
+    setUploadError(null);
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Validation de taille (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+          setUploadError(`Le fichier "${file.name}" est trop volumineux (Max 10Mo).`);
+          return;
+      }
+
       if (type === 'IMAGE') setImages([...images, file]);
       else setAttachments([...attachments, file]);
     }
@@ -82,29 +116,59 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     try {
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
-        const { data, error } = await supabase.storage.from(bucket).upload(fileName, file);
+        
+        const { data, error } = await supabase.storage.from(bucket).upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+        });
+
         if (error) throw error;
+        
         const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
         return publicUrl;
-    } catch (error) {
+    } catch (error: any) {
         console.error("File upload failed:", error);
-        return null;
+        throw new Error(`Échec envoi: ${file.name} (${error.message})`);
     }
   };
 
   const handlePublish = async () => {
     if (!content.trim()) return;
     setIsSubmitting(true);
+    setUploadProgress(0);
+    setUploadError(null);
 
     try {
-        const newImageUrls = await Promise.all(images.map(img => uploadFileToSupabase(img, 'images')));
-        const newAttachmentData = await Promise.all(attachments.map(async file => {
-            const url = await uploadFileToSupabase(file, 'files');
-            return url ? { name: file.name, type: 'PDF' as const, url } : null;
-        }));
+        const totalFiles = images.length + attachments.length;
+        let processedFiles = 0;
+        
+        const newImageUrls: string[] = [];
+        const newAttachmentData: any[] = [];
 
-        const finalImages = [...existingImages, ...(newImageUrls.filter(url => url !== null) as string[])];
-        const finalAttachments = [...existingAttachments, ...(newAttachmentData.filter(a => a !== null) as any[])];
+        // Upload Images Sequentially to track progress
+        for (const img of images) {
+            setUploadStatus(`Envoi de l'image : ${img.name}...`);
+            const url = await uploadFileToSupabase(img, 'images');
+            if (url) newImageUrls.push(url);
+            
+            processedFiles++;
+            setUploadProgress(Math.round((processedFiles / (totalFiles || 1)) * 100));
+        }
+
+        // Upload Attachments Sequentially
+        for (const file of attachments) {
+            setUploadStatus(`Envoi du fichier : ${file.name}...`);
+            const url = await uploadFileToSupabase(file, 'files');
+            if (url) newAttachmentData.push({ name: file.name, type: 'PDF', url });
+            
+            processedFiles++;
+            setUploadProgress(Math.round((processedFiles / (totalFiles || 1)) * 100));
+        }
+
+        setUploadStatus('Finalisation...');
+        
+        const finalImages = [...existingImages, ...newImageUrls];
+        const finalAttachments = [...existingAttachments, ...newAttachmentData];
         const finalClass = user.role === UserRole.ADMIN ? targetClass : user.classLevel;
 
         const payload = {
@@ -147,7 +211,7 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
         resetForm();
     } catch (error: any) {
         console.error("Error publishing:", error);
-        alert(`Erreur lors de la publication : ${error.message}`);
+        setUploadError(error.message || "Une erreur est survenue lors de la publication.");
     } finally {
         setIsSubmitting(false);
     }
@@ -242,13 +306,26 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                     />
                 </div>
             )}
-
-            <textarea
-              className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 transition-all outline-none resize-none text-slate-700 dark:text-white min-h-[160px] placeholder:text-slate-400 text-sm leading-relaxed"
-              placeholder={user.role === UserRole.ADMIN ? "Message de l'administration..." : "Information pour la classe..."}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            />
+            
+            <div className="relative">
+                <textarea
+                  className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 transition-all outline-none resize-none text-slate-700 dark:text-white min-h-[180px] placeholder:text-slate-400 text-sm leading-relaxed"
+                  placeholder={user.role === UserRole.ADMIN ? "Entrez les points clés, l'IA rédigera l'annonce pour vous..." : "Sujet de l'annonce, l'IA se charge de la rédaction..."}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  disabled={isSubmitting}
+                />
+                {/* AI Write Button */}
+                <button 
+                    onClick={handleAiGeneration}
+                    disabled={isGenerating || !content || isSubmitting}
+                    className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-xs font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 border border-indigo-100 dark:border-indigo-800"
+                    title="Laissez l'IA rédiger une annonce professionnelle à partir de vos notes"
+                >
+                    {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <PenTool size={12} />}
+                    {isGenerating ? 'Rédaction en cours...' : 'Rédiger avec IA'}
+                </button>
+            </div>
             
             {(links.length > 0 || images.length > 0 || attachments.length > 0 || existingImages.length > 0 || existingAttachments.length > 0) && (
               <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -274,14 +351,39 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                 ))}
               </div>
             )}
+            
+            {/* Messages d'erreur */}
+            {uploadError && (
+                <div className="mt-4 p-3 rounded-lg bg-alert-light dark:bg-alert/10 border border-alert/20 text-alert-text dark:text-alert flex items-start gap-2 text-xs font-bold">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    {uploadError}
+                </div>
+            )}
+
+            {/* Barre de progression */}
+            {isSubmitting && (
+                <div className="mt-4">
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{uploadStatus || 'Traitement...'}</span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                        <div 
+                            className="bg-university dark:bg-sky-500 h-2 rounded-full transition-all duration-300 ease-out" 
+                            style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                    </div>
+                </div>
+            )}
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 justify-between items-center">
              <div className="flex gap-2 w-full md:w-auto">
                 <div className="relative">
                    <button 
+                     disabled={isSubmitting}
                      onClick={() => setShowLinkInput(!showLinkInput)}
-                     className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${showLinkInput ? 'bg-university/10 dark:bg-sky-500/10 text-university dark:text-sky-400 border-university/20 dark:border-sky-500/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                     className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border disabled:opacity-50 ${showLinkInput ? 'bg-university/10 dark:bg-sky-500/10 text-university dark:text-sky-400 border-university/20 dark:border-sky-500/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                    >
                       <LinkIcon size={16} /> Lien
                    </button>
@@ -302,19 +404,19 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                    )}
                 </div>
 
-                <label className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold">
-                   <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'IMAGE')} />
+                <label className={`px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold ${isSubmitting ? 'opacity-50 pointer-events-none' : ''}`}>
+                   <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'IMAGE')} disabled={isSubmitting} />
                    <ImageIcon size={16} /> Photo
                 </label>
 
-                <label className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold">
-                   <input type="file" accept=".pdf" className="hidden" onChange={(e) => handleFileUpload(e, 'PDF')} />
+                <label className={`px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold ${isSubmitting ? 'opacity-50 pointer-events-none' : ''}`}>
+                   <input type="file" accept=".pdf" className="hidden" onChange={(e) => handleFileUpload(e, 'PDF')} disabled={isSubmitting} />
                    <FileText size={16} /> PDF
                 </label>
              </div>
 
              <div className="flex gap-2 w-full md:w-auto justify-end">
-                <button onClick={resetForm} className="px-5 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg font-bold text-xs transition-colors border border-transparent">
+                <button disabled={isSubmitting} onClick={resetForm} className="px-5 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg font-bold text-xs transition-colors border border-transparent disabled:opacity-50">
                   Annuler
                 </button>
                 <button 

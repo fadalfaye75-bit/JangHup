@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewState, User, UserRole } from '../types';
 import { 
   Home, 
@@ -15,7 +15,8 @@ import {
   X,
   ChevronRight,
   Moon,
-  Sun
+  Sun,
+  Search
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -29,15 +30,28 @@ interface LayoutProps {
   availableClasses?: string[];
   darkMode: boolean;
   toggleTheme: () => void;
+  onOpenSearch: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
   children, currentView, setView, user, onLogout, 
   adminClassFilter, setAdminClassFilter, availableClasses,
-  darkMode, toggleTheme
+  darkMode, toggleTheme, onOpenSearch
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
+  // Shortcut listener for Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        onOpenSearch();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onOpenSearch]);
+
   // LOGO COMPONENT
   const JangHubLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
     <div className={className}>
@@ -191,14 +205,22 @@ export const Layout: React.FC<LayoutProps> = ({
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Portail {user.classLevel}</p>
                 </div>
             </div>
-            <button 
-                onClick={() => setIsMobileMenuOpen(true)} 
-                className="relative p-0.5 rounded-full border border-slate-200 dark:border-slate-700 hover:border-university dark:hover:border-sky-500 transition-colors"
-            >
-                 <img src={user.avatar} alt="User" className="w-8 h-8 rounded-full object-cover" />
-                 {/* Online Dot */}
-                 <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
-            </button>
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={onOpenSearch} 
+                    className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                    <Search size={20} />
+                </button>
+                <button 
+                    onClick={() => setIsMobileMenuOpen(true)} 
+                    className="relative p-0.5 rounded-full border border-slate-200 dark:border-slate-700 hover:border-university dark:hover:border-sky-500 transition-colors"
+                >
+                     <img src={user.avatar} alt="User" className="w-8 h-8 rounded-full object-cover" />
+                     {/* Online Dot */}
+                     <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
+                </button>
+            </div>
         </header>
 
         {/* MOBILE DRAWER (Off-canvas Menu) */}
@@ -270,7 +292,6 @@ export const Layout: React.FC<LayoutProps> = ({
         <MobileNavItem view="HOME" icon={Home} label="Accueil" />
         <MobileNavItem view="SCHEDULE" icon={Calendar} label="Planning" />
         <MobileNavItem view="ANNOUNCEMENTS" icon={Megaphone} label="Avis" />
-        <MobileNavItem view="EXAMS" icon={FileText} label="DS" />
       </nav>
     </div>
   );
