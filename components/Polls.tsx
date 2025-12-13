@@ -151,43 +151,43 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
       <div className="flex justify-between items-center">
         <div>
              <div className="flex items-center gap-3">
-                 <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Sondages</h2>
-                 <span className="bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-full border border-brand/20 flex items-center gap-1">
+                 <h2 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">Sondages</h2>
+                 <span className="bg-brand/10 dark:bg-sky-500/20 text-brand dark:text-sky-400 text-xs font-bold px-3 py-1 rounded-full border border-brand/20 dark:border-sky-500/20 flex items-center gap-1">
                      <Users size={12} /> {user.role === UserRole.ADMIN ? 'Vue Admin' : user.classLevel}
                  </span>
              </div>
-             <p className="text-slate-500 font-medium mt-1">Avis de la classe.</p>
+             <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">Avis de la classe.</p>
         </div>
         {canCreate && !isCreating && (
-             <button onClick={() => setIsCreating(true)} className="bg-brand hover:bg-sky-400 text-white px-8 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95"><Plus size={22} /> <span className="hidden sm:inline">Nouveau sondage</span></button>
+             <button onClick={() => setIsCreating(true)} className="bg-brand dark:bg-sky-600 hover:bg-sky-400 dark:hover:bg-sky-500 text-white px-8 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95"><Plus size={22} /> <span className="hidden sm:inline">Nouveau sondage</span></button>
         )}
       </div>
 
       {isCreating && (
-          <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-sky-100 ring-4 ring-white/50 animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-sky-100 dark:border-slate-800 ring-4 ring-white/50 dark:ring-slate-800/50 animate-in zoom-in-95 duration-200">
               <div className="flex justify-between items-start mb-8">
-                  <h3 className="font-bold text-xl text-slate-800">{editingId ? 'Modifier la question' : `Créer un sondage pour ${user.classLevel}`}</h3>
-                  <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors"><X size={24} /></button>
+                  <h3 className="font-bold text-xl text-slate-800 dark:text-white">{editingId ? 'Modifier la question' : `Créer un sondage pour ${user.classLevel}`}</h3>
+                  <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"><X size={24} /></button>
               </div>
-              <input className="w-full p-4 bg-slate-50 border-0 rounded-2xl mb-6 focus:ring-4 focus:ring-brand/10 focus:bg-white outline-none font-medium placeholder:text-slate-400 text-lg" placeholder="Question ?" value={question} onChange={(e) => setQuestion(e.target.value)} />
+              <input className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl mb-6 focus:ring-4 focus:ring-brand/10 dark:focus:ring-sky-500/20 focus:bg-white dark:focus:bg-slate-800 outline-none font-medium placeholder:text-slate-400 text-lg text-slate-800 dark:text-white" placeholder="Question ?" value={question} onChange={(e) => setQuestion(e.target.value)} />
               
               {!editingId && (
                   <div className="space-y-4 mb-8">
                       {options.map((opt, idx) => (
                           <div key={idx} className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-500">{idx + 1}</div>
-                              <input className="w-full p-3.5 bg-slate-50 border-0 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-brand focus:bg-white outline-none" placeholder={`Option ${idx + 1}`} value={opt} onChange={(e) => handleOptionChange(idx, e.target.value)} />
+                              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-500 dark:text-slate-400">{idx + 1}</div>
+                              <input className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-brand dark:focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-800 dark:text-white" placeholder={`Option ${idx + 1}`} value={opt} onChange={(e) => handleOptionChange(idx, e.target.value)} />
                           </div>
                       ))}
                   </div>
               )}
-              {editingId && <p className="text-sm text-amber-500 font-bold mb-4 bg-amber-50 p-3 rounded-xl border border-amber-100">⚠️ Les options ne peuvent pas être modifiées une fois le sondage créé pour préserver les votes.</p>}
+              {editingId && <p className="text-sm text-amber-500 font-bold mb-4 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">⚠️ Les options ne peuvent pas être modifiées une fois le sondage créé pour préserver les votes.</p>}
               
-              <div className="flex justify-between items-center pt-6 border-t border-slate-50">
-                  {!editingId ? <button onClick={addOptionField} className="text-brand text-sm font-bold hover:underline px-2">+ Ajouter une option</button> : <div></div>}
+              <div className="flex justify-between items-center pt-6 border-t border-slate-50 dark:border-slate-800">
+                  {!editingId ? <button onClick={addOptionField} className="text-brand dark:text-sky-400 text-sm font-bold hover:underline px-2">+ Ajouter une option</button> : <div></div>}
                   <div className="flex gap-3">
-                       <button onClick={resetForm} className="text-slate-500 px-6 py-3 hover:bg-slate-100 rounded-2xl font-bold transition-colors">Annuler</button>
-                       <button onClick={createOrUpdatePoll} disabled={isSubmitting} className="bg-brand text-white px-8 py-3 rounded-2xl font-bold hover:bg-sky-400 shadow-md active:scale-95 flex items-center gap-2">
+                       <button onClick={resetForm} className="text-slate-500 dark:text-slate-400 px-6 py-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl font-bold transition-colors">Annuler</button>
+                       <button onClick={createOrUpdatePoll} disabled={isSubmitting} className="bg-brand dark:bg-sky-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-sky-400 dark:hover:bg-sky-500 shadow-md active:scale-95 flex items-center gap-2">
                            {isSubmitting && <Loader2 className="animate-spin" size={18} />}
                            {editingId ? 'Mettre à jour' : 'Publier'}
                        </button>
@@ -198,17 +198,17 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {polls.map(poll => (
-            <div key={poll.id} className="bg-white p-8 rounded-[2.5rem] shadow-soft border border-white hover:shadow-lg transition-all relative">
+            <div key={poll.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-soft border border-white dark:border-slate-800 hover:shadow-lg transition-all relative">
                 <div className="flex justify-between items-start mb-8">
-                    <h3 className="text-xl font-bold text-slate-800 leading-tight max-w-[80%]">{poll.question}</h3>
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white leading-tight max-w-[80%]">{poll.question}</h3>
                     <div className="flex items-center gap-2">
-                        <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">{poll.totalVotes} votes</span>
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">{poll.totalVotes} votes</span>
                         {canModify(poll) && (
                             <>
-                             <button onClick={() => handleEdit(poll)} className="p-2 text-action-edit bg-sky-50 hover:bg-sky-100 rounded-xl transition-colors" title="Modifier">
-                                <Edit2 size={18} />
+                             <button onClick={() => handleEdit(poll)} className="p-2 text-action-edit bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/40 rounded-xl transition-colors" title="Modifier">
+                                <Edit2 size={18} className="text-sky-600 dark:text-sky-400" />
                              </button>
-                             <button onClick={() => handleDelete(poll)} className={`p-2 rounded-xl transition-all ${deleteConfirmId === poll.id ? 'bg-alert text-white' : 'text-slate-300 hover:text-alert hover:bg-red-50'}`}>
+                             <button onClick={() => handleDelete(poll)} className={`p-2 rounded-xl transition-all ${deleteConfirmId === poll.id ? 'bg-alert text-white' : 'text-slate-300 hover:text-alert hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
                                  {deleteConfirmId === poll.id ? <AlertOctagon size={18} /> : <Trash2 size={18} />}
                              </button>
                             </>
@@ -220,18 +220,18 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                     {poll.options.map(opt => {
                         const percent = poll.totalVotes > 0 ? Math.round((opt.votes / poll.totalVotes) * 100) : 0;
                         return (
-                            <button key={opt.id} onClick={() => handleVote(poll.id, opt.id, opt.votes)} className="w-full relative overflow-hidden p-5 border border-slate-100 rounded-2xl hover:border-brand/50 transition-all group text-left bg-slate-50 hover:bg-white">
-                                <div className="absolute top-0 bottom-0 left-0 bg-sky-100/50 transition-all duration-700 ease-out" style={{width: `${percent}%`}}></div>
+                            <button key={opt.id} onClick={() => handleVote(poll.id, opt.id, opt.votes)} className="w-full relative overflow-hidden p-5 border border-slate-100 dark:border-slate-800 rounded-2xl hover:border-brand/50 dark:hover:border-sky-500/50 transition-all group text-left bg-slate-50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800">
+                                <div className="absolute top-0 bottom-0 left-0 bg-sky-100/50 dark:bg-sky-900/30 transition-all duration-700 ease-out" style={{width: `${percent}%`}}></div>
                                 <div className="relative flex justify-between items-center z-10">
-                                    <span className="text-slate-700 font-bold group-hover:text-brand transition-colors text-sm">{opt.text}</span>
-                                    <div className="flex items-center gap-3"><span className="text-xs font-bold text-slate-400">{percent}%</span><CheckCircle2 size={18} className="text-slate-200 group-hover:text-brand transition-colors" /></div>
+                                    <span className="text-slate-700 dark:text-slate-200 font-bold group-hover:text-brand dark:group-hover:text-sky-400 transition-colors text-sm">{opt.text}</span>
+                                    <div className="flex items-center gap-3"><span className="text-xs font-bold text-slate-400 dark:text-slate-500">{percent}%</span><CheckCircle2 size={18} className="text-slate-200 dark:text-slate-700 group-hover:text-brand dark:group-hover:text-sky-400 transition-colors" /></div>
                                 </div>
                             </button>
                         )
                     })}
                 </div>
 
-                <div className="h-48 w-full bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                <div className="h-48 w-full bg-slate-50 dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={poll.options}>
                             <XAxis dataKey="text" tick={{fontSize: 10, fill: '#94a3b8'}} interval={0} axisLine={false} tickLine={false} />

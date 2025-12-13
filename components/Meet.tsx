@@ -137,12 +137,12 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                <div className="flex items-center gap-3">
-                   <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Visioconférence</h2>
-                   <span className="bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-full border border-brand/20 flex items-center gap-1">
+                   <h2 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">Visioconférence</h2>
+                   <span className="bg-brand/10 dark:bg-sky-500/20 text-brand dark:text-sky-400 text-xs font-bold px-3 py-1 rounded-full border border-brand/20 dark:border-sky-500/20 flex items-center gap-1">
                      <Users size={12} /> {user.role === UserRole.ADMIN ? 'Vue Admin' : user.classLevel}
                    </span>
                </div>
-                <p className="text-slate-500 font-medium mt-1">Cours en ligne pour la classe.</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">Cours en ligne pour la classe.</p>
             </div>
             {canEdit && !isAdding && (
                 <button onClick={() => setIsAdding(true)} className="bg-brand hover:bg-sky-400 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg flex items-center gap-2 active:scale-95">
@@ -153,25 +153,25 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
 
         {isAdding && (
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 ring-4 ring-white/20">
-                    <div className="bg-brand p-8 text-white flex justify-between items-center">
+                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 ring-4 ring-white/20 dark:ring-slate-700/50">
+                    <div className="bg-brand dark:bg-sky-600 p-8 text-white flex justify-between items-center">
                         <h3 className="font-bold text-xl flex items-center gap-2">{editingId ? 'Modifier le cours' : 'Planifier un cours'}</h3>
                         <button onClick={resetForm} className="hover:bg-white/20 p-2 rounded-xl transition-colors"><X size={24} /></button>
                     </div>
                     <form onSubmit={handleSubmit} className="p-8 space-y-6">
                         {/* Simplified fields for brevity */}
-                        <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium" placeholder="Titre" required />
+                        <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl outline-none font-medium text-slate-800 dark:text-white" placeholder="Titre" required />
                         <div className="grid grid-cols-2 gap-5">
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none" required />
-                            <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none" required />
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl outline-none text-slate-800 dark:text-white" required />
+                            <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl outline-none text-slate-800 dark:text-white" required />
                         </div>
                         <div className="relative">
                             <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input value={link} onChange={e => setLink(e.target.value)} className="w-full p-4 pl-12 bg-slate-50 border-0 rounded-2xl outline-none" placeholder="Lien de réunion" required />
+                            <input value={link} onChange={e => setLink(e.target.value)} className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl outline-none text-slate-800 dark:text-white" placeholder="Lien de réunion" required />
                         </div>
                         <div className="pt-4 flex justify-end gap-3">
-                            <button type="button" onClick={resetForm} className="px-6 py-3 text-slate-500 hover:bg-slate-100 rounded-2xl font-bold">Annuler</button>
-                            <button type="submit" className="px-8 py-3 bg-brand text-white rounded-2xl font-bold shadow-md active:scale-95">
+                            <button type="button" onClick={resetForm} className="px-6 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl font-bold">Annuler</button>
+                            <button type="submit" className="px-8 py-3 bg-brand dark:bg-sky-600 text-white rounded-2xl font-bold shadow-md active:scale-95">
                                 {editingId ? 'Mettre à jour' : 'Planifier'}
                             </button>
                         </div>
@@ -182,31 +182,31 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {sortedMeetings.map(meeting => (
-                <div key={meeting.id} className="bg-white rounded-[2.5rem] p-8 shadow-soft border border-white hover:shadow-lg transition-all flex flex-col relative">
+                <div key={meeting.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-soft border border-white dark:border-slate-800 hover:shadow-lg transition-all flex flex-col relative">
                     <div className="flex justify-between items-start mb-6">
-                        <div className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-emerald-50 text-emerald-600 border-emerald-100">{meeting.platform}</div>
+                        <div className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800">{meeting.platform}</div>
                         <div className="flex gap-1">
-                             <button onClick={() => handleCopy(meeting)} className="text-slate-300 hover:text-action-copy transition-colors p-2">{copiedId === meeting.id ? <Check size={18} /> : <Copy size={18} />}</button>
-                             <button onClick={() => handleShare(meeting)} className="text-slate-300 hover:text-action-share transition-colors p-2"><Share2 size={18} /></button>
+                             <button onClick={() => handleCopy(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-copy transition-colors p-2">{copiedId === meeting.id ? <Check size={18} /> : <Copy size={18} />}</button>
+                             <button onClick={() => handleShare(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-share transition-colors p-2"><Share2 size={18} /></button>
                              {canModify(meeting) && (
                                 <>
-                                 <button onClick={() => handleEdit(meeting)} className="text-slate-300 hover:text-action-edit transition-colors p-2">
+                                 <button onClick={() => handleEdit(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-edit transition-colors p-2">
                                     <Edit2 size={18} />
                                  </button>
-                                 <button onClick={() => handleDelete(meeting.id)} className={`transition-all p-2 rounded-xl flex items-center gap-1 ${deleteConfirmId === meeting.id ? 'bg-alert text-white' : 'text-slate-300 hover:text-alert'}`}>
+                                 <button onClick={() => handleDelete(meeting.id)} className={`transition-all p-2 rounded-xl flex items-center gap-1 ${deleteConfirmId === meeting.id ? 'bg-alert text-white' : 'text-slate-300 dark:text-slate-600 hover:text-alert'}`}>
                                     {deleteConfirmId === meeting.id ? <AlertOctagon size={18} /> : <Trash2 size={18} />}
                                  </button>
                                 </>
                              )}
                         </div>
                     </div>
-                    <h3 className="font-bold text-slate-800 text-xl mb-1">{meeting.title}</h3>
-                    <p className="text-sm text-slate-500 font-medium mb-8">Organisé par {meeting.authorName}</p>
-                    <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl">
-                        <div className="flex items-center gap-4 text-slate-600"><Calendar size={20} className="text-brand" /><span className="font-bold text-sm">{new Date(meeting.date).toLocaleDateString()}</span></div>
-                        <div className="flex items-center gap-4 text-slate-600"><Clock size={20} className="text-brand" /><span className="font-bold text-sm">{meeting.time}</span></div>
+                    <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-1">{meeting.title}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8">Organisé par {meeting.authorName}</p>
+                    <div className="space-y-4 mb-8 bg-slate-50 dark:bg-slate-800 p-6 rounded-3xl">
+                        <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300"><Calendar size={20} className="text-brand dark:text-sky-500" /><span className="font-bold text-sm">{new Date(meeting.date).toLocaleDateString()}</span></div>
+                        <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300"><Clock size={20} className="text-brand dark:text-sky-500" /><span className="font-bold text-sm">{meeting.time}</span></div>
                     </div>
-                    <a href={meeting.link} target="_blank" rel="noreferrer" className="mt-auto w-full py-4 bg-slate-800 hover:bg-brand text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-md active:scale-95 text-sm">Rejoindre la réunion <ExternalLink size={18} /></a>
+                    <a href={meeting.link} target="_blank" rel="noreferrer" className="mt-auto w-full py-4 bg-slate-800 hover:bg-brand dark:bg-slate-700 dark:hover:bg-sky-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-md active:scale-95 text-sm">Rejoindre la réunion <ExternalLink size={18} /></a>
                 </div>
             ))}
         </div>

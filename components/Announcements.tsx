@@ -188,10 +188,10 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
 
   const getLinkColor = (type: string) => {
     switch (type) {
-      case 'MEET': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'FORMS': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'DRIVE': return 'bg-sky-50 text-sky-700 border-sky-200';
-      default: return 'bg-slate-50 text-slate-700 border-slate-200';
+      case 'MEET': return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800';
+      case 'FORMS': return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800';
+      case 'DRIVE': return 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/20 dark:text-sky-300 dark:border-sky-800';
+      default: return 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
     }
   };
 
@@ -204,20 +204,20 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
         <div>
            <div className="flex items-center gap-2">
-               <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Fil d'actualité</h2>
-               <span className="bg-university/10 text-university text-xs font-bold px-2 py-0.5 rounded border border-university/20">
+               <h2 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Fil d'actualité</h2>
+               <span className="bg-university/10 dark:bg-sky-500/20 text-university dark:text-sky-400 text-xs font-bold px-2 py-0.5 rounded border border-university/20 dark:border-sky-500/20">
                  {user.role === UserRole.ADMIN ? 'Admin' : user.classLevel}
                </span>
            </div>
-           <p className="text-slate-500 text-sm mt-1">Communications officielles et ressources.</p>
+           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Communications officielles et ressources.</p>
         </div>
         {canCreate && !isCreating && (
           <button 
             onClick={() => setIsCreating(true)}
-            className="bg-university hover:bg-university-dark text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-sm"
+            className="bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-sm"
           >
             <Plus size={18} /> Nouvelle Annonce
           </button>
@@ -225,9 +225,9 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
       </div>
 
       {isCreating && (
-        <div className="bg-white rounded-xl shadow-card border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-             <h3 className="text-base font-bold text-slate-800">{editingId ? 'Modifier l\'annonce' : 'Nouvelle Communication'}</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-card border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+             <h3 className="text-base font-bold text-slate-800 dark:text-white">{editingId ? 'Modifier l\'annonce' : 'Nouvelle Communication'}</h3>
           </div>
           <div className="p-6">
             {user.role === UserRole.ADMIN && (
@@ -238,36 +238,36 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                         value={targetClass} 
                         onChange={(e) => setTargetClass(e.target.value)}
                         placeholder="Classe cible (ex: Tle S2)"
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 focus:border-university text-sm"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium text-slate-700 dark:text-white focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-sm"
                     />
                 </div>
             )}
 
             <textarea
-              className="w-full p-4 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-university/20 focus:border-university transition-all outline-none resize-none text-slate-700 min-h-[160px] placeholder:text-slate-400 text-sm leading-relaxed"
+              className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 transition-all outline-none resize-none text-slate-700 dark:text-white min-h-[160px] placeholder:text-slate-400 text-sm leading-relaxed"
               placeholder={user.role === UserRole.ADMIN ? "Message de l'administration..." : "Information pour la classe..."}
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
             
             {(links.length > 0 || images.length > 0 || attachments.length > 0 || existingImages.length > 0 || existingAttachments.length > 0) && (
-              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                 {links.map((l, i) => (
-                  <span key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
+                  <span key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
                     {getLinkIcon(l.type)} {l.title}
                     <button onClick={() => setLinks(links.filter((_, idx) => idx !== i))} className="hover:text-alert"><X size={14} /></button>
                   </span>
                 ))}
                 
                 {[...existingImages, ...images].map((img, i) => (
-                  <span key={`img-${i}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
+                  <span key={`img-${i}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
                     <ImageIcon size={14} /> Image {i+1}
                     <button onClick={() => i < existingImages.length ? setExistingImages(existingImages.filter((_, idx) => idx !== i)) : setImages(images.filter((_, idx) => idx !== i - existingImages.length))} className="hover:text-alert"><X size={14} /></button>
                   </span>
                 ))}
 
                 {[...existingAttachments, ...attachments].map((att, i) => (
-                  <span key={`att-${i}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
+                  <span key={`att-${i}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
                     <File size={14} /> {att.name}
                     <button onClick={() => i < existingAttachments.length ? setExistingAttachments(existingAttachments.filter((_, idx) => idx !== i)) : setAttachments(attachments.filter((_, idx) => idx !== i - existingAttachments.length))} className="hover:text-alert"><X size={14} /></button>
                   </span>
@@ -276,51 +276,51 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
             )}
           </div>
 
-          <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 justify-between items-center">
              <div className="flex gap-2 w-full md:w-auto">
                 <div className="relative">
                    <button 
                      onClick={() => setShowLinkInput(!showLinkInput)}
-                     className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${showLinkInput ? 'bg-university/10 text-university border-university/20' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                     className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${showLinkInput ? 'bg-university/10 dark:bg-sky-500/10 text-university dark:text-sky-400 border-university/20 dark:border-sky-500/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                    >
                       <LinkIcon size={16} /> Lien
                    </button>
                    {showLinkInput && (
-                     <div className="absolute bottom-full left-0 mb-2 w-72 bg-white p-4 rounded-xl shadow-elevation border border-slate-200 z-10">
+                     <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-elevation border border-slate-200 dark:border-slate-700 z-10">
                         <input 
                           placeholder="Titre" 
-                          className="w-full mb-2 p-2 bg-slate-50 border border-slate-200 rounded-md text-xs outline-none focus:border-university"
+                          className="w-full mb-2 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-university dark:focus:border-sky-500 text-slate-800 dark:text-white"
                           value={linkTitle} onChange={e => setLinkTitle(e.target.value)}
                         />
                         <input 
                           placeholder="URL" 
-                          className="w-full mb-2 p-2 bg-slate-50 border border-slate-200 rounded-md text-xs outline-none focus:border-university"
+                          className="w-full mb-2 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-university dark:focus:border-sky-500 text-slate-800 dark:text-white"
                           value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
                         />
-                        <button onClick={handleAddLink} className="w-full bg-university text-white py-2 rounded-md text-xs font-bold hover:bg-university-dark">Ajouter</button>
+                        <button onClick={handleAddLink} className="w-full bg-university dark:bg-sky-600 text-white py-2 rounded-md text-xs font-bold hover:bg-university-dark dark:hover:bg-sky-700">Ajouter</button>
                      </div>
                    )}
                 </div>
 
-                <label className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold">
+                <label className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold">
                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'IMAGE')} />
                    <ImageIcon size={16} /> Photo
                 </label>
 
-                <label className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold">
+                <label className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold">
                    <input type="file" accept=".pdf" className="hidden" onChange={(e) => handleFileUpload(e, 'PDF')} />
                    <FileText size={16} /> PDF
                 </label>
              </div>
 
              <div className="flex gap-2 w-full md:w-auto justify-end">
-                <button onClick={resetForm} className="px-5 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-bold text-xs transition-colors border border-transparent">
+                <button onClick={resetForm} className="px-5 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg font-bold text-xs transition-colors border border-transparent">
                   Annuler
                 </button>
                 <button 
                   onClick={handlePublish}
                   disabled={isSubmitting}
-                  className="px-6 py-2 bg-university hover:bg-university-dark text-white rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-xs disabled:opacity-50"
+                  className="px-6 py-2 bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-xs disabled:opacity-50"
                 >
                    {isSubmitting ? <Loader2 className="animate-spin" size={16}/> : <><Check size={16} /> {editingId ? 'Mettre à jour' : 'Publier'}</>}
                 </button>
@@ -331,21 +331,21 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
 
       <div className="space-y-6">
         {announcements.map(ann => (
-          <div key={ann.id} className="bg-white rounded-xl p-0 shadow-card border border-slate-200 hover:border-university/30 transition-all">
+          <div key={ann.id} className="bg-white dark:bg-slate-900 rounded-xl p-0 shadow-card border border-slate-200 dark:border-slate-800 hover:border-university/30 dark:hover:border-sky-500/30 transition-all">
              <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold text-white shadow-sm
-                                ${ann.authorName.includes('Admin') ? 'bg-university-dark' : 'bg-university'}`}
+                                ${ann.authorName.includes('Admin') ? 'bg-university-dark dark:bg-sky-700' : 'bg-university dark:bg-sky-600'}`}
                         >
                                 {ann.authorName.charAt(0)}
                         </div>
                         <div>
-                            <h3 className="font-bold text-slate-800 text-sm">{ann.authorName}</h3>
-                            <div className="flex gap-2 items-center text-xs text-slate-500">
+                            <h3 className="font-bold text-slate-800 dark:text-white text-sm">{ann.authorName}</h3>
+                            <div className="flex gap-2 items-center text-xs text-slate-500 dark:text-slate-400">
                                 <span>{new Date(ann.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute:'2-digit' })}</span>
                                 {user.role === UserRole.ADMIN && (
-                                    <span className="bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded border border-slate-200">
+                                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                                         {ann.classLevel}
                                     </span>
                                 )}
@@ -356,12 +356,12 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                     <div className="flex gap-1">
                         {hasRights(ann) && (
                             <>
-                                <button onClick={() => handleEdit(ann)} className="p-2 text-slate-400 hover:text-university hover:bg-slate-50 rounded-lg transition-colors" title="Modifier">
+                                <button onClick={() => handleEdit(ann)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Modifier">
                                     <Edit2 size={16} />
                                 </button>
                                 <button 
                                     onClick={() => handleDelete(ann.id)} 
-                                    className={`p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold ${deleteConfirmId === ann.id ? 'bg-alert text-white' : 'text-slate-400 hover:text-alert hover:bg-alert-light'}`}
+                                    className={`p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold ${deleteConfirmId === ann.id ? 'bg-alert text-white' : 'text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10'}`}
                                 >
                                     {deleteConfirmId === ann.id ? <><AlertOctagon size={14} /> Confirmer</> : <Trash2 size={16} />}
                                 </button>
@@ -370,8 +370,8 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                     </div>
                 </div>
 
-                <div className="prose prose-slate prose-sm max-w-none mb-6">
-                    <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">{ann.content}</p>
+                <div className="prose prose-slate dark:prose-invert prose-sm max-w-none mb-6">
+                    <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">{ann.content}</p>
                 </div>
 
                 {ann.links && ann.links.length > 0 && (
@@ -394,13 +394,13 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                 {ann.attachments && ann.attachments.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                         {ann.attachments.map((file, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50 hover:bg-white transition-colors">
-                                <div className="text-slate-500"><FileText size={20} /></div>
+                            <div key={i} className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-800/80 transition-colors">
+                                <div className="text-slate-500 dark:text-slate-400"><FileText size={20} /></div>
                                 <div className="flex-1 overflow-hidden">
-                                    <p className="font-bold text-slate-700 truncate text-xs">{file.name}</p>
+                                    <p className="font-bold text-slate-700 dark:text-slate-200 truncate text-xs">{file.name}</p>
                                     <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{file.type}</p>
                                 </div>
-                                <a href={file.url} target="_blank" rel="noreferrer" className="text-university font-bold text-xs hover:underline px-2">Télécharger</a>
+                                <a href={file.url} target="_blank" rel="noreferrer" className="text-university dark:text-sky-400 font-bold text-xs hover:underline px-2">Télécharger</a>
                             </div>
                         ))}
                     </div>
@@ -409,7 +409,7 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                 {ann.images && ann.images.length > 0 && (
                     <div className={`grid gap-3 mb-6 ${ann.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
                         {ann.images.map((img, i) => (
-                            <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                            <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                                 <img src={img} alt="Attachment" className="w-full h-full object-cover" />
                             </div>
                         ))}
@@ -417,18 +417,18 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                 )}
              </div>
 
-             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-b-xl">
+             <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between rounded-b-xl">
                 <div className="flex gap-3">
                     <button 
                       onClick={() => copyToClipboard(ann.content, ann.id)}
-                      className="flex items-center gap-1.5 text-slate-500 hover:text-success hover:bg-success-light px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-success/20"
+                      className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-success hover:bg-success-light dark:hover:bg-success/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-success/20"
                     >
                        {copiedId === ann.id ? <Check size={14} /> : <Copy size={14} />}
                        {copiedId === ann.id ? 'Copié' : 'Copier'}
                     </button>
                     <button 
                       onClick={() => shareViaEmail(ann)}
-                      className="flex items-center gap-1.5 text-slate-500 hover:text-university hover:bg-sky-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-sky-200"
+                      className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-sky-200 dark:hover:border-sky-800"
                     >
                        <Share2 size={14} /> Partager
                     </button>
@@ -438,12 +438,12 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
         ))}
 
         {announcements.length === 0 && !isCreating && (
-          <div className="text-center py-16 px-6 bg-white rounded-xl border border-dashed border-slate-300">
-             <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400 border border-slate-200">
+          <div className="text-center py-16 px-6 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+             <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700">
                 <MessageCircle size={24} />
              </div>
-             <h3 className="text-lg font-bold text-slate-700 mb-1">Aucune annonce</h3>
-             <p className="text-slate-500 text-sm">Le fil d'actualité est vide pour le moment.</p>
+             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-1">Aucune annonce</h3>
+             <p className="text-slate-500 dark:text-slate-400 text-sm">Le fil d'actualité est vide pour le moment.</p>
           </div>
         )}
       </div>

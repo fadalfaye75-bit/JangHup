@@ -3,7 +3,7 @@ import { User, UserRole, SchoolClass, AuditLog, Announcement, Exam } from '../ty
 import { supabase } from '../lib/supabaseClient';
 import { 
   UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, Search, 
-  School, Mail, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, GraduationCap, X, Copy, Eye, EyeOff, Key
+  School, Mail, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, GraduationCap, X, Copy, Eye, EyeOff, Key, Megaphone, Calendar
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -218,7 +218,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
             fetchAdminData();
         } else {
             // Create User via RPC (Standard pattern: 'admin_create_user' security definer function)
-            const generatedPassword = newUser.password || Math.random().toString(36).slice(-10);
+            // Utilisation du mot de passe par défaut 'passer25' si aucun n'est fourni
+            const generatedPassword = newUser.password || 'passer25';
             
             // In a real Supabase setup, you need an RPC function that uses security definer to call auth.admin.createUser
             // Or use the JS library with service_role key.
@@ -275,13 +276,13 @@ Rôle: ${createdCredentials.role}
   };
 
   const StatCard = ({ title, value, icon: Icon, color }: any) => (
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
           <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${color} text-white`}>
               <Icon size={20} />
           </div>
           <div>
-              <p className="text-slate-500 font-bold text-xs uppercase tracking-wider">{title}</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">{value}</h3>
+              <p className="text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-wider">{title}</p>
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white mt-1">{value}</h3>
           </div>
       </div>
   );
@@ -289,15 +290,15 @@ Rôle: ${createdCredentials.role}
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-200">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
         <div>
-            <h2 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                <Shield className="text-university" size={24} /> Panneau Administration
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+                <Shield className="text-university dark:text-sky-400" size={24} /> Panneau Administration
             </h2>
-            <p className="text-slate-500 text-sm mt-1">Supervision globale et gestion des accès.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Supervision globale et gestion des accès.</p>
         </div>
         
-        <div className="bg-white p-1 rounded-lg border border-slate-200 flex shadow-sm">
+        <div className="bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-800 flex shadow-sm">
             {[
                 { id: 'dashboard', label: 'Tableau de Bord', icon: Activity },
                 { id: 'classes', label: 'Gestion Classes', icon: School },
@@ -309,8 +310,8 @@ Rôle: ${createdCredentials.role}
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap
                         ${activeTab === tab.id 
-                            ? 'bg-university text-white shadow-sm' 
-                            : 'text-slate-600 hover:bg-slate-50'}`}
+                            ? 'bg-university dark:bg-sky-600 text-white shadow-sm' 
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                 >
                     <tab.icon size={16} /> <span className="hidden sm:inline">{tab.label}</span>
                 </button>
@@ -319,7 +320,7 @@ Rôle: ${createdCredentials.role}
       </div>
 
       {message && (
-          <div className={`p-3 rounded-lg flex items-center gap-3 text-sm font-bold animate-in slide-in-from-top-2 ${message.type === 'success' ? 'bg-success-light text-success border border-success/20' : 'bg-alert-light text-alert border border-alert/20'}`}>
+          <div className={`p-3 rounded-lg flex items-center gap-3 text-sm font-bold animate-in slide-in-from-top-2 ${message.type === 'success' ? 'bg-success-light dark:bg-success/20 text-success dark:text-green-400 border border-success/20' : 'bg-alert-light dark:bg-alert/20 text-alert dark:text-red-400 border border-alert/20'}`}>
               {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               {message.text}
               <button onClick={() => setMessage(null)} className="ml-auto opacity-50 hover:opacity-100"><X size={16}/></button>
@@ -328,32 +329,87 @@ Rôle: ${createdCredentials.role}
 
       {/* --- DASHBOARD TAB --- */}
       {activeTab === 'dashboard' && (
-          <div className="space-y-6">
+          <div className="space-y-8">
+              {/* Global Stats */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard title="Utilisateurs" value={usersList.length} icon={Users} color="bg-university" />
+                  <StatCard title="Utilisateurs" value={usersList.length} icon={Users} color="bg-university dark:bg-sky-600" />
                   <StatCard title="Classes" value={classesList.length} icon={School} color="bg-emerald-600" />
                   <StatCard title="Publications" value={(globalStats?.announcements || 0) + (globalStats?.exams || 0)} icon={FileText} color="bg-purple-600" />
                   <StatCard title="Logs (24h)" value={logs.length} icon={Database} color="bg-orange-600" />
+              </div>
+
+              {/* Class Specific Stats Grid */}
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-6">
+                 <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                     <Activity size={18} className="text-university dark:text-sky-400" /> Statistiques par Classe
+                 </h3>
+                 {classesList.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                        {classesList.map(cls => {
+                            // Calculate metrics on the fly
+                            const studentCount = usersList.filter(u => u.classLevel === cls.name && u.role === UserRole.STUDENT).length;
+                            const annCount = allAnnouncements.filter(a => a.classLevel === cls.name).length;
+                            const examCount = allExams.filter(e => e.classLevel === cls.name).length;
+
+                            return (
+                                <div key={cls.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                                    <div className="p-4 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-university dark:text-sky-400 font-bold text-xs shadow-sm">
+                                                {cls.name.substring(0, 3)}
+                                            </div>
+                                            <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">{cls.name}</h4>
+                                        </div>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${cls.delegateId ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'}`}>
+                                            {cls.delegateId ? 'Délégué actif' : 'Sans délégué'}
+                                        </span>
+                                    </div>
+                                    <div className="p-4 grid grid-cols-3 gap-2 text-center divide-x divide-slate-100 dark:divide-slate-800">
+                                        <div>
+                                            <div className="text-slate-400 dark:text-slate-500 mb-1 flex justify-center"><Users size={14} /></div>
+                                            <p className="text-sm font-bold text-slate-800 dark:text-white">{studentCount}</p>
+                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Élèves</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-slate-400 dark:text-slate-500 mb-1 flex justify-center"><Megaphone size={14} /></div>
+                                            <p className="text-sm font-bold text-slate-800 dark:text-white">{annCount}</p>
+                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Avis</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-slate-400 dark:text-slate-500 mb-1 flex justify-center"><Calendar size={14} /></div>
+                                            <p className="text-sm font-bold text-slate-800 dark:text-white">{examCount}</p>
+                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Exams</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                 ) : (
+                     <div className="text-center py-10 bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 text-sm">
+                         Aucune classe configurée.
+                     </div>
+                 )}
               </div>
           </div>
       )}
 
       {/* --- USERS TAB --- */}
       {activeTab === 'users' && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-card overflow-hidden">
                {/* New User Credentials Modal */}
                {createdCredentials && (
-                   <div className="p-6 bg-emerald-50 border-b border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                   <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900/50 flex flex-col md:flex-row items-center justify-between gap-4">
                        <div className="flex items-start gap-4">
-                           <div className="bg-emerald-100 p-2.5 rounded-full mt-1 text-emerald-600">
+                           <div className="bg-emerald-100 dark:bg-emerald-900/50 p-2.5 rounded-full mt-1 text-emerald-600 dark:text-emerald-400">
                                <CheckCircle2 size={24} />
                            </div>
                            <div>
-                               <h4 className="font-bold text-slate-800 text-sm">Compte créé avec succès !</h4>
-                               <p className="text-xs text-slate-500 mt-1 mb-2">Veuillez sauvegarder ces identifiants maintenant.</p>
+                               <h4 className="font-bold text-slate-800 dark:text-white text-sm">Compte créé avec succès !</h4>
+                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-2">Veuillez sauvegarder ces identifiants maintenant.</p>
                                <div className="flex flex-col gap-1">
-                                    <code className="text-xs font-mono bg-white px-3 py-1.5 rounded border border-emerald-100 text-emerald-700 font-bold select-all">{createdCredentials.email}</code>
-                                    <code className="text-xs font-mono bg-white px-3 py-1.5 rounded border border-emerald-100 text-emerald-700 font-bold select-all">Pass: {createdCredentials.pass}</code>
+                                    <code className="text-xs font-mono bg-white dark:bg-slate-800 px-3 py-1.5 rounded border border-emerald-100 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 font-bold select-all">{createdCredentials.email}</code>
+                                    <code className="text-xs font-mono bg-white dark:bg-slate-800 px-3 py-1.5 rounded border border-emerald-100 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 font-bold select-all">Pass: {createdCredentials.pass}</code>
                                </div>
                            </div>
                        </div>
@@ -361,20 +417,20 @@ Rôle: ${createdCredentials.role}
                            <button onClick={copyCredentials} className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">
                                <Copy size={16} /> Copier
                            </button>
-                           <button onClick={() => setCreatedCredentials(null)} className="p-2.5 text-slate-400 hover:text-slate-600 bg-white rounded-lg border border-slate-200">
+                           <button onClick={() => setCreatedCredentials(null)} className="p-2.5 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                                <X size={18} />
                            </button>
                        </div>
                    </div>
                )}
 
-               <div className="p-6 border-b border-slate-200 bg-slate-50">
+               <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                    <div className="flex justify-between items-center mb-4">
-                        <span className="text-xs font-bold text-slate-500 uppercase">
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
                             {editingUserId ? 'Modifier l\'utilisateur' : 'Créer un compte'}
                         </span>
                         {editingUserId && (
-                            <button onClick={handleCancelUserEdit} className="text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                            <button onClick={handleCancelUserEdit} className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1">
                                 <X size={14} /> Annuler
                             </button>
                         )}
@@ -383,29 +439,29 @@ Rôle: ${createdCredentials.role}
                    <form onSubmit={handleSubmitUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                        <input 
                           placeholder="Nom complet" 
-                          className="p-2.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-university font-medium"
+                          className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
                           value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} required
                        />
                        <input 
                           placeholder="Email" 
-                          className="p-2.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-university font-medium"
+                          className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
                           value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} required
                        />
                        
                        <div className="relative">
                            <input 
                               type={showPassword ? "text" : "password"}
-                              placeholder={editingUserId ? "Nouveau pass (optionnel)" : "Mot de passe"}
-                              className="w-full p-2.5 pr-8 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-university font-medium"
+                              placeholder={editingUserId ? "Nouveau pass (optionnel)" : "Mot de passe (défaut: passer25)"}
+                              className="w-full p-2.5 pr-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
                               value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
                            />
-                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                                 {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                            </button>
                        </div>
 
                        <select 
-                          className="p-2.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-university font-medium"
+                          className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
                           value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})}
                        >
                            <option value={UserRole.STUDENT}>Élève</option>
@@ -415,10 +471,10 @@ Rôle: ${createdCredentials.role}
                        <div className="flex gap-2">
                            <input 
                                 placeholder="Classe (ex: Tle S2)"
-                                className="flex-1 p-2.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-university font-medium"
+                                className="flex-1 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
                                 value={newUser.classLevel} onChange={e => setNewUser({...newUser, classLevel: e.target.value})} required
                             />
-                           <button disabled={isLoading} className="bg-slate-800 text-white font-bold rounded-lg hover:bg-black transition-colors px-4 flex items-center justify-center gap-2 text-xs shadow-sm min-w-[100px]">
+                           <button disabled={isLoading} className="bg-slate-800 dark:bg-slate-700 text-white font-bold rounded-lg hover:bg-black dark:hover:bg-slate-600 transition-colors px-4 flex items-center justify-center gap-2 text-xs shadow-sm min-w-[100px]">
                                {isLoading ? <Loader2 className="animate-spin" size={14} /> : editingUserId ? <Save size={14} /> : <UserPlus size={14} />} 
                                {editingUserId ? 'MAJ' : 'Ajouter'}
                            </button>
@@ -427,8 +483,8 @@ Rôle: ${createdCredentials.role}
                </div>
 
                <div className="overflow-x-auto">
-                   <table className="w-full text-left text-xs text-slate-600">
-                      <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
+                   <table className="w-full text-left text-xs text-slate-600 dark:text-slate-400">
+                      <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
                           <tr>
                               <th className="p-4">Identité</th>
                               <th className="p-4">Rôle</th>
@@ -436,11 +492,11 @@ Rôle: ${createdCredentials.role}
                               <th className="p-4 text-right">Actions</th>
                           </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                           {usersList.map((u, i) => (
-                              <tr key={i} className={`transition-colors ${editingUserId === u.id ? 'bg-university/5' : 'hover:bg-slate-50'}`}>
-                                  <td className="p-4 font-bold text-slate-700 flex items-center gap-3">
-                                      <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
+                              <tr key={i} className={`transition-colors ${editingUserId === u.id ? 'bg-university/5 dark:bg-sky-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                                  <td className="p-4 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                                         <img src={u.avatar} className="w-full h-full object-cover" alt="" />
                                       </div>
                                       <div>
@@ -450,21 +506,21 @@ Rôle: ${createdCredentials.role}
                                   </td>
                                   <td className="p-4">
                                       <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase ${
-                                          u.role === UserRole.ADMIN ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                                          u.role === UserRole.RESPONSIBLE ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'
+                                          u.role === UserRole.ADMIN ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-100 dark:border-purple-800' :
+                                          u.role === UserRole.RESPONSIBLE ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                                       }`}>{u.role === UserRole.RESPONSIBLE ? 'Délégué' : u.role}</span>
                                   </td>
                                   <td className="p-4 font-medium">{u.classLevel}</td>
                                   <td className="p-4 flex gap-1 justify-end items-center">
                                       <button 
                                         onClick={() => handleEditUser(u)}
-                                        className="p-1.5 text-slate-400 hover:text-university hover:bg-slate-100 rounded transition-all"
+                                        className="p-1.5 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"
                                       >
                                           <Edit size={14}/>
                                       </button>
                                       <button 
                                         onClick={() => handleDeleteUser(u.id)}
-                                        className={`p-1.5 rounded transition-all flex items-center gap-1 ${deleteConfirmId === u.id ? 'bg-alert text-white px-2' : 'text-slate-400 hover:text-alert hover:bg-alert-light'}`}
+                                        className={`p-1.5 rounded transition-all flex items-center gap-1 ${deleteConfirmId === u.id ? 'bg-alert text-white px-2' : 'text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10'}`}
                                       >
                                           {deleteConfirmId === u.id ? <Trash2 size={14} /> : <Trash2 size={14}/>}
                                       </button>
@@ -479,25 +535,25 @@ Rôle: ${createdCredentials.role}
 
       {/* --- LOGS TAB --- */}
       {activeTab === 'logs' && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-card p-6">
-               <h3 className="font-bold text-sm text-slate-800 mb-4 uppercase flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-card p-6">
+               <h3 className="font-bold text-sm text-slate-800 dark:text-white mb-4 uppercase flex items-center gap-2">
                    <Activity size={16} /> Journal d'Audit
                </h3>
                <div className="space-y-2">
                    {logs.map(log => (
-                       <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors">
-                           <div className={`p-2 rounded-md ${log.actorRole === UserRole.ADMIN ? 'bg-purple-50 text-purple-600' : 'bg-sky-50 text-sky-600'}`}>
+                       <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                           <div className={`p-2 rounded-md ${log.actorRole === UserRole.ADMIN ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400'}`}>
                                <Shield size={16} />
                            </div>
                            <div className="flex-1">
-                               <p className="text-xs text-slate-800">
+                               <p className="text-xs text-slate-800 dark:text-slate-200">
                                    <span className="font-bold">{log.actorName}</span> 
                                    <span className="text-slate-400 mx-1">•</span>
-                                   <span className="font-mono bg-slate-100 px-1 rounded text-slate-600">{log.action}</span>
+                                   <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded text-slate-600 dark:text-slate-300">{log.action}</span>
                                </p>
-                               <p className="text-[10px] text-slate-400 mt-0.5">{log.details}</p>
+                               <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{log.details}</p>
                            </div>
-                           <div className="text-[10px] font-mono text-slate-400">
+                           <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
                                {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString()}
                            </div>
                        </div>

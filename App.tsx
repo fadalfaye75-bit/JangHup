@@ -19,6 +19,16 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<ViewState>('HOME');
   
+  // Theme State
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('theme');
+        if (stored) return stored === 'dark';
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+  
   // Admin Filter State
   const [adminClassFilter, setAdminClassFilter] = useState<string>('ALL');
 
@@ -27,6 +37,19 @@ function App() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [polls, setPolls] = useState<Poll[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+
+  // Apply Theme
+  useEffect(() => {
+    if (darkMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  const toggleTheme = () => setDarkMode(!darkMode);
 
   // --- Auth & Initial Load ---
   useEffect(() => {
@@ -202,8 +225,8 @@ function App() {
 
   if (loading) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#F6F9FC]">
-            <Loader2 className="animate-spin text-brand" size={48} />
+        <div className="min-h-screen flex items-center justify-center bg-[#F6F9FC] dark:bg-slate-950">
+            <Loader2 className="animate-spin text-university dark:text-sky-400" size={48} />
         </div>
     );
   }
@@ -221,6 +244,8 @@ function App() {
       adminClassFilter={adminClassFilter}
       setAdminClassFilter={setAdminClassFilter}
       availableClasses={availableClasses}
+      darkMode={darkMode}
+      toggleTheme={toggleTheme}
     >
       {currentView === 'HOME' && (
         <Dashboard 

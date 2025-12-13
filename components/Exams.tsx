@@ -125,20 +125,20 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
       
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
         <div>
            <div className="flex items-center gap-3">
-               <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Calendrier des Évaluations</h2>
-               <span className="bg-university/10 text-university text-xs font-bold px-3 py-1 rounded-full border border-university/20 flex items-center gap-1">
+               <h2 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Calendrier des Évaluations</h2>
+               <span className="bg-university/10 dark:bg-sky-500/20 text-university dark:text-sky-400 text-xs font-bold px-3 py-1 rounded-full border border-university/20 dark:border-sky-500/20 flex items-center gap-1">
                   <Users size={12} /> {user.role === UserRole.ADMIN ? 'Vue Admin' : user.classLevel}
                </span>
            </div>
-           <p className="text-slate-500 text-sm mt-1">Devoirs surveillés, partiels et examens.</p>
+           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Devoirs surveillés, partiels et examens.</p>
         </div>
         {canEdit && !isAdding && (
           <button 
             onClick={() => setIsAdding(true)}
-            className="bg-university hover:bg-university-dark text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-sm"
+            className="bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-sm"
           >
             <Plus size={18} /> Programmer un DS
           </button>
@@ -147,24 +147,24 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
 
       {isAdding && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
-              <div className="bg-slate-50 p-6 border-b border-slate-200 flex justify-between items-center">
-                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                    <CalendarIcon size={20} className="text-university" /> {editingId ? 'Modifier l\'examen' : 'Nouveau devoir'}
+           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <CalendarIcon size={20} className="text-university dark:text-sky-400" /> {editingId ? 'Modifier l\'examen' : 'Nouveau devoir'}
                  </h3>
-                 <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 transition-colors">
+                 <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
                     <X size={20} />
                  </button>
               </div>
               
               <form onSubmit={handleSubmit} className="p-6 space-y-5">
                   <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Matière</label>
+                      <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase mb-1.5">Matière</label>
                       <input 
                         type="text" 
                         value={subject} 
                         onChange={e => setSubject(e.target.value)} 
-                        className="w-full p-3 bg-white border border-slate-200 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 focus:border-university text-sm" 
+                        className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-sm text-slate-800 dark:text-white" 
                         placeholder="Ex: Analyse Mathématique" 
                         required 
                       />
@@ -172,22 +172,22 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
 
                   <div className="grid grid-cols-2 gap-4">
                       <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Date</label>
+                          <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase mb-1.5">Date</label>
                           <input 
                             type="date" 
                             value={date} 
                             onChange={e => setDate(e.target.value)} 
-                            className="w-full p-3 bg-white border border-slate-200 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 focus:border-university text-sm" 
+                            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-sm text-slate-800 dark:text-white" 
                             required 
                           />
                       </div>
                       <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Heure</label>
+                          <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase mb-1.5">Heure</label>
                           <input 
                             type="time" 
                             value={time} 
                             onChange={e => setTime(e.target.value)} 
-                            className="w-full p-3 bg-white border border-slate-200 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 focus:border-university text-sm" 
+                            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-sm text-slate-800 dark:text-white" 
                             required 
                           />
                       </div>
@@ -195,40 +195,40 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Durée</label>
+                        <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase mb-1.5">Durée</label>
                         <select 
                             value={duration} 
                             onChange={e => setDuration(e.target.value)} 
-                            className="w-full p-3 bg-white border border-slate-200 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 focus:border-university text-sm"
+                            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-sm text-slate-800 dark:text-white"
                         >
                             <option>1h</option><option>2h</option><option>3h</option><option>4h</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Salle / Amphi</label>
+                        <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase mb-1.5">Salle / Amphi</label>
                         <input 
                             type="text" 
                             value={room} 
                             onChange={e => setRoom(e.target.value)} 
-                            className="w-full p-3 bg-white border border-slate-200 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 focus:border-university text-sm" 
+                            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-sm text-slate-800 dark:text-white" 
                             placeholder="Amphi A"
                         />
                     </div>
                   </div>
                   
                   <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Notes (Optionnel)</label>
+                      <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase mb-1.5">Notes (Optionnel)</label>
                       <textarea 
                         value={notes} 
                         onChange={e => setNotes(e.target.value)} 
-                        className="w-full p-3 bg-white border border-slate-200 rounded-lg outline-none h-20 resize-none font-medium focus:ring-2 focus:ring-university/20 focus:border-university text-sm" 
+                        className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none h-20 resize-none font-medium focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 text-sm text-slate-800 dark:text-white" 
                         placeholder="Chapitres à réviser, matériel autorisé..."
                       />
                   </div>
 
-                  <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
-                      <button type="button" onClick={resetForm} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold text-sm transition-colors border border-transparent">Annuler</button>
-                      <button type="submit" className="px-6 py-2.5 bg-university text-white rounded-lg font-bold hover:bg-university-dark shadow-sm flex items-center gap-2 text-sm">
+                  <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                      <button type="button" onClick={resetForm} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg font-bold text-sm transition-colors border border-transparent">Annuler</button>
+                      <button type="submit" className="px-6 py-2.5 bg-university dark:bg-sky-600 text-white rounded-lg font-bold hover:bg-university-dark dark:hover:bg-sky-700 shadow-sm flex items-center gap-2 text-sm">
                          {editingId ? 'Mettre à jour' : 'Enregistrer'}
                       </button>
                   </div>
@@ -247,20 +247,20 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
              const isPast = diffDays < 0;
 
              return (
-                 <div key={exam.id} className={`group bg-white rounded-2xl border border-slate-200/60 p-0 flex flex-col md:flex-row overflow-hidden hover:shadow-elevation transition-all duration-300 ${isPast ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                 <div key={exam.id} className={`group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-0 flex flex-col md:flex-row overflow-hidden hover:shadow-elevation transition-all duration-300 ${isPast ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                      
                      {/* Date Column - Refined */}
-                     <div className={`w-full md:w-28 flex flex-col items-center justify-center p-5 border-b md:border-b-0 md:border-r border-slate-100/50 transition-colors ${isImminent ? 'bg-orange-50/50' : 'bg-slate-50/30 group-hover:bg-slate-50/80'}`}>
-                         <span className={`text-2xl font-bold tracking-tight ${isImminent ? 'text-orange-500' : 'text-slate-700'}`}>{examDate.getDate()}</span>
-                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{examDate.toLocaleDateString('fr-FR', { month: 'short' })}</span>
-                         {isImminent && <span className="mt-3 text-[9px] font-bold text-orange-600 bg-orange-100/80 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle size={8} /> J-{diffDays}</span>}
+                     <div className={`w-full md:w-28 flex flex-col items-center justify-center p-5 border-b md:border-b-0 md:border-r border-slate-100/50 dark:border-slate-800 transition-colors ${isImminent ? 'bg-orange-50/50 dark:bg-orange-900/20' : 'bg-slate-50/30 dark:bg-slate-800/30 group-hover:bg-slate-50/80 dark:group-hover:bg-slate-800/80'}`}>
+                         <span className={`text-2xl font-bold tracking-tight ${isImminent ? 'text-orange-500' : 'text-slate-700 dark:text-slate-200'}`}>{examDate.getDate()}</span>
+                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-1">{examDate.toLocaleDateString('fr-FR', { month: 'short' })}</span>
+                         {isImminent && <span className="mt-3 text-[9px] font-bold text-orange-600 dark:text-orange-400 bg-orange-100/80 dark:bg-orange-900/40 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle size={8} /> J-{diffDays}</span>}
                      </div>
 
                      <div className="flex-1 p-5 md:p-6 flex flex-col justify-between relative">
                          <div className="flex justify-between items-start mb-3 gap-4">
                              <div>
-                                 <h3 className="text-base md:text-lg font-bold text-slate-800 leading-tight mb-2 group-hover:text-university transition-colors">{exam.subject}</h3>
-                                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-500">
+                                 <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white leading-tight mb-2 group-hover:text-university dark:group-hover:text-sky-400 transition-colors">{exam.subject}</h3>
+                                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-500 dark:text-slate-400">
                                      <div className="flex items-center gap-1.5">
                                          <Clock size={14} className="text-slate-400" />
                                          {examDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit'})} • {exam.duration}
@@ -272,7 +272,7 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
                                  </div>
                              </div>
                              {user.role === UserRole.ADMIN && (
-                                 <span className="shrink-0 bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-md border border-slate-200/50">
+                                 <span className="shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-2 py-1 rounded-md border border-slate-200/50 dark:border-slate-700">
                                      {exam.classLevel}
                                  </span>
                              )}
@@ -280,29 +280,29 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
 
                          {exam.notes && (
                              <div className="mt-2 mb-4">
-                                 <p className="text-xs text-slate-600 bg-slate-50/80 p-3 rounded-xl border border-slate-100 leading-relaxed">
+                                 <p className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 leading-relaxed">
                                      <span className="font-bold text-slate-400 block mb-1 text-[10px] uppercase">Notes</span>
                                      {exam.notes}
                                  </p>
                              </div>
                          )}
 
-                         <div className="flex justify-end items-center gap-2 pt-4 mt-auto border-t border-slate-50">
-                             <button onClick={() => handleCopy(exam)} className="p-2 text-slate-400 hover:text-university hover:bg-slate-50 rounded-lg transition-all" title="Copier détails">
+                         <div className="flex justify-end items-center gap-2 pt-4 mt-auto border-t border-slate-50 dark:border-slate-800">
+                             <button onClick={() => handleCopy(exam)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all" title="Copier détails">
                                  {copiedId === exam.id ? <Check size={16} className="text-success" /> : <Copy size={16} />}
                              </button>
                              
-                             <button onClick={() => handleShare(exam)} className="p-2 text-slate-400 hover:text-university hover:bg-slate-50 rounded-lg transition-all" title="Partager par mail">
+                             <button onClick={() => handleShare(exam)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all" title="Partager par mail">
                                  <Mail size={16} />
                              </button>
 
                              {canModify(exam) && (
                                  <>
-                                    <div className="w-px h-4 bg-slate-200 mx-1"></div>
-                                    <button onClick={() => handleEdit(exam)} className="p-2 text-slate-400 hover:text-university hover:bg-slate-50 rounded-lg transition-all" title="Modifier">
+                                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                                    <button onClick={() => handleEdit(exam)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all" title="Modifier">
                                         <Edit2 size={16} />
                                     </button>
-                                    <button onClick={() => handleDelete(exam.id)} className={`p-2 rounded-lg transition-all ${deleteConfirmId === exam.id ? 'bg-alert text-white shadow-sm' : 'text-slate-400 hover:text-alert hover:bg-alert-light'}`}>
+                                    <button onClick={() => handleDelete(exam.id)} className={`p-2 rounded-lg transition-all ${deleteConfirmId === exam.id ? 'bg-alert text-white shadow-sm' : 'text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10'}`}>
                                         {deleteConfirmId === exam.id ? <Trash2 size={16} /> : <Trash2 size={16} />}
                                     </button>
                                  </>
@@ -313,9 +313,9 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
              );
          })}
          {sortedExams.length === 0 && (
-             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-300">
-                 <CalendarIcon size={32} className="mx-auto text-slate-300 mb-2" />
-                 <p className="text-slate-500 font-medium text-sm">Aucun examen programmé.</p>
+             <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                 <CalendarIcon size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                 <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Aucun examen programmé.</p>
              </div>
          )}
       </div>

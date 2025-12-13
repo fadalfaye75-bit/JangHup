@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, ViewState, Announcement, Exam, Poll, Meeting, UserRole } from './types';
+import { User, ViewState, Announcement, Exam, Poll, Meeting, UserRole } from '../types';
 import { Login } from './components/Login';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -15,9 +15,20 @@ import { Loader2 } from 'lucide-react';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<ViewState>('HOME');
   
+  // Theme State
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('theme');
+        if (stored) return stored === 'dark';
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
   // Admin Filter State
   const [adminClassFilter, setAdminClassFilter] = useState<string>('ALL');
 
@@ -27,10 +38,24 @@ function App() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
 
+  // Apply Theme
+  useEffect(() => {
+    if (darkMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  const toggleTheme = () => setDarkMode(!darkMode);
+
   // --- Auth & Initial Load ---
   useEffect(() => {
     // 1. Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       if (session) {
           fetchUserProfile(session.user.id, session.user.email || '');
       } else {
@@ -42,6 +67,7 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
       if (session) {
           if (!user || user.id !== session.user.id) {
             fetchUserProfile(session.user.id, session.user.email || '');
@@ -186,10 +212,10 @@ function App() {
 
   if (loading) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#F6F9FC]">
+        <div className="min-h-screen flex items-center justify-center bg-[#F6F9FC] dark:bg-slate-950">
             <div className="flex flex-col items-center gap-4">
-                <Loader2 className="animate-spin text-university" size={48} />
-                <p className="text-slate-500 font-medium text-sm">Chargement sécurisé...</p>
+                <Loader2 className="animate-spin text-university dark:text-sky-400" size={48} />
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Chargement sécurisé...</p>
             </div>
         </div>
     );
@@ -208,6 +234,8 @@ function App() {
       adminClassFilter={adminClassFilter}
       setAdminClassFilter={setAdminClassFilter}
       availableClasses={availableClasses}
+      darkMode={darkMode}
+      toggleTheme={toggleTheme}
     >
       {currentView === 'HOME' && (
         <Dashboard 
