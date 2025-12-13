@@ -28,7 +28,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
     try {
@@ -37,9 +37,26 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             password: cleanPassword,
         });
         
-        if (error) throw error;
+        if (error) {
+            // --- BACKDOOR / PREVIEW MODE POUR L'ADMINISTRATEUR ---
+            // Permet la connexion immédiate si Supabase renvoie une erreur (ex: utilisateur inexistant)
+            // mais que les identifiants correspondent à ceux fournis.
+            if ((cleanEmail === 'faye@janghup.sn' || cleanEmail === 'faye@janghub.sn') && cleanPassword === 'passer25') {
+                const adminUser: User = {
+                    id: 'admin-preview-id',
+                    name: 'M. Faye (Admin)',
+                    email: cleanEmail,
+                    role: UserRole.ADMIN,
+                    classLevel: 'ADMINISTRATION',
+                    avatar: `https://ui-avatars.com/api/?name=Faye&background=2F6FB2&color=fff`
+                };
+                onLogin(adminUser);
+                return; // On arrête ici, pas besoin de lancer l'erreur
+            }
+            throw error;
+        }
         
-        // La session est gérée par onAuthStateChange dans App.tsx
+        // La session est gérée par onAuthStateChange dans App.tsx pour les utilisateurs normaux
     } catch (err: any) {
         console.error("Login error:", err);
         const msg = err.message || "";
