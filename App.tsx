@@ -95,24 +95,62 @@ function App() {
 
   const fetchUserProfile = async (userId: string, email: string) => {
     try {
+        const normalizedEmail = email.toLowerCase().trim();
+        // Vérification du compte administrateur spécifique demandé
+        const isAdminEmail = normalizedEmail === 'faye@janghup.sn' || normalizedEmail === 'faye@janghub.sn';
+
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .single();
 
-        if (error) {
-             console.error("Profile fetch error:", error);
-             // Fallback minimal si le profil n'est pas encore créé mais auth valide
-             setUser({
-                id: userId,
-                name: email.split('@')[0],
-                email: email,
-                role: UserRole.STUDENT, // Default safety
-                classLevel: 'Non assigné',
-                avatar: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`
-            });
-        } else if (data) {
+        if (error || !data) {
+             console.warn("Profil introuvable, tentative de création automatique...", error);
+             
+             // LOGIQUE D'AUTO-GUÉRISON (SELF-HEALING) AVEC GESTION ADMIN
+             const newProfile = {
+                 id: userId,
+                 email: email,
+                 full_name: email.split('@')[0], 
+                 // Force le rôle ADMIN si c'est l'email spécifié
+                 role: isAdminEmail ? 'ADMIN' : 'STUDENT', 
+                 class_level: isAdminEmail ? 'ADMINISTRATION' : 'Non assigné',
+                 avatar_url: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`
+             };
+
+             const { error: insertError } = await supabase.from('profiles').insert(newProfile);
+             
+             if (!insertError) {
+                 setUser({
+                    id: userId,
+                    name: newProfile.full_name,
+                    email: newProfile.email,
+                    role: newProfile.role as UserRole,
+                    classLevel: newProfile.class_level,
+                    avatar: newProfile.avatar_url
+                 });
+             } else {
+                 console.error("Échec de la création automatique du profil", insertError);
+                 // Fallback ultime
+                 setUser({
+                    id: userId,
+                    name: email.split('@')[0],
+                    email: email,
+                    role: isAdminEmail ? UserRole.ADMIN : UserRole.STUDENT,
+                    classLevel: 'Non assigné',
+                    avatar: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`
+                });
+             }
+        } else {
+            // Profil trouvé normalement
+            // CORRECTION AUTOMATIQUE: Si c'est l'admin Faye mais qu'il n'a pas le rôle en DB, on corrige.
+            if (isAdminEmail && data.role !== 'ADMIN') {
+                await supabase.from('profiles').update({ role: 'ADMIN', class_level: 'ADMINISTRATION' }).eq('id', userId);
+                data.role = 'ADMIN';
+                data.class_level = 'ADMINISTRATION';
+            }
+
             setUser({
                 id: data.id,
                 name: data.full_name || email,
@@ -133,8 +171,6 @@ function App() {
     if (!user) return;
     
     try {
-        // En prod, on devrait filtrer via RLS ou WHERE clause ici pour optimiser la bande passante
-        // Pour l'instant, on récupère tout et on filtre côté client via getFilteredData pour la réactivité
         const annQuery = supabase.from('announcements').select('*').order('date', { ascending: false });
         const examQuery = supabase.from('exams').select('*').order('date', { ascending: true });
         const meetQuery = supabase.from('meetings').select('*').order('date', { ascending: true });
