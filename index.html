@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>JàngHub - Plateforme Scolaire</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +13,7 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
+              sans: ['Inter', 'system-ui', 'sans-serif'],
             },
             colors: {
               sky: {
@@ -28,29 +28,48 @@
                 800: '#075985',
                 900: '#0c4a6e',
               },
+              // Palette Universitaire
               brand: {
-                DEFAULT: '#87CEEB', // Sky Blue requested
-                light: '#A6DFFF',
-                dark: '#5FB6D9'
+                DEFAULT: '#87CEEB', // Sky Blue (Accent)
+                dim: '#E0F2F8',     // Very light background
+              },
+              university: {
+                DEFAULT: '#2F6FB2', // Deep Academic Blue (Primary Action)
+                dark: '#1E4C85',
+                light: '#4A8AC9'
+              },
+              slate: {
+                 50: '#F8FAFC', // Fond secondaire propre
+                 100: '#F1F5F9',
+                 200: '#E2E8F0', // Bordures
+                 800: '#1E293B', // Texte principal
+                 900: '#0F172A'
               },
               alert: {
-                DEFAULT: '#FF4C4C', // Delete / SOS
-                light: '#FF7E7E'
+                DEFAULT: '#D32F2F', // Rouge académique plus sobre
+                light: '#FFEBEE',
+                text: '#C62828'
               },
-              action: {
-                edit: '#0ea5e9', // Blue/Turquoise
-                copy: '#4CAF50', // Green
-                share: '#1E90FF' // Medium Blue
+              success: {
+                 DEFAULT: '#2E7D32', // Vert académique
+                 light: '#E8F5E9'
+              },
+              warning: {
+                 DEFAULT: '#ED6C02', // Orange académique
+                 light: '#FFF3E0'
               }
             },
             boxShadow: {
-              'soft': '0 10px 40px -10px rgba(0, 0, 0, 0.05)',
-              'glow': '0 0 20px rgba(135, 206, 235, 0.4)',
-              'card': '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02)'
+              'soft': '0 2px 8px rgba(0, 0, 0, 0.04)',
+              'card': '0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1)',
+              'elevation': '0 4px 6px -1px rgba(47, 111, 178, 0.1), 0 2px 4px -1px rgba(47, 111, 178, 0.06)' 
             },
             borderRadius: {
-              '4xl': '2rem',
-              '5xl': '2.5rem',
+              'xl': '0.75rem',
+              '2xl': '1rem', // Max radius used now
+            },
+            spacing: {
+              'safe-bottom': 'env(safe-area-inset-bottom)',
             }
           }
         }
@@ -59,23 +78,46 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #F6F9FC;
+        background-color: #F4F6F8; /* Gris universitaire très clair */
+        color: #1E293B;
         -webkit-font-smoothing: antialiased;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
       }
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+      
+      /* Mobile Safe Area Fixes */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 20px);
       }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
+      .pt-safe {
+        padding-top: env(safe-area-inset-top, 20px);
       }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
-        border-radius: 10px;
+
+      /* Hide Scrollbar for Chrome, Safari and Opera but keep functionality */
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
       }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
+      .no-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
+
+      /* Custom scrollbar for Desktop - Thinner and cleaner */
+      @media (min-width: 768px) {
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+          background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #CBD5E1; 
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #94A3B8; 
+        }
       }
     </style>
   <script type="importmap">

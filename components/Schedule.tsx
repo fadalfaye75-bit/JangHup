@@ -3,7 +3,7 @@ import { User, UserRole, ScheduleItem } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { 
   FileSpreadsheet, Upload, Download, Eye, Clock, Trash2, 
-  History, X, Share2, AlertOctagon, Loader2
+  History, X, Share2, AlertOctagon, Loader2, Users
 } from 'lucide-react';
 
 interface ScheduleProps {
@@ -16,10 +16,8 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Admin cannot upload schedules (Pedagogical content)
   const canEdit = user.role === UserRole.RESPONSIBLE;
 
-  // Delete Rights: Admin OR (Responsible AND Same Class)
   const canDelete = (item: ScheduleItem) => {
       if (user.role === UserRole.ADMIN) return true;
       if (user.role === UserRole.RESPONSIBLE && item.classLevel === user.classLevel) return true;
@@ -32,22 +30,13 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
 
   const fetchSchedules = async () => {
     let query = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
-    
     if (user.role !== UserRole.ADMIN) {
         query = query.eq('class_level', user.classLevel);
     }
-    
-    const { data, error } = await query;
-
+    const { data } = await query;
     if (data) {
         setSchedules(data.map(d => ({
-            id: d.id,
-            title: d.title,
-            classLevel: d.class_level,
-            semester: d.semester,
-            url: d.url,
-            uploadedAt: d.uploaded_at,
-            version: d.version || 1
+            id: d.id, title: d.title, classLevel: d.class_level, semester: d.semester, url: d.url, uploadedAt: d.uploaded_at, version: d.version || 1
         })));
     }
   };
@@ -56,36 +45,28 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
     if (e.target.files && e.target.files[0]) {
       setIsUploading(true);
       const file = e.target.files[0];
-      
-      // Sanitization du nom de fichier pour éviter les erreurs Supabase Storage
       const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
       
       try {
-          // Upload file
           const { error: uploadError } = await supabase.storage.from('files').upload(fileName, file);
           if (uploadError) throw uploadError;
-
           const { data: { publicUrl } } = supabase.storage.from('files').getPublicUrl(fileName);
-
           const newItem = {
             title: file.name.replace('.xlsx', ''),
-            class_level: user.classLevel, // Auto-assign class
+            class_level: user.classLevel,
             semester: 'Semestre 2',
             uploaded_at: new Date().toISOString(),
             url: publicUrl,
-            version: 1
+            version: 1,
+            author_id: user.id
           };
-
-          // Insert DB
           const { error: dbError } = await supabase.from('schedules').insert(newItem);
           if (dbError) throw dbError;
-
           fetchSchedules();
       } catch (error: any) {
           console.error("Upload failed", error);
-          const errorMsg = error.message || "Erreur inconnue";
-          alert(`Erreur lors de l'envoi : ${errorMsg}`);
+          alert(`Erreur lors de l'envoi : ${error.message}`);
       } finally {
           setIsUploading(false);
       }
@@ -95,11 +76,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
   const handleDelete = async (id: string) => {
     if (deleteConfirmId === id) {
       const { error } = await supabase.from('schedules').delete().eq('id', id);
-      if (error) {
-          alert("Erreur lors de la suppression");
-      } else {
-          setSchedules(schedules.filter(s => s.id !== id));
-      }
+      if (!error) setSchedules(schedules.filter(s => s.id !== id));
       setDeleteConfirmId(null);
     } else {
       setDeleteConfirmId(id);
@@ -109,20 +86,24 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
 
   const handleShare = (item: ScheduleItem) => {
       const classEmail = item.classLevel.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@janghub.sn';
-      const subject = `Emploi du temps ${user.classLevel}`;
-      const body = `Voici l'emploi du temps pour la classe ${item.classLevel}.\n\nLien: ${item.url}`;
+      const subject = `Emploi du temps - ${item.classLevel}`;
+      const body = `Veuillez trouver ci-joint le lien vers l'emploi du temps (${item.semester}) : \n\n${item.url}`;
       window.location.href = `mailto:${classEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       
-      {/* Header & Upload */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-200">
         <div>
-           <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Emploi du temps</h2>
-           <p className="text-slate-500 font-medium mt-1">
-             Classe : <span className="text-brand font-bold">{user.role === UserRole.ADMIN ? 'Toutes (Vue Admin)' : user.classLevel}</span>
+           <div className="flex items-center gap-3">
+               <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Planning & Horaires</h2>
+               <span className="bg-university/10 text-university text-xs font-bold px-3 py-1 rounded-full border border-university/20 flex items-center gap-1">
+                  <Users size={12} /> {user.role === UserRole.ADMIN ? 'Vue Admin' : user.classLevel}
+               </span>
+           </div>
+           <p className="text-slate-500 text-sm mt-1">
+             Gestion des emplois du temps universitaires.
            </p>
         </div>
         
@@ -135,116 +116,97 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
               onChange={handleUpload}
               disabled={isUploading}
             />
-            <button className="flex items-center gap-2 bg-brand hover:bg-sky-400 text-white px-8 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-sky-200 active:scale-95 disabled:opacity-50">
-              {isUploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
-              <span>{isUploading ? 'Envoi...' : 'Mettre à jour / Téléverser'}</span>
+            <button className="flex items-center gap-2 bg-university hover:bg-university-dark text-white px-6 py-2.5 rounded-lg font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 text-sm">
+              {isUploading ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />}
+              <span>{isUploading ? 'Traitement...' : 'Téléverser un planning (.xlsx)'}</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {schedules.map((item) => (
-            <div key={item.id} className="bg-white rounded-[2.5rem] p-8 shadow-soft border border-white hover:shadow-lg hover:border-brand/20 transition-all group flex flex-col relative">
-                <div className="flex justify-between items-start mb-6">
-                    <div className="bg-emerald-50 text-emerald-500 p-4 rounded-2xl shadow-sm">
-                        <FileSpreadsheet size={32} />
+            <div key={item.id} className="bg-white rounded-xl border border-slate-200 shadow-card hover:shadow-lg hover:border-university/30 transition-all flex flex-col relative overflow-hidden group">
+                <div className="p-6 pb-4">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="bg-emerald-50 text-emerald-600 p-3 rounded-lg border border-emerald-100">
+                            <FileSpreadsheet size={24} />
+                        </div>
+                        {canDelete(item) && (
+                            <button 
+                                onClick={() => handleDelete(item.id)}
+                                className={`p-2 rounded-lg transition-all text-xs font-bold ${deleteConfirmId === item.id ? 'bg-alert text-white' : 'text-slate-400 hover:text-alert hover:bg-alert-light'}`}
+                            >
+                                {deleteConfirmId === item.id ? "Confirmer" : <Trash2 size={18} />}
+                            </button>
+                        )}
                     </div>
-                    {canDelete(item) && (
-                        <button 
-                            onClick={() => handleDelete(item.id)}
-                            className={`p-3 rounded-2xl transition-all duration-300 flex items-center gap-2 absolute top-6 right-6 ${deleteConfirmId === item.id ? 'bg-alert text-white px-4' : 'text-slate-300 hover:text-alert hover:bg-red-50'}`}
-                        >
-                             {deleteConfirmId === item.id ? (
-                               <><AlertOctagon size={20} /> Supprimer</>
-                             ) : (
-                               <Trash2 size={22} />
-                             )}
-                        </button>
-                    )}
-                </div>
 
-                <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-4">
-                        <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider">
-                            {item.classLevel}
-                        </span>
-                        <span className="bg-sky-50 text-sky-600 text-[10px] font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider">
-                            {item.semester}
-                        </span>
+                    <div className="mb-2">
+                        <h3 className="font-bold text-slate-800 text-base leading-tight truncate" title={item.title}>{item.title}</h3>
+                        <p className="text-xs text-slate-500 mt-1 font-medium">{item.semester} • {item.classLevel}</p>
                     </div>
-                    <h3 className="font-bold text-slate-800 text-xl leading-tight mb-2 line-clamp-2">{item.title}</h3>
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                        <Clock size={14} /> 
-                        Mis à jour le {new Date(item.uploadedAt).toLocaleDateString()}
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <Clock size={10} /> 
+                        MAJ {new Date(item.uploadedAt).toLocaleDateString()}
                     </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg">
-                        <History size={14} /> v{item.version}
+                <div className="mt-auto px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">
+                        <History size={10} /> V{item.version}
                     </div>
                     <div className="flex gap-2">
-                         <button onClick={() => handleShare(item)} className="p-2.5 rounded-xl text-action-share hover:bg-blue-50 transition-colors" title="Partager">
-                            <Share2 size={20} />
+                         <button onClick={() => handleShare(item)} className="p-2 rounded-lg text-slate-500 hover:text-university hover:bg-white border border-transparent hover:border-slate-200 transition-all" title="Partager à la classe">
+                            <Share2 size={18} />
                          </button>
-                         <a 
-                            href={item.url}
-                            download
-                            className="p-2.5 rounded-xl text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center"
-                            title="Télécharger"
-                         >
-                            <Download size={20} />
+                         <a href={item.url} download className="p-2 rounded-lg text-slate-500 hover:text-university hover:bg-white border border-transparent hover:border-slate-200 transition-all" title="Télécharger">
+                            <Download size={18} />
                          </a>
-                         <button 
-                            onClick={() => setViewingItem(item)}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand/10 text-brand hover:bg-brand/20 text-sm font-bold transition-colors ml-2"
-                         >
-                            <Eye size={18} /> Ouvrir
+                         <button onClick={() => setViewingItem(item)} className="px-3 py-1.5 rounded-lg bg-university text-white hover:bg-university-dark text-xs font-bold transition-colors">
+                            Ouvrir
                          </button>
                     </div>
                 </div>
             </div>
         ))}
         
-        {/* Empty State */}
         {schedules.length === 0 && (
-            <div className="col-span-full py-24 flex flex-col items-center justify-center text-slate-400 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-100">
-                <FileSpreadsheet size={56} className="opacity-20 mb-4" />
-                <p className="font-medium text-lg">Aucun emploi du temps trouvé.</p>
+            <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                <FileSpreadsheet size={40} className="opacity-30 mb-3" />
+                <p className="font-medium text-sm">Aucun emploi du temps disponible pour cette classe.</p>
             </div>
         )}
       </div>
 
-      {/* Excel Viewer Modal (Simplified for visual demo) */}
       {viewingItem && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-[2.5rem] w-full max-w-6xl h-[85vh] flex flex-col shadow-2xl overflow-hidden ring-4 ring-white/20">
-                <div className="bg-emerald-600 text-white p-6 flex justify-between items-center">
-                    <div className="flex items-center gap-5">
-                        <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm shadow-inner">
-                            <FileSpreadsheet size={28} />
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl w-full max-w-5xl h-[80vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+                <div className="bg-white border-b border-slate-200 p-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg">
+                            <FileSpreadsheet size={20} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-xl leading-tight">{viewingItem.title}.xlsx</h3>
-                            <p className="text-emerald-100 text-xs font-bold opacity-90 tracking-wide uppercase mt-1">Lecture seule • {viewingItem.semester}</p>
+                            <h3 className="font-bold text-slate-800 text-sm">{viewingItem.title}.xlsx</h3>
+                            <p className="text-slate-500 text-xs">{viewingItem.semester}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <a href={viewingItem.url} download className="px-5 py-2.5 hover:bg-white/10 rounded-2xl transition-colors text-emerald-50 text-sm font-bold flex items-center gap-2">
-                            <Download size={20} /> <span className="hidden sm:inline">Télécharger</span>
-                        </a>
-                        <button 
-                            onClick={() => setViewingItem(null)}
-                            className="p-2.5 hover:bg-red-500/20 rounded-2xl transition-colors text-white"
-                        >
-                            <X size={28} />
-                        </button>
-                    </div>
+                    <button onClick={() => setViewingItem(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+                        <X size={20} />
+                    </button>
                 </div>
                 <div className="flex-1 bg-slate-50 flex items-center justify-center">
-                    <p className="text-slate-400 font-medium">Prévisualisation Excel non disponible en mode démo. Veuillez télécharger le fichier.</p>
+                    <div className="text-center p-8">
+                        <FileSpreadsheet size={64} className="mx-auto text-emerald-200 mb-4" />
+                        <h4 className="text-lg font-bold text-slate-700 mb-2">Aperçu Excel</h4>
+                        <p className="text-slate-500 font-medium mb-6 text-sm max-w-md mx-auto">
+                            L'affichage direct des fichiers Excel n'est pas supporté par le navigateur. Veuillez télécharger le fichier pour le consulter.
+                        </p>
+                        <a href={viewingItem.url} download className="px-6 py-3 bg-university text-white rounded-lg font-bold text-sm shadow-sm hover:bg-university-dark inline-flex items-center gap-2">
+                            <Download size={18} /> Télécharger le fichier
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

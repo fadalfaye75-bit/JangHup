@@ -28,7 +28,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, exams, announcements
   const nextWeek = new Date();
   nextWeek.setDate(now.getDate() + 7);
 
-  // Filter is technically done in App.tsx, but good to be safe
   const upcomingExams = exams.filter(e => {
     const examDate = new Date(e.date);
     return examDate >= now && examDate <= nextWeek;
@@ -37,51 +36,56 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, exams, announcements
   const quickActions = () => {
     const actions = [];
     
-    // Actions for Everyone
     actions.push({
       label: 'Visio',
+      desc: 'Cours en ligne',
       icon: Video,
-      color: 'bg-indigo-50 text-indigo-500',
+      color: 'text-purple-600 bg-purple-50 border-purple-100',
       action: () => setView('MEET')
     });
 
     if (user.role === UserRole.STUDENT) {
       actions.push({
         label: 'Emploi',
+        desc: 'Mon planning',
         icon: Calendar,
-        color: 'bg-sky-50 text-sky-500',
+        color: 'text-sky-600 bg-sky-50 border-sky-100',
         action: () => setView('SCHEDULE')
       });
       actions.push({
         label: 'Devoirs',
+        desc: 'Prochains DS',
         icon: FileText,
-        color: 'bg-emerald-50 text-emerald-500',
+        color: 'text-orange-600 bg-orange-50 border-orange-100',
         action: () => setView('EXAMS')
       });
        actions.push({
-        label: 'Sondages',
+        label: 'Votes',
+        desc: 'Consultations',
         icon: BarChart2,
-        color: 'bg-orange-50 text-orange-500',
+        color: 'text-emerald-600 bg-emerald-50 border-emerald-100',
         action: () => setView('POLLS')
       });
     } else {
-      // Teachers/Admin
       actions.push({
         label: 'Publier',
+        desc: 'Nouvelle annonce',
         icon: Plus,
-        color: 'bg-sky-50 text-sky-500',
+        color: 'text-university bg-university/10 border-university/20',
         action: () => setView('ANNOUNCEMENTS')
       });
       actions.push({
         label: 'DS',
+        desc: 'Gérer examens',
         icon: Clock,
-        color: 'bg-emerald-50 text-emerald-500',
+        color: 'text-orange-600 bg-orange-50 border-orange-100',
         action: () => setView('EXAMS')
       });
        actions.push({
         label: 'Sondages',
+        desc: 'Créer un vote',
         icon: BarChart2,
-        color: 'bg-orange-50 text-orange-500',
+        color: 'text-emerald-600 bg-emerald-50 border-emerald-100',
         action: () => setView('POLLS')
       });
     }
@@ -92,85 +96,120 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, exams, announcements
   const formattedDate = new Intl.DateTimeFormat('fr-FR', { 
     weekday: 'long', 
     day: 'numeric', 
-    month: 'long' 
+    month: 'long',
+    year: 'numeric'
   }).format(now);
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
+    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
       
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      {/* Top Header (Desktop Only for date, Mobile has Sticky Header) */}
+      <div className="hidden md:flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-200">
         <div>
-            <h1 className="text-4xl font-bold text-slate-800 tracking-tight mb-1">Bonjour, {user.name.split(' ')[0]} 👋</h1>
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-1">Tableau de Bord</h1>
             <div className="flex items-center gap-3 text-slate-500 font-medium text-sm">
                 <span className="first-letter:uppercase">{formattedDate}</span>
-                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                <span className="flex items-center gap-1 text-brand font-bold bg-sky-50 px-2 py-0.5 rounded-lg">
-                    <Users size={14} /> Classe : {user.classLevel}
+                <span className="text-slate-300">|</span>
+                <span className="flex items-center gap-1.5 text-university font-bold bg-white border border-slate-200 px-2.5 py-0.5 rounded-md shadow-sm">
+                    <Users size={14} /> {user.classLevel}
                 </span>
             </div>
         </div>
         <div className="relative w-full md:w-auto">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
              <input 
                 type="text" 
-                placeholder="Rechercher..." 
-                className="w-full md:w-80 pl-12 pr-6 py-4 bg-white border-0 rounded-full text-sm font-medium focus:outline-none focus:ring-4 focus:ring-brand/10 shadow-soft"
+                placeholder="Rechercher une ressource..." 
+                className="w-full md:w-72 pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-university/20 focus:border-university shadow-sm"
              />
         </div>
       </div>
 
-      {/* Hero / Alerts Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 relative overflow-hidden bg-brand rounded-[2.5rem] p-10 text-white shadow-glow">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-white opacity-10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-sky-900 opacity-10 rounded-full translate-y-1/3 -translate-x-1/4 blur-3xl"></div>
+      {/* --- MOBILE: UPCOMING EXAMS HORIZONTAL SCROLL --- */}
+      {/* Show only on mobile/tablet to save vertical space */}
+      <div className="lg:hidden">
+          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+             <AlertTriangle size={16} className="text-warning" /> Urgences (7 jours)
+          </h3>
+          {upcomingExams.length > 0 ? (
+              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 no-scrollbar snap-x">
+                  {upcomingExams.map(exam => (
+                      <div key={exam.id} className="snap-start min-w-[200px] bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-warning/5 rounded-bl-full -mr-4 -mt-4"></div>
+                          <div>
+                              <p className="text-xs font-bold text-slate-400 uppercase mb-1">{new Date(exam.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</p>
+                              <h4 className="font-bold text-slate-800 leading-tight">{exam.subject}</h4>
+                          </div>
+                          <div className="mt-3 flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-50 py-1.5 px-2.5 rounded-lg w-fit">
+                              <Clock size={12} /> {new Date(exam.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
+                          </div>
+                      </div>
+                  ))}
+                  {/* View All Card */}
+                  <button onClick={() => setView('EXAMS')} className="snap-start min-w-[60px] flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-university">
+                      <ArrowRight size={24} />
+                  </button>
+              </div>
+          ) : (
+              <div className="bg-white border border-dashed border-slate-300 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-400 text-xs font-medium">
+                  <CheckCircle2 size={16} className="text-success" /> Rien de prévu cette semaine.
+              </div>
+          )}
+      </div>
+
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Welcome Card (Hidden on very small screens to prioritize content if needed, but kept here for info) */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-card flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-university/5 to-transparent skew-x-12 translate-x-10 pointer-events-none"></div>
             
-            <div className="relative z-10 h-full flex flex-col justify-between">
-                <div>
-                    <span className="inline-block px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-white/20">
-                        {user.role === UserRole.STUDENT ? 'Espace Élève' : 'Espace Délégué'}
-                    </span>
-                    <h2 className="text-3xl font-bold mb-3 leading-tight">Bienvenue sur JàngHub</h2>
-                    <p className="text-sky-50 opacity-90 max-w-lg leading-relaxed text-lg">
-                        Gérez vos activités scolaires pour la classe de <strong>{user.classLevel}</strong>.
-                    </p>
+            <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-3">
+                     <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-university/10 text-university">
+                        <BookOpen size={14} />
+                     </span>
+                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Espace {user.role === UserRole.STUDENT ? 'Étudiant' : user.role === UserRole.RESPONSIBLE ? 'Délégué' : 'Admin'}
+                     </span>
                 </div>
-                <div className="mt-8">
-                    <button onClick={() => setView('SCHEDULE')} className="bg-white text-brand px-8 py-3.5 rounded-2xl font-bold text-sm shadow-xl hover:bg-sky-50 transition-colors">
-                        Consulter mon emploi du temps
-                    </button>
-                </div>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-2">Bonjour, {user.name.split(' ')[0]}</h2>
+                <p className="text-slate-600 text-sm leading-relaxed max-w-lg">
+                    Vous avez <strong>{announcements.length} nouvelles annonces</strong> et <strong>{upcomingExams.length} examens</strong> à venir pour la classe {user.classLevel}.
+                </p>
+            </div>
+            <div className="mt-6 relative z-10 flex gap-3">
+                <button onClick={() => setView('SCHEDULE')} className="flex-1 md:flex-none bg-university hover:bg-university-dark text-white px-5 py-3 rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 active:scale-95">
+                    <Calendar size={16} /> <span className="hidden sm:inline">Mon emploi du temps</span><span className="sm:hidden">Planning</span>
+                </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-soft border border-white flex flex-col relative overflow-hidden">
-              <div className="flex justify-between items-center mb-6 z-10">
-                  <h3 className="font-bold text-slate-800 text-lg">Alertes & Rappels</h3>
-                  <div className="w-10 h-10 rounded-2xl bg-alert/10 flex items-center justify-center text-alert">
-                      <Bell size={20} />
-                  </div>
+          {/* Quick Stats / Alerts (Desktop Side) */}
+          <div className="hidden lg:flex bg-white rounded-2xl border border-slate-200 p-6 shadow-card flex-col">
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+                  <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide">Prochains Examens</h3>
+                  <Bell size={16} className="text-slate-400" />
               </div>
               
-              <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2 z-10">
+              <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1 max-h-[180px]">
                   {upcomingExams.length > 0 ? (
                       upcomingExams.map(exam => (
-                          <div key={exam.id} className="flex items-start gap-4 p-4 rounded-3xl bg-white border border-slate-100 shadow-sm hover:border-alert/30 transition-colors group">
-                              <div className="mt-1 bg-alert/10 p-2 rounded-xl text-alert group-hover:bg-alert group-hover:text-white transition-colors">
-                                  <AlertTriangle size={18} />
+                          <div key={exam.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                              <div className="mt-0.5 text-warning">
+                                  <AlertTriangle size={16} />
                               </div>
                               <div>
-                                  <p className="text-sm font-bold text-slate-800">{exam.subject}</p>
-                                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                      {new Date(exam.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} • {new Date(exam.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
+                                  <p className="text-sm font-bold text-slate-700">{exam.subject}</p>
+                                  <p className="text-xs text-slate-500 mt-0.5">
+                                      {new Date(exam.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à {new Date(exam.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
                                   </p>
                               </div>
                           </div>
                       ))
                   ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-slate-300 text-center py-4">
-                          <CheckCircle2 size={40} className="mb-3 text-emerald-200" />
-                          <p className="text-sm font-medium">Tout est calme.</p>
+                      <div className="flex flex-col items-center justify-center h-full py-4 text-slate-400">
+                          <CheckCircle2 size={32} className="mb-2 text-success/50" />
+                          <p className="text-xs font-medium">Aucun examen imminent.</p>
                       </div>
                   )}
               </div>
@@ -179,97 +218,100 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, exams, announcements
 
       {/* Quick Actions Grid */}
       <div>
-        <h2 className="text-xl font-bold text-slate-800 mb-6 px-2">Accès Rapide</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <ArrowRight size={18} className="text-university" /> Accès Rapide
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {quickActions().map((action, idx) => (
                 <button 
                     key={idx}
                     onClick={action.action}
-                    className="flex flex-col items-center justify-center p-8 bg-white border border-white rounded-[2rem] shadow-soft hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
+                    className="flex flex-col md:flex-row items-center md:items-start gap-3 p-4 bg-white border border-slate-200 rounded-2xl hover:border-university/50 hover:shadow-md transition-all duration-200 group text-center md:text-left active:scale-95"
                 >
-                    <div className={`${action.color} p-5 rounded-[1.5rem] mb-4 transition-transform group-hover:scale-110 shadow-sm`}>
-                        <action.icon size={28} />
+                    <div className={`w-12 h-12 md:w-10 md:h-10 rounded-xl ${action.color} flex items-center justify-center transition-colors shadow-sm`}>
+                        <action.icon size={22} className="md:w-5 md:h-5" />
                     </div>
-                    <span className="font-bold text-slate-600 group-hover:text-slate-900">{action.label}</span>
+                    <div>
+                        <span className="block font-bold text-slate-700 text-sm group-hover:text-university">{action.label}</span>
+                        <span className="hidden md:block text-[10px] text-slate-400 font-medium">{action.desc}</span>
+                    </div>
                 </button>
             ))}
         </div>
       </div>
 
       {/* Main Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Feed */}
-          <div className="lg:col-span-2 space-y-6">
-              <div className="flex justify-between items-center px-2">
-                  <h2 className="text-xl font-bold text-slate-800">Actualités - {user.classLevel}</h2>
-                  <button onClick={() => setView('ANNOUNCEMENTS')} className="text-sm text-brand font-bold hover:text-sky-600 transition-colors">Voir tout</button>
+          <div className="lg:col-span-2 space-y-4">
+              <div className="flex justify-between items-center bg-slate-100 p-3 rounded-xl border border-slate-200">
+                  <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide ml-2">Dernières Actualités</h2>
+                  <button onClick={() => setView('ANNOUNCEMENTS')} className="text-xs text-university font-bold hover:underline px-2">Tout voir</button>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-4">
                   {announcements.slice(0, 3).map((ann) => (
-                      <div key={ann.id} className="bg-white p-8 rounded-[2.5rem] shadow-soft border border-white hover:border-brand/20 transition-all cursor-pointer group">
-                          <div className="flex justify-between items-start mb-4">
-                              <div className="flex items-center gap-4">
-                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold text-white shadow-md
-                                      ${ann.authorName.includes('Admin') ? 'bg-indigo-500' : 'bg-brand'}`}>
+                      <div key={ann.id} className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                          <div className="flex justify-between items-start mb-3">
+                              <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-600 shadow-sm">
                                       {ann.authorName.charAt(0)}
                                   </div>
                                   <div>
-                                      <p className="font-bold text-slate-800 text-base group-hover:text-brand transition-colors">{ann.authorName}</p>
-                                      <p className="text-xs text-slate-400 font-medium">{new Date(ann.date).toLocaleDateString()}</p>
+                                      <p className="font-bold text-slate-800 text-sm">{ann.authorName}</p>
+                                      <p className="text-xs text-slate-500">{new Date(ann.date).toLocaleDateString('fr-FR', {day: 'numeric', month: 'long'})}</p>
                                   </div>
                               </div>
-                              <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide
-                                  ${ann.authorName.includes('Admin') ? 'bg-indigo-50 text-indigo-500' : 'bg-sky-50 text-sky-500'}`}>
+                              <span className={`px-2 py-1 rounded-lg border text-[10px] font-bold uppercase
+                                  ${ann.authorName.includes('Admin') ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-sky-50 text-sky-700 border-sky-100'}`}>
                                   {ann.authorName.includes('Admin') ? 'Admin' : 'Délégué'}
                               </span>
                           </div>
-                          <p className="text-slate-600 leading-relaxed pl-[4rem] line-clamp-3">
-                              {ann.content}
+                          <p className="text-slate-600 text-sm leading-relaxed pl-1">
+                              {ann.content.length > 150 ? ann.content.substring(0, 150) + '...' : ann.content}
                           </p>
                       </div>
                   ))}
                    {announcements.length === 0 && (
-                      <div className="bg-white p-12 rounded-[2.5rem] text-center text-slate-300 border border-slate-100 border-dashed">
-                          <BookOpen size={48} className="mx-auto mb-4 opacity-50" />
-                          <p className="font-medium">Aucune actualité pour la classe {user.classLevel}.</p>
+                      <div className="bg-white p-8 rounded-2xl text-center border border-dashed border-slate-300">
+                          <BookOpen size={32} className="mx-auto mb-3 text-slate-300" />
+                          <p className="text-sm font-medium text-slate-500">Aucune annonce publiée pour le moment.</p>
                       </div>
                   )}
               </div>
           </div>
 
-          {/* Side Panel */}
-          <div className="space-y-6">
-              <div className="flex justify-between items-center px-2">
-                  <h2 className="text-xl font-bold text-slate-800">À venir</h2>
-                  <button onClick={() => setView('EXAMS')} className="text-sm text-brand font-bold hover:text-sky-600 transition-colors">Calendrier</button>
+          {/* Side Panel (Desktop Compact Calendar List) */}
+          <div className="hidden lg:block space-y-4">
+              <div className="flex justify-between items-center bg-slate-100 p-3 rounded-xl border border-slate-200">
+                  <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide ml-2">Agenda</h2>
+                  <button onClick={() => setView('EXAMS')} className="text-xs text-university font-bold hover:underline px-2">Calendrier</button>
               </div>
 
-              <div className="bg-white p-8 rounded-[2.5rem] shadow-soft border border-white h-full flex flex-col">
-                  <div className="relative border-l-2 border-slate-100 ml-3 space-y-10 py-2 flex-1">
-                      {upcomingExams.length > 0 ? upcomingExams.map((exam, i) => (
-                          <div key={exam.id} className="relative pl-8">
-                              <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-md bg-brand ring-4 ring-sky-50"></div>
-                              <div>
-                                  <span className="text-xs font-bold text-brand uppercase mb-1 block tracking-wider">
-                                      {new Date(exam.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-0 overflow-hidden">
+                  <div className="divide-y divide-slate-100">
+                      {upcomingExams.length > 0 ? upcomingExams.map((exam) => (
+                          <div key={exam.id} className="p-4 hover:bg-slate-50 transition-colors">
+                              <div className="flex items-center gap-3 mb-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-warning"></div>
+                                  <span className="text-xs font-bold text-slate-500 uppercase">
+                                      {new Date(exam.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
                                   </span>
-                                  <h4 className="font-bold text-slate-800 text-base mb-1">{exam.subject}</h4>
-                                  <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-                                      <span className="flex items-center gap-1"><Clock size={14} className="text-slate-400" /> {new Date(exam.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</span>
-                                  </div>
+                              </div>
+                              <h4 className="font-bold text-slate-800 text-sm ml-4.5">{exam.subject}</h4>
+                              <div className="flex items-center gap-2 text-xs text-slate-500 ml-4.5 mt-1">
+                                  <Clock size={12} /> {new Date(exam.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
                               </div>
                           </div>
                       )) : (
-                          <div className="pl-8 relative">
-                               <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm bg-slate-200"></div>
-                               <p className="text-slate-400 text-sm font-medium">Aucun examen prévu.</p>
+                          <div className="p-6 text-center">
+                               <p className="text-slate-400 text-xs italic">Aucun événement à venir.</p>
                           </div>
                       )}
                   </div>
-                   <div className="mt-8 pt-6 border-t border-slate-50">
-                      <button onClick={() => setView('SCHEDULE')} className="w-full py-4 flex items-center justify-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
-                          Voir l'emploi du temps <ArrowRight size={18} />
+                   <div className="p-3 bg-slate-50 border-t border-slate-200">
+                      <button onClick={() => setView('SCHEDULE')} className="w-full py-2 flex items-center justify-center gap-2 text-xs font-bold text-slate-600 hover:text-university transition-colors">
+                          Voir l'emploi du temps complet
                       </button>
                    </div>
               </div>

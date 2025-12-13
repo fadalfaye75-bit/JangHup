@@ -2,18 +2,20 @@ import React, { useState } from 'react';
 import { Meeting, User, UserRole } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { 
-  Video, Plus, Calendar, Clock, Trash2, ExternalLink, X, Check, Link as LinkIcon, Copy, Share2, AlertOctagon, Users
+  Video, Plus, Calendar, Clock, Trash2, ExternalLink, X, Check, Link as LinkIcon, Copy, Share2, AlertOctagon, Users, Edit2
 } from 'lucide-react';
 
 interface MeetProps {
   user: User;
   meetings: Meeting[];
   addMeeting: (m: Meeting) => void;
+  updateMeeting: (m: Meeting) => void;
   deleteMeeting: (id: string) => void;
 }
 
-export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, deleteMeeting }) => {
+export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMeeting, deleteMeeting }) => {
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -26,30 +28,57 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, deleteMe
   // Admin cannot create meetings (Pedagogical content)
   const canEdit = user.role === UserRole.RESPONSIBLE;
   
-  // Delete Rights: Admin OR (Responsible AND Same Class)
-  const canDelete = (meeting: Meeting) => {
+  // Delete/Edit Rights: Admin OR (Responsible AND Same Class)
+  const canModify = (meeting: Meeting) => {
       if (user.role === UserRole.ADMIN) return true;
       if (user.role === UserRole.RESPONSIBLE && meeting.classLevel === user.classLevel) return true;
       return false;
   };
+
+  const resetForm = () => {
+    setIsAdding(false);
+    setEditingId(null);
+    setTitle(''); setDate(''); setTime(''); setLink('');
+  }
+
+  const handleEdit = (m: Meeting) => {
+      setEditingId(m.id);
+      setTitle(m.title);
+      setDate(m.date);
+      setTime(m.time);
+      setLink(m.link);
+      setPlatform(m.platform);
+      setIsAdding(true);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !date || !time || !link) return;
 
     try {
-        const newMeetingData = {
+        const payload = {
           title, date, time, link, platform,
           class_level: user.classLevel, // Auto-assign class
           author_id: user.id,
           author_name: user.name
         };
 
-        const { data, error } = await supabase.from('meetings').insert(newMeetingData).select().single();
+        let data, error;
+
+        if (editingId) {
+            // Update
+            const res = await supabase.from('meetings').update(payload).eq('id', editingId).select().single();
+            data = res.data; error = res.error;
+        } else {
+            // Insert
+            const res = await supabase.from('meetings').insert(payload).select().single();
+            data = res.data; error = res.error;
+        }
+
         if (error) throw error;
 
         if (data) {
-            addMeeting({
+            const formatted: Meeting = {
                 id: data.id,
                 title: data.title,
                 classLevel: data.class_level,
@@ -59,12 +88,15 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, deleteMe
                 platform: data.platform,
                 authorId: data.author_id,
                 authorName: data.author_name
-            });
-            setIsAdding(false);
-            setTitle(''); setDate(''); setTime(''); setLink('');
+            };
+            
+            if (editingId) updateMeeting(formatted);
+            else addMeeting(formatted);
+            
+            resetForm();
         }
     } catch (error: any) {
-        alert(`Erreur lors de la planification : ${error.message || 'Erreur inconnue'}`);
+        alert(`Erreur : ${error.message || 'Erreur inconnue'}`);
         console.error(error);
     }
   };
@@ -123,8 +155,8 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, deleteMe
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 ring-4 ring-white/20">
                     <div className="bg-brand p-8 text-white flex justify-between items-center">
-                        <h3 className="font-bold text-xl flex items-center gap-2">Planifier un cours</h3>
-                        <button onClick={() => setIsAdding(false)} className="hover:bg-white/20 p-2 rounded-xl transition-colors"><X size={24} /></button>
+                        <h3 className="font-bold text-xl flex items-center gap-2">{editingId ? 'Modifier le cours' : 'Planifier un cours'}</h3>
+                        <button onClick={resetForm} className="hover:bg-white/20 p-2 rounded-xl transition-colors"><X size={24} /></button>
                     </div>
                     <form onSubmit={handleSubmit} className="p-8 space-y-6">
                         {/* Simplified fields for brevity */}
@@ -138,8 +170,10 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, deleteMe
                             <input value={link} onChange={e => setLink(e.target.value)} className="w-full p-4 pl-12 bg-slate-50 border-0 rounded-2xl outline-none" placeholder="Lien de réunion" required />
                         </div>
                         <div className="pt-4 flex justify-end gap-3">
-                            <button type="button" onClick={() => setIsAdding(false)} className="px-6 py-3 text-slate-500 hover:bg-slate-100 rounded-2xl font-bold">Annuler</button>
-                            <button type="submit" className="px-8 py-3 bg-brand text-white rounded-2xl font-bold shadow-md active:scale-95">Planifier</button>
+                            <button type="button" onClick={resetForm} className="px-6 py-3 text-slate-500 hover:bg-slate-100 rounded-2xl font-bold">Annuler</button>
+                            <button type="submit" className="px-8 py-3 bg-brand text-white rounded-2xl font-bold shadow-md active:scale-95">
+                                {editingId ? 'Mettre à jour' : 'Planifier'}
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -154,7 +188,16 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, deleteMe
                         <div className="flex gap-1">
                              <button onClick={() => handleCopy(meeting)} className="text-slate-300 hover:text-action-copy transition-colors p-2">{copiedId === meeting.id ? <Check size={18} /> : <Copy size={18} />}</button>
                              <button onClick={() => handleShare(meeting)} className="text-slate-300 hover:text-action-share transition-colors p-2"><Share2 size={18} /></button>
-                             {canDelete(meeting) && <button onClick={() => handleDelete(meeting.id)} className={`transition-all p-2 rounded-xl flex items-center gap-1 ${deleteConfirmId === meeting.id ? 'bg-alert text-white' : 'text-slate-300 hover:text-alert'}`}>{deleteConfirmId === meeting.id ? <AlertOctagon size={18} /> : <Trash2 size={18} />}</button>}
+                             {canModify(meeting) && (
+                                <>
+                                 <button onClick={() => handleEdit(meeting)} className="text-slate-300 hover:text-action-edit transition-colors p-2">
+                                    <Edit2 size={18} />
+                                 </button>
+                                 <button onClick={() => handleDelete(meeting.id)} className={`transition-all p-2 rounded-xl flex items-center gap-1 ${deleteConfirmId === meeting.id ? 'bg-alert text-white' : 'text-slate-300 hover:text-alert'}`}>
+                                    {deleteConfirmId === meeting.id ? <AlertOctagon size={18} /> : <Trash2 size={18} />}
+                                 </button>
+                                </>
+                             )}
                         </div>
                     </div>
                     <h3 className="font-bold text-slate-800 text-xl mb-1">{meeting.title}</h3>

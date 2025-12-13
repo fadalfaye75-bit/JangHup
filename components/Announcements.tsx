@@ -10,21 +10,25 @@ interface AnnouncementsProps {
   user: User;
   announcements: Announcement[];
   addAnnouncement: (a: Announcement) => void;
+  updateAnnouncement: (a: Announcement) => void;
   deleteAnnouncement: (id: string) => void;
 }
 
-export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcements, addAnnouncement, deleteAnnouncement }) => {
+export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcements, addAnnouncement, updateAnnouncement, deleteAnnouncement }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
-  // Creation Form State
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [content, setContent] = useState('');
-  const [targetClass, setTargetClass] = useState(user.classLevel); // New for Admin
+  const [targetClass, setTargetClass] = useState(user.classLevel); 
   const [links, setLinks] = useState<{ title: string; url: string; type: 'MEET' | 'FORMS' | 'DRIVE' | 'OTHER' }[]>([]);
   const [images, setImages] = useState<File[]>([]); 
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
+
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkTitle, setLinkTitle] = useState('');
@@ -37,10 +41,24 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     setLinks([]);
     setImages([]);
     setAttachments([]);
+    setExistingImages([]);
+    setExistingAttachments([]);
     setTargetClass(user.classLevel);
     setIsCreating(false);
+    setEditingId(null);
     setShowLinkInput(false);
     setIsSubmitting(false);
+  };
+
+  const handleEdit = (ann: Announcement) => {
+      setEditingId(ann.id);
+      setContent(ann.content);
+      setLinks(ann.links || []);
+      setExistingImages(ann.images || []);
+      setExistingAttachments(ann.attachments || []);
+      if (user.role === UserRole.ADMIN) setTargetClass(ann.classLevel);
+      setIsCreating(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAddLink = () => {
@@ -65,10 +83,7 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
         const { data, error } = await supabase.storage.from(bucket).upload(fileName, file);
-        if (error) {
-            console.error('Upload error:', error);
-            throw error;
-        }
+        if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
         return publicUrl;
     } catch (error) {
@@ -82,37 +97,38 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     setIsSubmitting(true);
 
     try {
-        // Upload Images
-        const imageUrls = await Promise.all(images.map(img => uploadFileToSupabase(img, 'images')));
-        
-        // Upload Attachments
-        const attachmentData = await Promise.all(attachments.map(async file => {
+        const newImageUrls = await Promise.all(images.map(img => uploadFileToSupabase(img, 'images')));
+        const newAttachmentData = await Promise.all(attachments.map(async file => {
             const url = await uploadFileToSupabase(file, 'files');
             return url ? { name: file.name, type: 'PDF' as const, url } : null;
         }));
 
-        const validImages = imageUrls.filter(url => url !== null) as string[];
-        const validAttachments = attachmentData.filter(a => a !== null) as any[];
-
-        // Use targetClass if Admin, otherwise user.classLevel
+        const finalImages = [...existingImages, ...(newImageUrls.filter(url => url !== null) as string[])];
+        const finalAttachments = [...existingAttachments, ...(newAttachmentData.filter(a => a !== null) as any[])];
         const finalClass = user.role === UserRole.ADMIN ? targetClass : user.classLevel;
 
-        const newAnn = {
+        const payload = {
             author_id: user.id,
             author_name: user.name,
             class_level: finalClass,
             content,
-            date: new Date().toISOString(),
             links: links,
-            images: validImages,
-            attachments: validAttachments
+            images: finalImages,
+            attachments: finalAttachments,
+            ...(editingId ? {} : { date: new Date().toISOString() }) 
         };
 
-        const { data, error } = await supabase.from('announcements').insert(newAnn).select().single();
+        let data, error;
+        if (editingId) {
+            const res = await supabase.from('announcements').update(payload).eq('id', editingId).select().single();
+            data = res.data; error = res.error;
+        } else {
+            const res = await supabase.from('announcements').insert(payload).select().single();
+            data = res.data; error = res.error;
+        }
 
         if (error) throw error;
 
-        // Map back to frontend type
         const formattedAnn: Announcement = {
             id: data.id,
             authorId: data.author_id,
@@ -125,12 +141,13 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
             attachments: data.attachments
         };
 
-        addAnnouncement(formattedAnn);
+        if (editingId) updateAnnouncement(formattedAnn);
+        else addAnnouncement(formattedAnn);
+
         resetForm();
     } catch (error: any) {
         console.error("Error publishing:", error);
-        const errorMsg = error.message || error.error_description || JSON.stringify(error);
-        alert(`Erreur lors de la publication : ${errorMsg}`);
+        alert(`Erreur lors de la publication : ${error.message}`);
     } finally {
         setIsSubmitting(false);
     }
@@ -156,29 +173,28 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   const shareViaEmail = (ann: Announcement) => {
     const classEmail = ann.classLevel.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@janghub.sn';
     const subject = `Annonce ${ann.classLevel} - JàngHub`;
-    const body = `${ann.content}\n\nLien JàngHub: ${window.location.href}`;
+    const body = `${ann.content}\n\nLien: ${window.location.href}`;
     window.location.href = `mailto:${classEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const getLinkIcon = (type: string) => {
     switch (type) {
-      case 'MEET': return <Video size={18} />;
-      case 'FORMS': return <FileText size={18} />;
-      case 'DRIVE': return <HardDrive size={18} />;
-      default: return <LinkIcon size={18} />;
+      case 'MEET': return <Video size={16} />;
+      case 'FORMS': return <FileText size={16} />;
+      case 'DRIVE': return <HardDrive size={16} />;
+      default: return <LinkIcon size={16} />;
     }
   };
 
   const getLinkColor = (type: string) => {
     switch (type) {
-      case 'MEET': return 'bg-emerald-500 hover:bg-emerald-600 border-emerald-200 text-white shadow-emerald-200/50';
-      case 'FORMS': return 'bg-purple-500 hover:bg-purple-600 border-purple-200 text-white shadow-purple-200/50';
-      case 'DRIVE': return 'bg-blue-500 hover:bg-blue-600 border-blue-200 text-white shadow-blue-200/50';
-      default: return 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700';
+      case 'MEET': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'FORMS': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'DRIVE': return 'bg-sky-50 text-sky-700 border-sky-200';
+      default: return 'bg-slate-50 text-slate-700 border-slate-200';
     }
   };
 
-  // Logic for rights: Admin OR (Responsible AND Same Class) OR Author
   const hasRights = (ann: Announcement) => {
     if (user.role === UserRole.ADMIN) return true;
     if (user.role === UserRole.RESPONSIBLE && ann.classLevel === user.classLevel) return true;
@@ -186,285 +202,248 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
-           <div className="flex items-center gap-3">
-               <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Fil d'actualité</h2>
-               <span className="bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-full border border-brand/20 flex items-center gap-1">
-                 <Users size={12} /> {user.role === UserRole.ADMIN ? 'Vue Admin' : user.classLevel}
+           <div className="flex items-center gap-2">
+               <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Fil d'actualité</h2>
+               <span className="bg-university/10 text-university text-xs font-bold px-2 py-0.5 rounded border border-university/20">
+                 {user.role === UserRole.ADMIN ? 'Admin' : user.classLevel}
                </span>
            </div>
-           <p className="text-slate-500 font-medium mt-1">Informations et communications.</p>
+           <p className="text-slate-500 text-sm mt-1">Communications officielles et ressources.</p>
         </div>
         {canCreate && !isCreating && (
           <button 
             onClick={() => setIsCreating(true)}
-            className="bg-brand hover:bg-sky-400 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-sky-200 transition-all flex items-center gap-2 transform hover:-translate-y-0.5 active:scale-95"
+            className="bg-university hover:bg-university-dark text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-sm"
           >
-            <Plus size={22} /> Nouvelle Annonce
+            <Plus size={18} /> Nouvelle Annonce
           </button>
         )}
       </div>
 
-      {/* Creation Form */}
       {isCreating && (
-        <div className="bg-white rounded-[2.5rem] shadow-xl border border-sky-100 overflow-hidden ring-4 ring-sky-50">
-          <div className="p-8">
-            <h3 className="text-lg font-bold text-slate-700 mb-4">Rédiger un message</h3>
-            
-            {/* Admin Class Selector */}
+        <div className="bg-white rounded-xl shadow-card border border-slate-200 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+             <h3 className="text-base font-bold text-slate-800">{editingId ? 'Modifier l\'annonce' : 'Nouvelle Communication'}</h3>
+          </div>
+          <div className="p-6">
             {user.role === UserRole.ADMIN && (
                 <div className="mb-4 relative">
-                    <School className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <School className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input 
                         type="text" 
                         value={targetClass} 
                         onChange={(e) => setTargetClass(e.target.value)}
                         placeholder="Classe cible (ex: Tle S2)"
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border-0 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-brand"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg outline-none font-medium focus:ring-2 focus:ring-university/20 focus:border-university text-sm"
                     />
-                    <p className="text-xs text-slate-400 mt-1 pl-1">L'annonce sera visible uniquement par cette classe.</p>
                 </div>
             )}
 
             <textarea
-              className="w-full p-5 bg-slate-50 border-0 rounded-3xl focus:ring-4 focus:ring-brand/20 focus:bg-white transition-all outline-none resize-none text-slate-700 min-h-[160px] placeholder:text-slate-400 text-base leading-relaxed"
-              placeholder={user.role === UserRole.ADMIN ? "Message de l'administration..." : "Quoi de neuf pour la classe ?"}
+              className="w-full p-4 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-university/20 focus:border-university transition-all outline-none resize-none text-slate-700 min-h-[160px] placeholder:text-slate-400 text-sm leading-relaxed"
+              placeholder={user.role === UserRole.ADMIN ? "Message de l'administration..." : "Information pour la classe..."}
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
             
-            {/* Added Items Chips */}
-            {(links.length > 0 || images.length > 0 || attachments.length > 0) && (
-              <div className="flex flex-wrap gap-2 mt-6">
+            {(links.length > 0 || images.length > 0 || attachments.length > 0 || existingImages.length > 0 || existingAttachments.length > 0) && (
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
                 {links.map((l, i) => (
-                  <span key={i} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-50 text-sky-700 text-sm font-bold border border-sky-100">
+                  <span key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
                     {getLinkIcon(l.type)} {l.title}
-                    <button onClick={() => setLinks(links.filter((_, idx) => idx !== i))}><X size={16} /></button>
+                    <button onClick={() => setLinks(links.filter((_, idx) => idx !== i))} className="hover:text-alert"><X size={14} /></button>
                   </span>
                 ))}
-                {images.map((img, i) => (
-                  <span key={i} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-50 text-purple-700 text-sm font-bold border border-purple-100">
-                    <ImageIcon size={16} /> {img.name}
-                    <button onClick={() => setImages(images.filter((_, idx) => idx !== i))}><X size={16} /></button>
+                
+                {[...existingImages, ...images].map((img, i) => (
+                  <span key={`img-${i}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
+                    <ImageIcon size={14} /> Image {i+1}
+                    <button onClick={() => i < existingImages.length ? setExistingImages(existingImages.filter((_, idx) => idx !== i)) : setImages(images.filter((_, idx) => idx !== i - existingImages.length))} className="hover:text-alert"><X size={14} /></button>
                   </span>
                 ))}
-                {attachments.map((a, i) => (
-                  <span key={i} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-50 text-orange-700 text-sm font-bold border border-orange-100">
-                    <File size={16} /> {a.name}
-                    <button onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))}><X size={16} /></button>
+
+                {[...existingAttachments, ...attachments].map((att, i) => (
+                  <span key={`att-${i}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
+                    <File size={14} /> {att.name}
+                    <button onClick={() => i < existingAttachments.length ? setExistingAttachments(existingAttachments.filter((_, idx) => idx !== i)) : setAttachments(attachments.filter((_, idx) => idx !== i - existingAttachments.length))} className="hover:text-alert"><X size={14} /></button>
                   </span>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Form Actions Toolbar */}
-          <div className="bg-slate-50/50 p-5 border-t border-slate-100 flex flex-col md:flex-row gap-4 justify-between items-center">
-             <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-                {/* Add Link */}
+          <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+             <div className="flex gap-2 w-full md:w-auto">
                 <div className="relative">
                    <button 
                      onClick={() => setShowLinkInput(!showLinkInput)}
-                     className={`px-5 py-2.5 rounded-2xl transition-colors flex items-center gap-2 text-sm font-bold ${showLinkInput ? 'bg-sky-100 text-sky-700' : 'bg-white text-slate-600 hover:bg-white border border-slate-200/50'}`}
+                     className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${showLinkInput ? 'bg-university/10 text-university border-university/20' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
                    >
-                      <LinkIcon size={18} /> Lien
+                      <LinkIcon size={16} /> Lien
                    </button>
                    {showLinkInput && (
-                     <div className="absolute bottom-full left-0 mb-3 w-80 bg-white p-5 rounded-3xl shadow-xl border border-slate-100 z-10 animate-in fade-in slide-in-from-bottom-2">
+                     <div className="absolute bottom-full left-0 mb-2 w-72 bg-white p-4 rounded-xl shadow-elevation border border-slate-200 z-10">
                         <input 
-                          placeholder="Titre (ex: Cours de Maths)" 
-                          className="w-full mb-3 p-3 bg-slate-50 border-0 rounded-xl text-sm font-medium focus:ring-2 focus:ring-brand outline-none"
+                          placeholder="Titre" 
+                          className="w-full mb-2 p-2 bg-slate-50 border border-slate-200 rounded-md text-xs outline-none focus:border-university"
                           value={linkTitle} onChange={e => setLinkTitle(e.target.value)}
                         />
                         <input 
-                          placeholder="URL (https://...)" 
-                          className="w-full mb-3 p-3 bg-slate-50 border-0 rounded-xl text-sm font-medium focus:ring-2 focus:ring-brand outline-none"
+                          placeholder="URL" 
+                          className="w-full mb-2 p-2 bg-slate-50 border border-slate-200 rounded-md text-xs outline-none focus:border-university"
                           value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
                         />
-                        <div className="flex gap-2 mb-3">
-                           {['MEET', 'FORMS', 'DRIVE', 'OTHER'].map(t => (
-                              <button 
-                                key={t} 
-                                onClick={() => setLinkType(t as any)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${linkType === t ? 'bg-brand text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                              >
-                                {t === 'OTHER' ? 'Autre' : t}
-                              </button>
-                           ))}
-                        </div>
-                        <button onClick={handleAddLink} className="w-full bg-slate-800 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-slate-900 transition-colors">Ajouter</button>
+                        <button onClick={handleAddLink} className="w-full bg-university text-white py-2 rounded-md text-xs font-bold hover:bg-university-dark">Ajouter</button>
                      </div>
                    )}
                 </div>
 
-                {/* Upload Image */}
-                <label className="px-5 py-2.5 rounded-2xl bg-white border border-slate-200/50 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer flex items-center gap-2 text-sm font-bold">
+                <label className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold">
                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'IMAGE')} />
-                   <ImageIcon size={18} /> Photo
+                   <ImageIcon size={16} /> Photo
                 </label>
 
-                {/* Upload Doc */}
-                <label className="px-5 py-2.5 rounded-2xl bg-white border border-slate-200/50 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer flex items-center gap-2 text-sm font-bold">
+                <label className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer flex items-center gap-2 text-xs font-bold">
                    <input type="file" accept=".pdf" className="hidden" onChange={(e) => handleFileUpload(e, 'PDF')} />
-                   <FileText size={18} /> PDF
+                   <FileText size={16} /> PDF
                 </label>
              </div>
 
-             <div className="flex gap-3 w-full md:w-auto justify-end">
-                <button onClick={resetForm} className="px-6 py-3 text-slate-500 hover:bg-slate-200/50 rounded-2xl font-bold text-sm transition-colors">
+             <div className="flex gap-2 w-full md:w-auto justify-end">
+                <button onClick={resetForm} className="px-5 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-bold text-xs transition-colors border border-transparent">
                   Annuler
                 </button>
                 <button 
                   onClick={handlePublish}
                   disabled={isSubmitting}
-                  className="px-8 py-3 bg-brand hover:bg-sky-400 text-white rounded-2xl font-bold shadow-md shadow-sky-200 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 bg-university hover:bg-university-dark text-white rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-xs disabled:opacity-50"
                 >
-                   {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : <><Check size={20} /> Publier</>}
+                   {isSubmitting ? <Loader2 className="animate-spin" size={16}/> : <><Check size={16} /> {editingId ? 'Mettre à jour' : 'Publier'}</>}
                 </button>
              </div>
           </div>
         </div>
       )}
 
-      {/* Announcements List */}
-      <div className="space-y-8">
+      <div className="space-y-6">
         {announcements.map(ann => (
-          <div key={ann.id} className="bg-white rounded-[2.5rem] p-8 shadow-soft border border-white hover:shadow-lg hover:border-brand/20 transition-all">
-             {/* Header */}
-             <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-4">
-                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold text-white shadow-lg
-                        ${ann.authorName.includes('Admin') ? 'bg-indigo-500 shadow-indigo-200' : 'bg-brand shadow-sky-200'}`}
-                   >
-                        {ann.authorName.charAt(0)}
-                   </div>
-                   <div>
-                      <h3 className="font-bold text-slate-800 text-lg">{ann.authorName}</h3>
-                      <div className="flex gap-2 items-center">
-                          <p className="text-sm text-slate-400 font-medium">
-                            {new Date(ann.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute:'2-digit' })}
-                          </p>
-                          {/* Show class tag for admin viewing all */}
-                          {user.role === UserRole.ADMIN && (
-                              <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-slate-200">
-                                {ann.classLevel}
-                              </span>
-                          )}
-                      </div>
-                   </div>
-                </div>
-                
-                {/* Actions */}
-                <div className="flex gap-2">
-                   {hasRights(ann) && (
-                       <>
-                          <button className="p-3 text-action-edit bg-sky-50 hover:bg-sky-100 rounded-2xl transition-colors" title="Modifier">
-                             <Edit2 size={20} />
-                          </button>
-                          <button 
-                             onClick={() => handleDelete(ann.id)} 
-                             className={`p-3 rounded-2xl transition-all duration-300 flex items-center gap-2 ${deleteConfirmId === ann.id ? 'bg-alert text-white w-32 justify-center' : 'text-alert bg-red-50 hover:bg-red-100'}`}
-                             title="Supprimer"
-                          >
-                             {deleteConfirmId === ann.id ? (
-                               <> <AlertOctagon size={20} /> Sûr ? </>
-                             ) : (
-                               <Trash2 size={20} />
-                             )}
-                          </button>
-                       </>
-                   )}
-                </div>
-             </div>
-
-             {/* Content */}
-             <div className="prose prose-slate max-w-none mb-8">
-               <p className="whitespace-pre-wrap text-slate-600 leading-relaxed text-base">{ann.content}</p>
-             </div>
-
-             {/* Links Section */}
-             {ann.links && ann.links.length > 0 && (
-                <div className="flex flex-wrap gap-3 mb-8">
-                   {ann.links.map((link, i) => (
-                      <a 
-                        key={i} 
-                        href={link.url} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold text-sm transition-all shadow-md active:scale-95 ${getLinkColor(link.type)}`}
-                      >
-                         {getLinkIcon(link.type)}
-                         <span>{link.title}</span>
-                      </a>
-                   ))}
-                </div>
-             )}
-
-             {/* Documents (PDF) */}
-             {ann.attachments && ann.attachments.length > 0 && (
-                <div className="space-y-4 mb-8">
-                   {ann.attachments.map((file, i) => (
-                      <div key={i} className="flex items-center gap-4 p-4 border border-slate-100 rounded-3xl bg-slate-50 hover:bg-white hover:shadow-md transition-all group">
-                         <div className="p-3 bg-white border border-slate-200 text-alert rounded-2xl shadow-sm">
-                            <FileText size={24} />
-                         </div>
-                         <div className="flex-1 overflow-hidden">
-                            <p className="font-bold text-slate-700 truncate text-sm">{file.name}</p>
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-0.5">{file.type}</p>
-                         </div>
-                         <a href={file.url} target="_blank" rel="noreferrer" className="text-brand font-bold text-sm hover:underline px-4 group-hover:text-sky-600">Voir</a>
-                      </div>
-                   ))}
-                </div>
-             )}
-
-             {/* Image Gallery */}
-             {ann.images && ann.images.length > 0 && (
-                <div className={`grid gap-4 mb-8 ${ann.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
-                    {ann.images.map((img, i) => (
-                        <div key={i} className="relative aspect-video rounded-3xl overflow-hidden bg-slate-100 shadow-sm group">
-                            <img src={img} alt="Attachment" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+          <div key={ann.id} className="bg-white rounded-xl p-0 shadow-card border border-slate-200 hover:border-university/30 transition-all">
+             <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold text-white shadow-sm
+                                ${ann.authorName.includes('Admin') ? 'bg-university-dark' : 'bg-university'}`}
+                        >
+                                {ann.authorName.charAt(0)}
                         </div>
-                    ))}
+                        <div>
+                            <h3 className="font-bold text-slate-800 text-sm">{ann.authorName}</h3>
+                            <div className="flex gap-2 items-center text-xs text-slate-500">
+                                <span>{new Date(ann.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute:'2-digit' })}</span>
+                                {user.role === UserRole.ADMIN && (
+                                    <span className="bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded border border-slate-200">
+                                        {ann.classLevel}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                        {hasRights(ann) && (
+                            <>
+                                <button onClick={() => handleEdit(ann)} className="p-2 text-slate-400 hover:text-university hover:bg-slate-50 rounded-lg transition-colors" title="Modifier">
+                                    <Edit2 size={16} />
+                                </button>
+                                <button 
+                                    onClick={() => handleDelete(ann.id)} 
+                                    className={`p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold ${deleteConfirmId === ann.id ? 'bg-alert text-white' : 'text-slate-400 hover:text-alert hover:bg-alert-light'}`}
+                                >
+                                    {deleteConfirmId === ann.id ? <><AlertOctagon size={14} /> Confirmer</> : <Trash2 size={16} />}
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
-             )}
 
-             {/* Footer Actions */}
-             <div className="flex items-center justify-between pt-6 border-t border-slate-50">
-                <div className="flex gap-4">
+                <div className="prose prose-slate prose-sm max-w-none mb-6">
+                    <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">{ann.content}</p>
+                </div>
+
+                {ann.links && ann.links.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-6">
+                        {ann.links.map((link, i) => (
+                            <a 
+                                key={i} 
+                                href={link.url} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-xs transition-all border ${getLinkColor(link.type)} hover:brightness-95`}
+                            >
+                                {getLinkIcon(link.type)}
+                                <span>{link.title}</span>
+                            </a>
+                        ))}
+                    </div>
+                )}
+
+                {ann.attachments && ann.attachments.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                        {ann.attachments.map((file, i) => (
+                            <div key={i} className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50 hover:bg-white transition-colors">
+                                <div className="text-slate-500"><FileText size={20} /></div>
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="font-bold text-slate-700 truncate text-xs">{file.name}</p>
+                                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{file.type}</p>
+                                </div>
+                                <a href={file.url} target="_blank" rel="noreferrer" className="text-university font-bold text-xs hover:underline px-2">Télécharger</a>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {ann.images && ann.images.length > 0 && (
+                    <div className={`grid gap-3 mb-6 ${ann.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
+                        {ann.images.map((img, i) => (
+                            <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                                <img src={img} alt="Attachment" className="w-full h-full object-cover" />
+                            </div>
+                        ))}
+                    </div>
+                )}
+             </div>
+
+             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-b-xl">
+                <div className="flex gap-3">
                     <button 
                       onClick={() => copyToClipboard(ann.content, ann.id)}
-                      className="flex items-center gap-2 text-action-copy hover:bg-green-50 px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide"
+                      className="flex items-center gap-1.5 text-slate-500 hover:text-success hover:bg-success-light px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-success/20"
                     >
-                       {copiedId === ann.id ? <Check size={16} /> : <Copy size={16} />}
-                       {copiedId === ann.id ? 'Copié !' : 'Copier'}
+                       {copiedId === ann.id ? <Check size={14} /> : <Copy size={14} />}
+                       {copiedId === ann.id ? 'Copié' : 'Copier'}
                     </button>
                     <button 
                       onClick={() => shareViaEmail(ann)}
-                      className="flex items-center gap-2 text-action-share hover:bg-blue-50 px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide"
+                      className="flex items-center gap-1.5 text-slate-500 hover:text-university hover:bg-sky-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-sky-200"
                     >
-                       <Share2 size={16} /> Partager
+                       <Share2 size={14} /> Partager
                     </button>
                 </div>
-                <button className="text-slate-400 hover:text-brand text-xs font-bold flex items-center gap-2 transition-colors">
-                   <Mail size={16} /> Contacter l'auteur
-                </button>
              </div>
           </div>
         ))}
 
         {announcements.length === 0 && !isCreating && (
-          <div className="text-center py-20 px-6">
-             <div className="bg-sky-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                <MessageCircle size={40} className="text-brand opacity-50" />
+          <div className="text-center py-16 px-6 bg-white rounded-xl border border-dashed border-slate-300">
+             <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400 border border-slate-200">
+                <MessageCircle size={24} />
              </div>
-             <h3 className="text-2xl font-bold text-slate-800 mb-2">Aucune annonce</h3>
-             <p className="text-slate-500 font-medium">Il n'y a rien de nouveau pour la classe.</p>
+             <h3 className="text-lg font-bold text-slate-700 mb-1">Aucune annonce</h3>
+             <p className="text-slate-500 text-sm">Le fil d'actualité est vide pour le moment.</p>
           </div>
         )}
       </div>
