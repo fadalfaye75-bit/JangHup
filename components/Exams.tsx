@@ -40,32 +40,38 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, deleteExam }
     e.preventDefault();
     if (!subject || !date || !time) return;
 
-    const newExamData = {
-      subject,
-      class_level: user.classLevel, // Auto-assign class
-      date: new Date(`${date}T${time}`).toISOString(),
-      duration,
-      room,
-      notes,
-      author_id: user.id
-    };
-
-    const { data, error } = await supabase.from('exams').insert(newExamData).select().single();
-
-    if (data) {
-        const formattedExam: Exam = {
-            id: data.id,
-            subject: data.subject,
-            classLevel: data.class_level,
-            date: data.date,
-            duration: data.duration,
-            room: data.room,
-            notes: data.notes,
-            authorId: data.author_id
+    try {
+        const newExamData = {
+          subject,
+          class_level: user.classLevel, // Auto-assign class
+          date: new Date(`${date}T${time}`).toISOString(),
+          duration,
+          room,
+          notes,
+          author_id: user.id
         };
-        addExam(formattedExam);
-        setIsAdding(false);
-        setSubject(''); setDate(''); setTime(''); setRoom(''); setNotes('');
+
+        const { data, error } = await supabase.from('exams').insert(newExamData).select().single();
+        if (error) throw error;
+
+        if (data) {
+            const formattedExam: Exam = {
+                id: data.id,
+                subject: data.subject,
+                classLevel: data.class_level,
+                date: data.date,
+                duration: data.duration,
+                room: data.room,
+                notes: data.notes,
+                authorId: data.author_id
+            };
+            addExam(formattedExam);
+            setIsAdding(false);
+            setSubject(''); setDate(''); setTime(''); setRoom(''); setNotes('');
+        }
+    } catch (error: any) {
+        alert(`Erreur lors de la création du DS : ${error.message || 'Erreur inconnue'}`);
+        console.error(error);
     }
   };
 
@@ -73,6 +79,7 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, deleteExam }
     if (deleteConfirmId === id) {
       const { error } = await supabase.from('exams').delete().eq('id', id);
       if (!error) deleteExam(id);
+      else alert("Impossible de supprimer cet examen.");
       setDeleteConfirmId(null);
     } else {
       setDeleteConfirmId(id);
@@ -135,41 +142,92 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, deleteExam }
               </div>
               
               <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                  {/* Form fields */}
+                  {/* Matière - Full Width */}
                   <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Matière</label>
-                      <input type="text" value={subject} onChange={e => setSubject(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium" placeholder="Ex: Mathématiques" required />
+                      <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <FileText size={18} className="text-brand"/> Matière
+                      </label>
+                      <input 
+                        type="text" 
+                        value={subject} 
+                        onChange={e => setSubject(e.target.value)} 
+                        className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-brand/20 transition-all" 
+                        placeholder="Ex: Mathématiques" 
+                        required 
+                      />
                   </div>
+
+                  {/* Date & Heure grouping */}
+                  <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                      <label className="block text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                          <Clock size={18} className="text-brand"/> Date et Heure
+                      </label>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="text-xs font-bold text-slate-400 mb-1 block uppercase tracking-wider">Date</label>
+                              <input 
+                                type="date" 
+                                value={date} 
+                                onChange={e => setDate(e.target.value)} 
+                                className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none font-medium focus:border-brand" 
+                                required 
+                              />
+                          </div>
+                          <div>
+                              <label className="text-xs font-bold text-slate-400 mb-1 block uppercase tracking-wider">Début</label>
+                              <input 
+                                type="time" 
+                                value={time} 
+                                onChange={e => setTime(e.target.value)} 
+                                className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none font-medium focus:border-brand" 
+                                required 
+                              />
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Logistics: Durée & Salle */}
                   <div className="grid grid-cols-2 gap-5">
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Date</label>
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium" required />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Heure</label>
-                        <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-5">
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Durée</label>
-                        <select value={duration} onChange={e => setDuration(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium">
+                        <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                           <Hourglass size={18} className="text-brand"/> Durée
+                        </label>
+                        <select 
+                            value={duration} 
+                            onChange={e => setDuration(e.target.value)} 
+                            className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-brand/20"
+                        >
                             <option>1h</option><option>2h</option><option>3h</option><option>4h</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Salle</label>
-                        <input type="text" value={room} onChange={e => setRoom(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium" />
+                        <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                            <MapPin size={18} className="text-brand"/> Salle
+                        </label>
+                        <input 
+                            type="text" 
+                            value={room} 
+                            onChange={e => setRoom(e.target.value)} 
+                            className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-brand/20" 
+                            placeholder="Ex: 102"
+                        />
                     </div>
                   </div>
+                  
+                  {/* Notes */}
                   <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Notes</label>
-                      <textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none h-20 resize-none font-medium" />
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Notes ou Chapitres</label>
+                      <textarea 
+                        value={notes} 
+                        onChange={e => setNotes(e.target.value)} 
+                        className="w-full p-4 bg-slate-50 border-0 rounded-2xl outline-none h-24 resize-none font-medium focus:ring-2 focus:ring-brand/20" 
+                        placeholder="Chapitres à réviser..."
+                      />
                   </div>
 
-                  <div className="pt-6 flex justify-end gap-3">
+                  <div className="pt-4 flex justify-end gap-3 border-t border-slate-50">
                       <button type="button" onClick={() => setIsAdding(false)} className="px-6 py-3 text-slate-500 hover:bg-slate-100 rounded-2xl font-bold transition-colors">Annuler</button>
-                      <button type="submit" className="px-8 py-3 bg-brand text-white rounded-2xl font-bold hover:bg-sky-400 shadow-md active:scale-95">Enregistrer <Check size={20} /></button>
+                      <button type="submit" className="px-8 py-3 bg-brand text-white rounded-2xl font-bold hover:bg-sky-400 shadow-md active:scale-95 flex items-center gap-2">Enregistrer <Check size={20} /></button>
                   </div>
               </form>
            </div>

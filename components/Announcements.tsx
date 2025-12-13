@@ -61,14 +61,20 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   };
 
   const uploadFileToSupabase = async (file: File, bucket: string) => {
-    const fileName = `${user.classLevel}/${Date.now()}_${file.name}`;
-    const { data, error } = await supabase.storage.from(bucket).upload(fileName, file);
-    if (error) {
-        console.error('Upload error:', error);
+    try {
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
+        const { data, error } = await supabase.storage.from(bucket).upload(fileName, file);
+        if (error) {
+            console.error('Upload error:', error);
+            throw error;
+        }
+        const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
+        return publicUrl;
+    } catch (error) {
+        console.error("File upload failed:", error);
         return null;
     }
-    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
-    return publicUrl;
   };
 
   const handlePublish = async () => {
@@ -121,9 +127,10 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
 
         addAnnouncement(formattedAnn);
         resetForm();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error publishing:", error);
-        alert("Erreur lors de la publication. Vérifiez votre connexion.");
+        const errorMsg = error.message || error.error_description || JSON.stringify(error);
+        alert(`Erreur lors de la publication : ${errorMsg}`);
     } finally {
         setIsSubmitting(false);
     }

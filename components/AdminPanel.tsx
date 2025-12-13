@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { User, UserRole, SchoolClass, AuditLog } from '../types';
+import { User, UserRole, SchoolClass, AuditLog, Announcement, Exam } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { 
   UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, Search, 
-  School, Mail, Info, BarChart2, Activity, Database, FileText, Trash2, Edit
+  School, Mail, Info, BarChart2, Activity, Database, FileText, Trash2, Edit, Megaphone, Calendar
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line } from 'recharts';
 
 interface AdminPanelProps {
   currentUser: User;
+  allAnnouncements: Announcement[];
+  allExams: Exam[];
   globalStats?: {
     announcements: number;
     exams: number;
@@ -16,7 +18,7 @@ interface AdminPanelProps {
   }
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, globalStats }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnouncements, allExams, globalStats }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'classes' | 'users' | 'logs'>('dashboard');
   
   // Data States
@@ -172,6 +174,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, globalStats
       {/* --- DASHBOARD TAB --- */}
       {activeTab === 'dashboard' && (
           <div className="space-y-8">
+              {/* Global Stats */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <StatCard title="Total Utilisateurs" value={usersList.length} icon={Users} color="bg-brand" />
                   <StatCard title="Classes Actives" value={classesList.length} icon={School} color="bg-emerald-500" />
@@ -219,6 +222,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, globalStats
                               </div>
                           ))}
                       </div>
+                  </div>
+              </div>
+
+              {/* Class Detail Statistics */}
+              <div className="mt-8">
+                  <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                      <BarChart2 className="text-brand" size={20} />
+                      Détails par Classe
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {classesList.map(cls => {
+                          const annCount = allAnnouncements.filter(a => a.classLevel === cls.name).length;
+                          const examCount = allExams.filter(e => e.classLevel === cls.name).length;
+                          
+                          return (
+                              <div key={cls.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-brand/20 transition-all group">
+                                  <div className="flex items-center justify-between mb-4">
+                                      <div className="flex items-center gap-3">
+                                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-600 group-hover:bg-brand group-hover:text-white transition-colors">
+                                              {cls.name.substring(0, 2)}
+                                          </div>
+                                          <h4 className="font-bold text-slate-800">{cls.name}</h4>
+                                      </div>
+                                      <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                                          {cls.studentCount} élèves
+                                      </span>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div className="bg-sky-50 p-3 rounded-xl border border-sky-100">
+                                          <div className="flex items-center gap-2 text-sky-600 mb-1">
+                                              <Megaphone size={14} />
+                                              <span className="text-[10px] font-bold uppercase">Annonces</span>
+                                          </div>
+                                          <p className="text-xl font-bold text-slate-800">{annCount}</p>
+                                      </div>
+                                      <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+                                          <div className="flex items-center gap-2 text-emerald-600 mb-1">
+                                              <Calendar size={14} />
+                                              <span className="text-[10px] font-bold uppercase">Examens</span>
+                                          </div>
+                                          <p className="text-xl font-bold text-slate-800">{examCount}</p>
+                                      </div>
+                                  </div>
+                              </div>
+                          );
+                      })}
                   </div>
               </div>
           </div>

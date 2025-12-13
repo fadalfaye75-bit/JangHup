@@ -40,36 +40,45 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, votePoll }) 
   const createPoll = async () => {
     if (!question || options.some(o => !o.trim())) return;
 
-    // 1. Create Poll
-    const { data: pollData, error: pollError } = await supabase
-        .from('polls')
-        .insert({ 
-            question, 
-            author_id: user.id, 
-            class_level: user.classLevel, // Auto-assign class
-            active: true 
-        })
-        .select().single();
+    try {
+        // 1. Create Poll
+        const { data: pollData, error: pollError } = await supabase
+            .from('polls')
+            .insert({ 
+                question, 
+                author_id: user.id, 
+                class_level: user.classLevel, // Auto-assign class
+                active: true 
+            })
+            .select().single();
 
-    if (pollData) {
-        // 2. Create Options
-        const optionsData = options.map(text => ({ poll_id: pollData.id, text, votes: 0 }));
-        const { data: optData } = await supabase.from('poll_options').insert(optionsData).select();
+        if (pollError) throw pollError;
 
-        if (optData) {
-            const newPoll: Poll = {
-                id: pollData.id,
-                question: pollData.question,
-                classLevel: pollData.class_level,
-                options: optData.map((o: any) => ({ id: o.id, text: o.text, votes: o.votes })),
-                authorId: pollData.author_id,
-                active: true,
-                totalVotes: 0
-            };
-            addPoll(newPoll);
-            setIsCreating(false);
-            setQuestion(''); setOptions(['', '']);
+        if (pollData) {
+            // 2. Create Options
+            const optionsData = options.map(text => ({ poll_id: pollData.id, text, votes: 0 }));
+            const { data: optData, error: optError } = await supabase.from('poll_options').insert(optionsData).select();
+
+            if (optError) throw optError;
+
+            if (optData) {
+                const newPoll: Poll = {
+                    id: pollData.id,
+                    question: pollData.question,
+                    classLevel: pollData.class_level,
+                    options: optData.map((o: any) => ({ id: o.id, text: o.text, votes: o.votes })),
+                    authorId: pollData.author_id,
+                    active: true,
+                    totalVotes: 0
+                };
+                addPoll(newPoll);
+                setIsCreating(false);
+                setQuestion(''); setOptions(['', '']);
+            }
         }
+    } catch (error: any) {
+        alert(`Erreur lors de la création du sondage : ${error.message || 'Erreur inconnue'}`);
+        console.error(error);
     }
   };
 

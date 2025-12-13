@@ -289,7 +289,9 @@ function App() {
       )}
       {currentView === 'ADMIN' && (
         <AdminPanel 
-            currentUser={user} 
+            currentUser={user}
+            allAnnouncements={announcements}
+            allExams={exams}
             globalStats={{
                 announcements: announcements.length,
                 exams: exams.length,

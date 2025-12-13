@@ -37,29 +37,35 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, deleteMe
     e.preventDefault();
     if (!title || !date || !time || !link) return;
 
-    const newMeetingData = {
-      title, date, time, link, platform,
-      class_level: user.classLevel, // Auto-assign class
-      author_id: user.id,
-      author_name: user.name
-    };
+    try {
+        const newMeetingData = {
+          title, date, time, link, platform,
+          class_level: user.classLevel, // Auto-assign class
+          author_id: user.id,
+          author_name: user.name
+        };
 
-    const { data, error } = await supabase.from('meetings').insert(newMeetingData).select().single();
+        const { data, error } = await supabase.from('meetings').insert(newMeetingData).select().single();
+        if (error) throw error;
 
-    if (data) {
-        addMeeting({
-            id: data.id,
-            title: data.title,
-            classLevel: data.class_level,
-            date: data.date,
-            time: data.time,
-            link: data.link,
-            platform: data.platform,
-            authorId: data.author_id,
-            authorName: data.author_name
-        });
-        setIsAdding(false);
-        setTitle(''); setDate(''); setTime(''); setLink('');
+        if (data) {
+            addMeeting({
+                id: data.id,
+                title: data.title,
+                classLevel: data.class_level,
+                date: data.date,
+                time: data.time,
+                link: data.link,
+                platform: data.platform,
+                authorId: data.author_id,
+                authorName: data.author_name
+            });
+            setIsAdding(false);
+            setTitle(''); setDate(''); setTime(''); setLink('');
+        }
+    } catch (error: any) {
+        alert(`Erreur lors de la planification : ${error.message || 'Erreur inconnue'}`);
+        console.error(error);
     }
   };
 
@@ -67,6 +73,7 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, deleteMe
     if (deleteConfirmId === id) {
       const { error } = await supabase.from('meetings').delete().eq('id', id);
       if (!error) deleteMeeting(id);
+      else alert("Impossible de supprimer cette réunion.");
       setDeleteConfirmId(null);
     } else {
       setDeleteConfirmId(id);

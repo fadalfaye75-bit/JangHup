@@ -31,12 +31,6 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
   }, [user.classLevel]);
 
   const fetchSchedules = async () => {
-    // Note: App.tsx handles filtering, but here we can refetch if needed.
-    // For simplicity, we rely on App passing strict data, but this component fetches its own initially?
-    // In current architecture, App fetches everything.
-    // Actually, App passed 'user' but this component fetches its own data in useEffect.
-    // We need to fix this component to respect the passed user/props or handle Admin view.
-    
     let query = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
     
     if (user.role !== UserRole.ADMIN) {
@@ -62,7 +56,10 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
     if (e.target.files && e.target.files[0]) {
       setIsUploading(true);
       const file = e.target.files[0];
-      const fileName = `${user.classLevel}/${Date.now()}_${file.name}`;
+      
+      // Sanitization du nom de fichier pour éviter les erreurs Supabase Storage
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
       
       try {
           // Upload file
@@ -85,9 +82,10 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
           if (dbError) throw dbError;
 
           fetchSchedules();
-      } catch (error) {
+      } catch (error: any) {
           console.error("Upload failed", error);
-          alert("Erreur d'upload");
+          const errorMsg = error.message || "Erreur inconnue";
+          alert(`Erreur lors de l'envoi : ${errorMsg}`);
       } finally {
           setIsUploading(false);
       }
@@ -96,8 +94,12 @@ export const Schedule: React.FC<ScheduleProps> = ({ user }) => {
 
   const handleDelete = async (id: string) => {
     if (deleteConfirmId === id) {
-      await supabase.from('schedules').delete().eq('id', id);
-      setSchedules(schedules.filter(s => s.id !== id));
+      const { error } = await supabase.from('schedules').delete().eq('id', id);
+      if (error) {
+          alert("Erreur lors de la suppression");
+      } else {
+          setSchedules(schedules.filter(s => s.id !== id));
+      }
       setDeleteConfirmId(null);
     } else {
       setDeleteConfirmId(id);
