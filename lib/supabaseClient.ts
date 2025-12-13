@@ -17,16 +17,24 @@ const getEnv = (key: string) => {
 
 // Récupération des clés. 
 // IMPORTANT: Vous devez configurer ces variables dans votre fichier .env ou sur Vercel/Netlify.
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('REACT_APP_SUPABASE_URL');
-const supabaseKey = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('REACT_APP_SUPABASE_ANON_KEY');
+const envUrl = getEnv('VITE_SUPABASE_URL') || getEnv('REACT_APP_SUPABASE_URL');
+const envKey = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('REACT_APP_SUPABASE_ANON_KEY');
+
+// Clés de secours fournies par l'utilisateur
+const fallbackUrl = 'https://derbemxykhirylcmogtb.supabase.co';
+const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlcmJlbXh5a2hpcnlsY21vZ3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1NjIwOTEsImV4cCI6MjA4MTEzODA5MX0.j96J7l_E9rpoOjxnzv62FxxzAjHP_SV6D6_IBb0GoeQ';
+
+const supabaseUrl = envUrl || fallbackUrl;
+const supabaseKey = envKey || fallbackKey;
 
 if (!supabaseUrl || !supabaseKey) {
   console.warn("⚠️ ATTENTION: Les clés Supabase ne sont pas détectées. Vérifiez votre fichier .env");
+} else {
+  console.log("JàngHub: Connexion Supabase initialisée.");
 }
 
-// Création du client. Si les clés sont absentes, on utilise des valeurs factices pour éviter le crash immédiat au chargement,
-// mais les appels API échoueront logiquement.
+// Création du client
 export const supabase = createClient(
-  supabaseUrl || 'https://votre-projet.supabase.co', 
-  supabaseKey || 'votre-cle-publique'
+  supabaseUrl, 
+  supabaseKey
 );

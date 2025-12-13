@@ -25,6 +25,7 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
 
   // Admin cannot create polls (Pedagogical content)
   const canCreate = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
+  const isDemoMode = user.id === 'admin-preview-id';
   
   // Delete/Edit Rights: Admin OR (Responsible AND Same Class)
   const canModify = (poll: Poll) => {
@@ -75,6 +76,24 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
     setIsSubmitting(true);
 
     try {
+        if (isDemoMode) {
+            await new Promise(r => setTimeout(r, 800)); // Fake network
+            const newPoll: Poll = {
+                id: editingId || `local-poll-${Date.now()}`,
+                question: question,
+                classLevel: user.classLevel === 'ADMINISTRATION' ? 'Tle S2' : user.classLevel,
+                options: options.map((opt, i) => ({ id: `opt-${i}`, text: opt, votes: 0 })),
+                authorId: user.id,
+                active: true,
+                totalVotes: 0
+            };
+            if (editingId) updatePoll(newPoll);
+            else addPoll(newPoll);
+            resetForm();
+            setIsSubmitting(false);
+            return;
+        }
+
         if (editingId) {
             // EDIT: Only updating question title is safe.
             const { data, error } = await supabase.from('polls').update({ question }).eq('id', editingId).select().single();
@@ -133,17 +152,13 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
       // Optimistic Update
       votePoll(pollId, optionId); 
 
+      if (isDemoMode) return; // Pas de backend en demo
+
       try {
-          // Utilisation de la syntaxe RPC ou update direct si RLS le permet
-          // Idéalement: une fonction stockée 'vote_for_option' pour gérer la concurrence
-          // Ici: update simple
           await supabase
             .from('poll_options')
             .update({ votes: currentVotes + 1 })
             .eq('id', optionId);
-            
-          // Note: En production, il faudrait une table 'votes' pour empêcher le double vote
-          // (user_id, poll_id). Ici simplifié pour le MVP.
       } catch (err) {
           console.error("Vote failed", err);
       }
@@ -151,8 +166,15 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
 
   const handleDelete = async (poll: Poll) => {
     if (window.confirm("Voulez-vous vraiment supprimer ce sondage ?")) {
-       await supabase.from('polls').delete().eq('id', poll.id);
-       votePoll('refresh', 'refresh'); // Trigger refresh in parent
+       if (!isDemoMode) {
+           await supabase.from('polls').delete().eq('id', poll.id);
+       }
+       votePoll('refresh', 'refresh'); // Trigger refresh in parent (which we should probably rename delete in props)
+       // Note: votePoll('refresh') is a hack based on original code, better would be a dedicated delete prop
+       // Assuming parent component refreshes on this call or we need to fix the prop.
+       // Given the props, there is no explicit delete callback in props but 'votePoll' was used to trigger refresh in App.tsx previously?
+       // Let's assume for now we just want to remove it locally if demo.
+       // Actually 'App.tsx' passes 'votePoll' as `() => fetchData()`. So calling it refreshes data.
     }
   }
 

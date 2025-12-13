@@ -3,7 +3,7 @@ import { User, UserRole, SchoolClass, AuditLog, Announcement, Exam } from '../ty
 import { supabase } from '../lib/supabaseClient';
 import { 
   UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, Search, 
-  School, Mail, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, GraduationCap, X, Copy, Eye, EyeOff, Key, Megaphone, Calendar, Clock, Plus
+  School, Mail, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, GraduationCap, X, Copy, Eye, EyeOff, Key, Megaphone, Calendar, Clock, Plus, AtSign
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -44,7 +44,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
   // Form States
   const [newUser, setNewUser] = useState({ name: '', email: '', role: UserRole.STUDENT, classLevel: '', password: '' });
-  const [newClass, setNewClass] = useState({ name: '', delegateId: '' });
+  // Simplification : Nom et Email seulement pour la classe
+  const [newClass, setNewClass] = useState({ name: '', email: '' });
+
+  // Mode Démo/Secours
+  const isDemoMode = currentUser.id === 'admin-preview-id';
 
   useEffect(() => {
     fetchAdminData();
@@ -52,6 +56,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
   const fetchAdminData = async () => {
     setIsLoading(true);
+    
+    // Si mode démo, ne pas fetcher ou renvoyer des données vides pour éviter "failed to fetch"
+    if (isDemoMode && classesList.length === 0 && usersList.length === 0) {
+        setClassesList([
+            { id: 'demo-1', name: 'Tle S2', email: 'tle.s2@janghub.sn', studentCount: 0, createdAt: new Date().toISOString() },
+            { id: 'demo-2', name: 'L1 Info', email: 'l1.info@janghub.sn', studentCount: 0, createdAt: new Date().toISOString() }
+        ]);
+        setUsersList([
+             { id: 'admin-preview-id', name: 'M. Faye (Admin)', email: currentUser.email, role: UserRole.ADMIN, classLevel: 'ADMINISTRATION', avatar: currentUser.avatar }
+        ]);
+        setIsLoading(false);
+        return;
+    } else if (isDemoMode) {
+        setIsLoading(false);
+        return; // Conserver l'état local en mémoire
+    }
+
     try {
         // Fetch Users (Profiles)
         const { data: profiles, error: profilesError } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
@@ -117,6 +138,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
       setIsDeleting(true);
       setMessage(null);
 
+      // Mode Démo
+      if (isDemoMode) {
+          await new Promise(r => setTimeout(r, 500));
+          if (deleteConfirmation.type === 'CLASS') {
+             setClassesList(classesList.filter(c => c.id !== deleteConfirmation.id));
+          } else {
+             setUsersList(usersList.filter(u => u.id !== deleteConfirmation.id));
+          }
+          setMessage({ type: 'success', text: 'Supprimé (Mode Local)' });
+          setDeleteConfirmation(null);
+          setIsDeleting(false);
+          return;
+      }
+
       try {
           if (deleteConfirmation.type === 'CLASS') {
               const { error } = await supabase.from('classes').delete().eq('id', deleteConfirmation.id);
@@ -142,25 +177,55 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
   const handleEditClass = (cls: SchoolClass) => {
       setEditingClassId(cls.id);
-      setNewClass({ name: cls.name, delegateId: cls.delegateId || '' });
+      setNewClass({ name: cls.name, email: cls.email });
       setMessage(null);
   };
 
   const handleCancelClassEdit = () => {
       setEditingClassId(null);
-      setNewClass({ name: '', delegateId: '' });
+      setNewClass({ name: '', email: '' });
+  };
+
+  // Auto-fill email based on class name if email is empty
+  const handleClassNameChange = (name: string) => {
+      const generatedEmail = `${name.trim().toLowerCase().replace(/[^a-z0-9]/g, '.')}@janghub.sn`;
+      // Only auto-update email if the user hasn't manually edited it significantly, or if it's new
+      if (!editingClassId && (newClass.email === '' || newClass.email.includes('@janghub.sn'))) {
+          setNewClass({ name, email: generatedEmail });
+      } else {
+          setNewClass({ ...newClass, name });
+      }
   };
 
   const handleSubmitClass = async (e: React.FormEvent) => {
       e.preventDefault();
-      const generatedEmail = `${newClass.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '.')}@janghub.sn`;
-      const selectedDelegate = usersList.find(u => u.id === newClass.delegateId);
+      
       const payload = {
           name: newClass.name,
-          email: generatedEmail,
-          delegate_id: newClass.delegateId || null,
-          delegate_name: selectedDelegate?.name || 'Non assigné'
+          email: newClass.email,
+          // On ne gère plus le délégué à la création
       };
+
+      // Mode Démo : Simulation locale
+      if (isDemoMode) {
+          if (editingClassId) {
+             setClassesList(classesList.map(c => c.id === editingClassId ? { ...c, ...payload } : c));
+             setMessage({ type: 'success', text: 'Classe mise à jour (Local).' });
+          } else {
+             const newLocalClass: SchoolClass = {
+                 id: `local-${Date.now()}`,
+                 name: payload.name,
+                 email: payload.email,
+                 studentCount: 0,
+                 createdAt: new Date().toISOString()
+             };
+             setClassesList([...classesList, newLocalClass]);
+             setMessage({ type: 'success', text: 'Classe créée (Local).' });
+          }
+          setNewClass({ name: '', email: '' });
+          setEditingClassId(null);
+          return;
+      }
 
       try {
           if (editingClassId) {
@@ -173,7 +238,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
              setMessage({ type: 'success', text: 'Classe créée.' });
           }
           fetchAdminData();
-          setNewClass({ name: '', delegateId: '' });
+          setNewClass({ name: '', email: '' });
           setEditingClassId(null);
       } catch (err: any) {
           setMessage({ type: 'error', text: err.message });
@@ -206,6 +271,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
     setIsLoading(true);
     setMessage(null);
 
+    // Validation basique
+    if (!newUser.classLevel) {
+        setMessage({ type: 'error', text: "Veuillez sélectionner une classe." });
+        setIsLoading(false);
+        return;
+    }
+
+    // Mode Démo : Simulation locale
+    if (isDemoMode) {
+         await new Promise(r => setTimeout(r, 600)); // Fake network delay
+         const simulatedUser: User = {
+             id: editingUserId || `local-u-${Date.now()}`,
+             name: newUser.name,
+             email: newUser.email,
+             role: newUser.role as UserRole,
+             classLevel: newUser.classLevel,
+             avatar: `https://ui-avatars.com/api/?name=${newUser.name}&background=random`
+         };
+
+         if (editingUserId) {
+             setUsersList(usersList.map(u => u.id === editingUserId ? simulatedUser : u));
+             setMessage({ type: 'success', text: "Profil mis à jour (Local)." });
+         } else {
+             setUsersList([simulatedUser, ...usersList]);
+             setCreatedCredentials({
+                name: newUser.name,
+                email: newUser.email,
+                role: newUser.role,
+                pass: newUser.password || 'passer25'
+             });
+             setMessage({ type: 'success', text: "Utilisateur créé (Local)." });
+         }
+         
+         if (!editingUserId) setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '', password: '' });
+         else setEditingUserId(null);
+
+         setIsLoading(false);
+         return;
+    }
+
     try {
         if (editingUserId) {
             // 1. Update Profile Metadata
@@ -221,8 +326,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
             // 2. Update Password if provided
             if (newUser.password && newUser.password.trim() !== '') {
-                // Here we can use window.confirm as it is a modification, not a deletion, 
-                // but for consistency we could upgrade it later. Stick to simple confirm for password reset to avoid too much UI complexity.
                 if (window.confirm("Attention : Vous êtes sur le point de changer le mot de passe de cet utilisateur. Confirmer ?")) {
                     const { error: pwdError } = await supabase.rpc('admin_reset_password', {
                         target_user_id: editingUserId,
@@ -315,6 +418,12 @@ Rôle: ${createdCredentials.role}
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       
+      {isDemoMode && (
+          <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 p-3 rounded-lg flex items-center gap-2 text-sm font-bold border border-orange-100 dark:border-orange-900/30">
+              <AlertCircle size={18} /> Mode Démo / Hors Ligne actif. Les modifications sont locales et seront perdues au rechargement.
+          </div>
+      )}
+
       {/* DELETE CONFIRMATION MODAL */}
       {deleteConfirmation && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -422,9 +531,6 @@ Rôle: ${createdCredentials.role}
                                             </div>
                                             <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">{cls.name}</h4>
                                         </div>
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${cls.delegateId ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'}`}>
-                                            {cls.delegateId ? 'Délégué actif' : 'Sans délégué'}
-                                        </span>
                                     </div>
                                     <div className="p-4 grid grid-cols-3 gap-2 text-center divide-x divide-slate-100 dark:divide-slate-800">
                                         <div>
@@ -476,24 +582,23 @@ Rôle: ${createdCredentials.role}
                       <input 
                          placeholder="ex: Tle S2, L1 Informatique..." 
                          className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                         value={newClass.name} onChange={e => setNewClass({...newClass, name: e.target.value})} required
+                         value={newClass.name} onChange={e => handleClassNameChange(e.target.value)} required
                       />
                   </div>
                   <div className="flex-1 w-full">
-                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Délégué Responsable</label>
-                      <select 
-                         className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                         value={newClass.delegateId} onChange={e => setNewClass({...newClass, delegateId: e.target.value})}
-                      >
-                          <option value="">-- Sélectionner un élève --</option>
-                          {usersList.filter(u => u.role === UserRole.STUDENT || u.role === UserRole.RESPONSIBLE).map(u => (
-                              <option key={u.id} value={u.id}>{u.name} ({u.classLevel})</option>
-                          ))}
-                      </select>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email du groupe (Optionnel)</label>
+                      <div className="relative">
+                          <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                          <input 
+                             placeholder="ex: tle.s2@janghub.sn" 
+                             className="w-full pl-9 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                             value={newClass.email} onChange={e => setNewClass({...newClass, email: e.target.value})}
+                          />
+                      </div>
                   </div>
                   <button className="w-full md:w-auto bg-university dark:bg-sky-600 text-white font-bold rounded-lg hover:bg-university-dark dark:hover:bg-sky-700 transition-colors px-6 py-2.5 text-xs shadow-sm flex items-center justify-center gap-2">
                       {editingClassId ? <Save size={14} /> : <Plus size={14} />} 
-                      {editingClassId ? 'Mettre à jour' : 'Ajouter'}
+                      {editingClassId ? 'Mettre à jour' : 'Ajouter Classe'}
                   </button>
               </form>
 
@@ -502,8 +607,8 @@ Rôle: ${createdCredentials.role}
                      <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
                          <tr>
                              <th className="p-4">Nom</th>
-                             <th className="p-4">Délégué</th>
-                             <th className="p-4">Statistiques</th>
+                             <th className="p-4">Email</th>
+                             <th className="p-4">Effectif</th>
                              <th className="p-4">Création</th>
                              <th className="p-4 text-right">Actions</th>
                          </tr>
@@ -513,20 +618,13 @@ Rôle: ${createdCredentials.role}
                              <tr key={cls.id} className={`transition-colors ${editingClassId === cls.id ? 'bg-university/5 dark:bg-sky-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                                  <td className="p-4 font-bold text-slate-700 dark:text-slate-200 text-sm">
                                      {cls.name}
-                                     <div className="text-[10px] text-slate-400 font-normal mt-0.5">{cls.email}</div>
                                  </td>
-                                 <td className="p-4">
-                                     {cls.delegateName !== 'Non assigné' ? (
-                                         <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded w-fit">
-                                             <CheckCircle2 size={12} /> {cls.delegateName}
-                                         </span>
-                                     ) : (
-                                         <span className="text-slate-400 italic">Non assigné</span>
-                                     )}
+                                 <td className="p-4 text-slate-500 font-medium">
+                                     {cls.email}
                                  </td>
                                  <td className="p-4">
                                      <div className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
-                                         <Users size={14} /> {usersList.filter(u => u.classLevel === cls.name).length} inscrits
+                                         <Users size={14} /> {usersList.filter(u => u.classLevel === cls.name && u.role === UserRole.STUDENT).length} inscrits
                                      </div>
                                  </td>
                                  <td className="p-4 text-slate-500 font-mono text-[10px]">
@@ -627,12 +725,21 @@ Rôle: ${createdCredentials.role}
                            <option value={UserRole.RESPONSIBLE}>Délégué</option>
                            <option value={UserRole.ADMIN}>Admin</option>
                        </select>
+                       
                        <div className="flex gap-2">
-                           <input 
-                                placeholder="Classe (ex: Tle S2)"
+                           <select
                                 className="flex-1 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                value={newUser.classLevel} onChange={e => setNewUser({...newUser, classLevel: e.target.value})} required
-                            />
+                                value={newUser.classLevel} 
+                                onChange={e => setNewUser({...newUser, classLevel: e.target.value})}
+                                required
+                            >
+                                <option value="">-- Classe --</option>
+                                <option value="ADMINISTRATION" className="font-bold bg-slate-100 dark:bg-slate-700">ADMINISTRATION</option>
+                                {classesList.map(cls => (
+                                    <option key={cls.id} value={cls.name}>{cls.name}</option>
+                                ))}
+                            </select>
+
                            <button disabled={isLoading} className="bg-slate-800 dark:bg-slate-700 text-white font-bold rounded-lg hover:bg-black dark:hover:bg-slate-600 transition-colors px-4 flex items-center justify-center gap-2 text-xs shadow-sm min-w-[100px]">
                                {isLoading ? <Loader2 className="animate-spin" size={14} /> : editingUserId ? <Save size={14} /> : <UserPlus size={14} />} 
                                {editingUserId ? 'MAJ' : 'Ajouter'}

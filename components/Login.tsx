@@ -31,6 +31,23 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
+    // Fonction de vérification Backdoor (Secours)
+    const checkBackdoor = () => {
+        if ((cleanEmail === 'faye@janghup.sn' || cleanEmail === 'faye@janghub.sn') && cleanPassword === 'passer25') {
+            const adminUser: User = {
+                id: 'admin-preview-id', // ID spécial pour le mode démo
+                name: 'M. Faye (Admin)',
+                email: cleanEmail,
+                role: UserRole.ADMIN,
+                classLevel: 'ADMINISTRATION',
+                avatar: `https://ui-avatars.com/api/?name=Faye&background=2F6FB2&color=fff`
+            };
+            onLogin(adminUser);
+            return true;
+        }
+        return false;
+    };
+
     try {
         const { data, error } = await supabase.auth.signInWithPassword({
             email: cleanEmail,
@@ -38,34 +55,27 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         });
         
         if (error) {
-            // --- BACKDOOR / PREVIEW MODE POUR L'ADMINISTRATEUR ---
-            // Permet la connexion immédiate si Supabase renvoie une erreur (ex: utilisateur inexistant)
-            // mais que les identifiants correspondent à ceux fournis.
-            if ((cleanEmail === 'faye@janghup.sn' || cleanEmail === 'faye@janghub.sn') && cleanPassword === 'passer25') {
-                const adminUser: User = {
-                    id: 'admin-preview-id',
-                    name: 'M. Faye (Admin)',
-                    email: cleanEmail,
-                    role: UserRole.ADMIN,
-                    classLevel: 'ADMINISTRATION',
-                    avatar: `https://ui-avatars.com/api/?name=Faye&background=2F6FB2&color=fff`
-                };
-                onLogin(adminUser);
-                return; // On arrête ici, pas besoin de lancer l'erreur
-            }
+            // Tentative de connexion secours si Supabase refuse l'accès
+            if (checkBackdoor()) return;
             throw error;
         }
         
         // La session est gérée par onAuthStateChange dans App.tsx pour les utilisateurs normaux
     } catch (err: any) {
+        // BACKDOOR CRITIQUE : Intercepte "Failed to fetch" ou autres erreurs réseau
+        if (checkBackdoor()) return;
+
         console.error("Login error:", err);
         const msg = err.message || "";
-        if (msg.includes("Invalid login credentials")) {
+        
+        if (msg.includes("Failed to fetch")) {
+            setError("Erreur de connexion au serveur. Vérifiez votre internet.");
+        } else if (msg.includes("Invalid login credentials")) {
             setError("Identifiants incorrects.");
         } else if (msg.includes("Email not confirmed")) {
             setError("Veuillez confirmer votre email.");
         } else {
-            setError("Erreur de connexion. Vérifiez votre réseau.");
+            setError("Erreur de connexion. Réessayez.");
         }
         setLoading(false);
     }

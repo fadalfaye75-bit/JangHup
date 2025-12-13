@@ -95,8 +95,13 @@ function App() {
 
   const fetchUserProfile = async (userId: string, email: string) => {
     try {
+        // En mode offline/backdoor, on ignore le fetch Supabase
+        if (userId === 'admin-preview-id') {
+            setLoading(false);
+            return;
+        }
+
         const normalizedEmail = email.toLowerCase().trim();
-        // Vérification du compte administrateur spécifique demandé
         const isAdminEmail = normalizedEmail === 'faye@janghup.sn' || normalizedEmail === 'faye@janghub.sn';
 
         const { data, error } = await supabase
@@ -170,6 +175,9 @@ function App() {
   const fetchData = async () => {
     if (!user) return;
     
+    // Si c'est l'admin démo/offline, on ne fetch pas les données pour éviter les erreurs
+    if (user.id === 'admin-preview-id') return;
+
     try {
         const annQuery = supabase.from('announcements').select('*').order('date', { ascending: false });
         const examQuery = supabase.from('exams').select('*').order('date', { ascending: true });

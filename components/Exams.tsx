@@ -27,6 +27,7 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
   const [notes, setNotes] = useState('');
 
   const canCreate = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
+  const isDemoMode = user.id === 'admin-preview-id';
   
   const canModify = (exam: Exam) => {
       if (user.role === UserRole.ADMIN) return true;
@@ -68,13 +69,19 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
         };
 
         let data, error;
-        if (editingId) {
-            const res = await supabase.from('exams').update(payload).eq('id', editingId).select().single();
-            data = res.data; error = res.error;
+        
+        if (isDemoMode) {
+             data = { ...payload, id: editingId || `local-exam-${Date.now()}` };
         } else {
-            const res = await supabase.from('exams').insert(payload).select().single();
-            data = res.data; error = res.error;
+            if (editingId) {
+                const res = await supabase.from('exams').update(payload).eq('id', editingId).select().single();
+                data = res.data; error = res.error;
+            } else {
+                const res = await supabase.from('exams').insert(payload).select().single();
+                data = res.data; error = res.error;
+            }
         }
+        
         if (error) throw error;
         const formattedExam: Exam = {
             id: data.id,
@@ -96,8 +103,14 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cet examen ?")) {
-      const { error } = await supabase.from('exams').delete().eq('id', id);
-      if (!error) deleteExam(id);
+      if (!isDemoMode) {
+          const { error } = await supabase.from('exams').delete().eq('id', id);
+          if (error) {
+              alert("Erreur lors de la suppression");
+              return;
+          }
+      }
+      deleteExam(id);
     }
   };
 

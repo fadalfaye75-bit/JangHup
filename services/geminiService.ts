@@ -1,12 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 
 const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Initialisation sécurisée
+let ai: GoogleGenAI | null = null;
+if (apiKey) {
+    ai = new GoogleGenAI({ apiKey });
+}
 
 /**
  * Rédige une annonce complète basée sur des mots-clés ou un brouillon.
  */
 export const generateAnnouncement = async (draft: string, role: string): Promise<string> => {
+    if (!ai) {
+        console.warn("API Key manquante pour Gemini, retour du brouillon.");
+        return draft;
+    }
+
     try {
         const prompt = `
         Agis comme un expert en communication pour l'université JàngHub.
@@ -33,7 +42,8 @@ export const generateAnnouncement = async (draft: string, role: string): Promise
         return response.text?.trim() || draft;
     } catch (error) {
         console.error("Error calling Gemini API for Announcement:", error);
-        throw new Error("Impossible de rédiger l'annonce pour le moment.");
+        // Fallback gracieux : on retourne le brouillon original
+        return draft; 
     }
 };
 
@@ -41,6 +51,8 @@ export const generateAnnouncement = async (draft: string, role: string): Promise
  * Reformule une question de sondage pour qu'elle soit plus pertinente.
  */
 export const reformulatePollQuestion = async (draftQuestion: string): Promise<string> => {
+    if (!ai) return draftQuestion;
+
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
