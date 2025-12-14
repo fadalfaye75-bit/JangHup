@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import { Loader2, ArrowRight, Mail, Lock, AlertCircle, Eye, EyeOff, KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 interface LoginProps {
@@ -31,41 +31,28 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Fonction de vérification Backdoor (Secours)
-    const checkBackdoor = () => {
-        if ((cleanEmail === 'faye@janghup.sn' || cleanEmail === 'faye@janghub.sn') && cleanPassword === 'passer25') {
-            const adminUser: User = {
-                id: 'admin-preview-id', // ID spécial pour le mode démo
-                name: 'M. Faye (Admin)',
-                email: cleanEmail,
-                role: UserRole.ADMIN,
-                classLevel: 'ADMINISTRATION',
-                avatar: `https://ui-avatars.com/api/?name=Faye&background=2F6FB2&color=fff`
-            };
-            onLogin(adminUser);
-            return true;
-        }
-        return false;
-    };
-
     try {
+        // CONNEXION SUPABASE
         const { data, error } = await supabase.auth.signInWithPassword({
             email: cleanEmail,
             password: cleanPassword,
         });
         
         if (error) {
-            // Tentative de connexion secours si Supabase refuse l'accès
-            if (checkBackdoor()) return;
             throw error;
         }
         
-        // La session est gérée par onAuthStateChange dans App.tsx pour les utilisateurs normaux
-    } catch (err: any) {
-        // BACKDOOR CRITIQUE : Intercepte "Failed to fetch" ou autres erreurs réseau
-        if (checkBackdoor()) return;
+        // Si succès, on attend que le listener onAuthStateChange dans App.tsx fasse la redirection.
+        // Si rien ne se passe au bout de 2 secondes, c'est suspect (problème réseau ou fetchUserProfile).
+        setTimeout(() => {
+           if (loading) {
+              // On force un état "fini" si le composant n'est pas démonté
+              setLoading(false); 
+           }
+        }, 3000);
 
-        console.error("Login error:", err);
+    } catch (err: any) {
+        console.error("Auth error:", err);
         const msg = err.message || "";
         
         if (msg.includes("Failed to fetch")) {
@@ -75,7 +62,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         } else if (msg.includes("Email not confirmed")) {
             setError("Veuillez confirmer votre email.");
         } else {
-            setError("Erreur de connexion. Réessayez.");
+            setError(msg || "Erreur de connexion. Réessayez.");
         }
         setLoading(false);
     }
@@ -89,7 +76,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       try {
           const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-              redirectTo: window.location.origin, // Redirige vers le site pour changer le mdp
+              redirectTo: window.location.origin,
           });
 
           if (error) throw error;
@@ -129,10 +116,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="p-8 pt-6">
             {view === 'LOGIN' ? (
                 <>
+                <div className="text-center mb-6">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Connexion</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Accédez à votre espace académique</p>
+                </div>
+
                 <form onSubmit={handleAuth} className="space-y-5 animate-in slide-in-from-right-4 duration-300">
                     {error && (
-                        <div className="bg-alert-light dark:bg-alert/10 border border-alert/20 text-alert-text dark:text-alert p-3 rounded-lg text-sm flex items-start gap-2 font-medium">
-                            <AlertCircle size={16} className="mt-0.5 shrink-0" /> 
+                        <div className={`border p-3 rounded-lg text-sm flex items-start gap-2 font-medium ${error.includes('créé') ? 'bg-success-light dark:bg-success/10 border-success/20 text-success' : 'bg-alert-light dark:bg-alert/10 border-alert/20 text-alert-text dark:text-alert'}`}>
+                            {error.includes('créé') ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
                             <span>{error}</span>
                         </div>
                     )}
@@ -196,7 +188,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         disabled={loading}
                         className="w-full py-3 bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white rounded-lg font-bold shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-70"
                     >
-                        {loading ? <Loader2 className="animate-spin" size={18} /> : "Connexion"}
+                        {loading ? <Loader2 className="animate-spin" size={18} /> : "Se connecter"}
                         {!loading && <ArrowRight size={18} />}
                     </button>
                 </form>

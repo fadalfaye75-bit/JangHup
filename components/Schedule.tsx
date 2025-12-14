@@ -3,7 +3,7 @@ import { User, UserRole, ScheduleItem } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { 
   FileSpreadsheet, Upload, Download, Eye, Clock, Trash2, 
-  History, X, Share2, AlertOctagon, Loader2, Users
+  History, X, Share2, Loader2, Users
 } from 'lucide-react';
 
 interface ScheduleProps {
@@ -18,7 +18,6 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
   const [isUploading, setIsUploading] = useState(false);
 
   const canEdit = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
-  const isDemoMode = user.id === 'admin-preview-id';
 
   const canDelete = (item: ScheduleItem) => {
       if (user.role === UserRole.ADMIN) return true;
@@ -31,24 +30,6 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
       setIsUploading(true);
       const file = e.target.files[0];
       
-      // Simulation pour le mode Demo/Secours
-      if (isDemoMode) {
-          await new Promise(r => setTimeout(r, 1000)); // Fake delay
-          const newItem: ScheduleItem = {
-              id: `local-sched-${Date.now()}`,
-              title: file.name.replace('.xlsx', ''),
-              classLevel: user.classLevel === 'ADMINISTRATION' ? 'Tle S2' : user.classLevel, // Fake class assign
-              semester: 'Semestre 2',
-              url: '#', // Lien factice
-              uploadedAt: new Date().toISOString(),
-              version: 1
-          };
-          addSchedule(newItem);
-          setIsUploading(false);
-          alert("Fichier ajouté en mode simulation (local).");
-          return;
-      }
-
       const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
       
@@ -91,10 +72,6 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce planning ?")) {
-      if (isDemoMode) {
-          deleteSchedule(id);
-          return;
-      }
       const { error } = await supabase.from('schedules').delete().eq('id', id);
       if (!error) deleteSchedule(id);
     }

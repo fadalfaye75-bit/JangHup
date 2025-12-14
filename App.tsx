@@ -74,6 +74,7 @@ function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
+          // On ne recharge le profil que si l'utilisateur change ou s'il n'est pas encore chargé
           if (!user || user.id !== session.user.id) {
             fetchUserProfile(session.user.id, session.user.email || '');
           }
@@ -95,30 +96,24 @@ function App() {
 
   const fetchUserProfile = async (userId: string, email: string) => {
     try {
-        // En mode offline/backdoor, on ignore le fetch Supabase
-        if (userId === 'admin-preview-id') {
-            setLoading(false);
-            return;
-        }
-
         const normalizedEmail = email.toLowerCase().trim();
-        const isAdminEmail = normalizedEmail === 'faye@janghup.sn' || normalizedEmail === 'faye@janghub.sn';
+        const isAdminEmail = normalizedEmail === 'faye@janghub.sn';
 
+        // 1. Tentative de récupération du profil
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
-            .single();
+            .maybeSingle(); // Utilise maybeSingle pour éviter l'erreur si vide
 
-        if (error || !data) {
-             console.warn("Profil introuvable, tentative de création automatique...", error);
+        // 2. Logique de réparation (Self-Healing)
+        if (!data) {
+             console.warn("Profil introuvable, création automatique...");
              
-             // LOGIQUE D'AUTO-GUÉRISON (SELF-HEALING) AVEC GESTION ADMIN
              const newProfile = {
                  id: userId,
                  email: email,
                  full_name: email.split('@')[0], 
-                 // Force le rôle ADMIN si c'est l'email spécifié
                  role: isAdminEmail ? 'ADMIN' : 'STUDENT', 
                  class_level: isAdminEmail ? 'ADMINISTRATION' : 'Non assigné',
                  avatar_url: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`
@@ -136,20 +131,19 @@ function App() {
                     avatar: newProfile.avatar_url
                  });
              } else {
-                 console.error("Échec de la création automatique du profil", insertError);
-                 // Fallback ultime
+                 console.error("Échec création profil", insertError);
+                 // Si on ne peut pas créer le profil, on utilise les données de session temporairement pour ne pas bloquer
                  setUser({
                     id: userId,
                     name: email.split('@')[0],
                     email: email,
                     role: isAdminEmail ? UserRole.ADMIN : UserRole.STUDENT,
                     classLevel: 'Non assigné',
-                    avatar: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`
-                });
+                    avatar: `https://ui-avatars.com/api/?name=${email}&background=random`
+                 });
              }
         } else {
-            // Profil trouvé normalement
-            // CORRECTION AUTOMATIQUE: Si c'est l'admin Faye mais qu'il n'a pas le rôle en DB, on corrige.
+            // 3. Vérification et correction du rôle Admin si nécessaire
             if (isAdminEmail && data.role !== 'ADMIN') {
                 await supabase.from('profiles').update({ role: 'ADMIN', class_level: 'ADMINISTRATION' }).eq('id', userId);
                 data.role = 'ADMIN';
@@ -167,6 +161,17 @@ function App() {
         }
     } catch (e) {
         console.error("Critical error fetching profile", e);
+        // Fallback ultime pour ne jamais bloquer l'admin
+        if (email === 'faye@janghub.sn') {
+             setUser({
+                id: userId,
+                name: 'Admin Faye',
+                email: email,
+                role: UserRole.ADMIN,
+                classLevel: 'ADMINISTRATION',
+                avatar: ''
+             });
+        }
     } finally {
         setLoading(false);
     }
@@ -174,17 +179,12 @@ function App() {
 
   const fetchData = async () => {
     if (!user) return;
-    
-    // Si c'est l'admin démo/offline, on ne fetch pas les données pour éviter les erreurs
-    if (user.id === 'admin-preview-id') return;
 
     try {
         const annQuery = supabase.from('announcements').select('*').order('date', { ascending: false });
         const examQuery = supabase.from('exams').select('*').order('date', { ascending: true });
         const meetQuery = supabase.from('meetings').select('*').order('date', { ascending: true });
         const scheduleQuery = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
-        
-        // Pour les sondages, on récupère aussi les options
         const pollQuery = supabase.from('polls').select('*, poll_options(*)').order('created_at', { ascending: false });
 
         const [annResult, examResult, meetResult, pollResult, schedResult] = await Promise.all([
@@ -258,20 +258,14 @@ function App() {
     setUser(null);
   };
 
-  // --- Filtering Logic for Roles (Security & UX) ---
   const getFilteredData = <T extends { classLevel: string }>(data: T[]) => {
-      // 1. ADMIN : Accès total, filtré par l'interface de supervision
       if (user?.role === UserRole.ADMIN) {
           if (adminClassFilter === 'ALL') return data;
           return data.filter(item => item.classLevel === adminClassFilter);
       }
-      
-      // 2. RESPONSABLE & ÉTUDIANT : Accès strict à leur classe uniquement
-      // (Plus les items globaux si on en avait, mais ici classLevel est requis)
       return data.filter(item => item.classLevel === user?.classLevel);
   };
 
-  // Compute available classes for Admin filter based on current data
   const availableClasses = Array.from(new Set([
       ...announcements.map(a => a.classLevel),
       ...exams.map(e => e.classLevel),
@@ -323,7 +317,7 @@ function App() {
             announcements={getFilteredData(announcements)} 
             addAnnouncement={(a) => {
                 setAnnouncements([a, ...announcements]);
-                fetchData(); // Refresh to ensure sync
+                fetchData(); 
             }} 
             updateAnnouncement={(updated) => {
                 setAnnouncements(announcements.map(a => a.id === updated.id ? updated : a));
@@ -356,7 +350,7 @@ function App() {
             polls={getFilteredData(polls)} 
             addPoll={(p) => setPolls([...polls, p])}
             updatePoll={(updated) => setPolls(polls.map(p => p.id === updated.id ? updated : p))}
-            votePoll={() => fetchData()} // Reload to get latest votes
+            votePoll={() => fetchData()} 
         />
       )}
       {currentView === 'MEET' && (

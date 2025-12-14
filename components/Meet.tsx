@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Meeting, User, UserRole } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { 
-  Video, Plus, Calendar, Clock, Trash2, ExternalLink, X, Check, Link as LinkIcon, Copy, Share2, AlertOctagon, Users, Edit2
+  Video, Plus, Calendar, Clock, Trash2, ExternalLink, X, Check, Link as LinkIcon, Copy, Share2, Users, Edit2
 } from 'lucide-react';
 
 interface MeetProps {
@@ -26,7 +26,6 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
 
   // Admin and Responsible can create
   const canEdit = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
-  const isDemoMode = user.id === 'admin-preview-id';
   
   // Delete/Edit Rights: Admin OR (Responsible AND Same Class)
   const canModify = (meeting: Meeting) => {
@@ -65,18 +64,14 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
 
         let data, error;
         
-        if (isDemoMode) {
-             data = { ...payload, id: editingId || `local-meet-${Date.now()}` };
+        if (editingId) {
+            // Update
+            const res = await supabase.from('meetings').update(payload).eq('id', editingId).select().single();
+            data = res.data; error = res.error;
         } else {
-            if (editingId) {
-                // Update
-                const res = await supabase.from('meetings').update(payload).eq('id', editingId).select().single();
-                data = res.data; error = res.error;
-            } else {
-                // Insert
-                const res = await supabase.from('meetings').insert(payload).select().single();
-                data = res.data; error = res.error;
-            }
+            // Insert
+            const res = await supabase.from('meetings').insert(payload).select().single();
+            data = res.data; error = res.error;
         }
 
         if (error) throw error;
@@ -107,12 +102,10 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette réunion ?")) {
-      if (!isDemoMode) {
-          const { error } = await supabase.from('meetings').delete().eq('id', id);
-          if (error) {
-              alert("Impossible de supprimer cette réunion.");
-              return;
-          }
+      const { error } = await supabase.from('meetings').delete().eq('id', id);
+      if (error) {
+          alert("Impossible de supprimer cette réunion.");
+          return;
       }
       deleteMeeting(id);
     }

@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { generateAnnouncement } from '../services/geminiService';
 import { 
   MessageCircle, Link as LinkIcon, Image as ImageIcon, Trash2, Mail, Copy, 
-  Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertOctagon, Loader2, Users, School, Sparkles, PenTool, AlertCircle
+  Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertCircle, Loader2, School, PenTool
 } from 'lucide-react';
 
 interface AnnouncementsProps {
@@ -44,7 +44,6 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
 
   // Permissions
   const canCreate = user.role === UserRole.ADMIN || user.role === UserRole.RESPONSIBLE;
-  const isDemoMode = user.id === 'admin-preview-id';
 
   const hasRights = (ann: Announcement) => {
     // Admin has all rights
@@ -123,11 +122,6 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   };
 
   const uploadFileToSupabase = async (file: File, bucket: string) => {
-    // Simulation Demo
-    if (isDemoMode) {
-        return URL.createObjectURL(file); // Renvoie un lien local blob
-    }
-
     try {
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
@@ -199,17 +193,12 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
 
         let data, error;
         
-        if (isDemoMode) {
-             await new Promise(r => setTimeout(r, 800)); // Fake network
-             data = { ...payload, id: editingId || `local-ann-${Date.now()}` };
+        if (editingId) {
+            const res = await supabase.from('announcements').update(payload).eq('id', editingId).select().single();
+            data = res.data; error = res.error;
         } else {
-            if (editingId) {
-                const res = await supabase.from('announcements').update(payload).eq('id', editingId).select().single();
-                data = res.data; error = res.error;
-            } else {
-                const res = await supabase.from('announcements').insert(payload).select().single();
-                data = res.data; error = res.error;
-            }
+            const res = await supabase.from('announcements').insert(payload).select().single();
+            data = res.data; error = res.error;
         }
 
         if (error) throw error;
@@ -240,12 +229,10 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.")) {
-      if (!isDemoMode) {
-          const { error } = await supabase.from('announcements').delete().eq('id', id);
-          if (error) {
-              alert("Erreur lors de la suppression");
-              return;
-          }
+      const { error } = await supabase.from('announcements').delete().eq('id', id);
+      if (error) {
+          alert("Erreur lors de la suppression");
+          return;
       }
       deleteAnnouncement(id);
     }

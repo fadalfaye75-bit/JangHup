@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { User, UserRole, SchoolClass, AuditLog, Announcement, Exam } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { 
-  UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, Search, 
-  School, Mail, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, GraduationCap, X, Copy, Eye, EyeOff, Key, Megaphone, Calendar, Clock, Plus, AtSign
+  UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, 
+  School, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, X, Copy, Eye, EyeOff, Megaphone, Calendar, Plus, AtSign
 } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
 interface AdminPanelProps {
   currentUser: User;
@@ -21,7 +20,7 @@ interface AdminPanelProps {
 export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnouncements, allExams, globalStats }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'classes' | 'users' | 'logs'>('dashboard');
   
-  // Data States
+  // Data States - No Mocks
   const [usersList, setUsersList] = useState<User[]>([]);
   const [classesList, setClassesList] = useState<SchoolClass[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -44,11 +43,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
   // Form States
   const [newUser, setNewUser] = useState({ name: '', email: '', role: UserRole.STUDENT, classLevel: '', password: '' });
-  // Simplification : Nom et Email seulement pour la classe
   const [newClass, setNewClass] = useState({ name: '', email: '' });
-
-  // Mode Démo/Secours
-  const isDemoMode = currentUser.id === 'admin-preview-id';
 
   useEffect(() => {
     fetchAdminData();
@@ -57,22 +52,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
   const fetchAdminData = async () => {
     setIsLoading(true);
     
-    // Si mode démo, ne pas fetcher ou renvoyer des données vides pour éviter "failed to fetch"
-    if (isDemoMode && classesList.length === 0 && usersList.length === 0) {
-        setClassesList([
-            { id: 'demo-1', name: 'Tle S2', email: 'tle.s2@janghub.sn', studentCount: 0, createdAt: new Date().toISOString() },
-            { id: 'demo-2', name: 'L1 Info', email: 'l1.info@janghub.sn', studentCount: 0, createdAt: new Date().toISOString() }
-        ]);
-        setUsersList([
-             { id: 'admin-preview-id', name: 'M. Faye (Admin)', email: currentUser.email, role: UserRole.ADMIN, classLevel: 'ADMINISTRATION', avatar: currentUser.avatar }
-        ]);
-        setIsLoading(false);
-        return;
-    } else if (isDemoMode) {
-        setIsLoading(false);
-        return; // Conserver l'état local en mémoire
-    }
-
     try {
         // Fetch Users (Profiles)
         const { data: profiles, error: profilesError } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
@@ -138,20 +117,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
       setIsDeleting(true);
       setMessage(null);
 
-      // Mode Démo
-      if (isDemoMode) {
-          await new Promise(r => setTimeout(r, 500));
-          if (deleteConfirmation.type === 'CLASS') {
-             setClassesList(classesList.filter(c => c.id !== deleteConfirmation.id));
-          } else {
-             setUsersList(usersList.filter(u => u.id !== deleteConfirmation.id));
-          }
-          setMessage({ type: 'success', text: 'Supprimé (Mode Local)' });
-          setDeleteConfirmation(null);
-          setIsDeleting(false);
-          return;
-      }
-
       try {
           if (deleteConfirmation.type === 'CLASS') {
               const { error } = await supabase.from('classes').delete().eq('id', deleteConfirmation.id);
@@ -189,7 +154,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
   // Auto-fill email based on class name if email is empty
   const handleClassNameChange = (name: string) => {
       const generatedEmail = `${name.trim().toLowerCase().replace(/[^a-z0-9]/g, '.')}@janghub.sn`;
-      // Only auto-update email if the user hasn't manually edited it significantly, or if it's new
       if (!editingClassId && (newClass.email === '' || newClass.email.includes('@janghub.sn'))) {
           setNewClass({ name, email: generatedEmail });
       } else {
@@ -203,29 +167,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
       const payload = {
           name: newClass.name,
           email: newClass.email,
-          // On ne gère plus le délégué à la création
       };
-
-      // Mode Démo : Simulation locale
-      if (isDemoMode) {
-          if (editingClassId) {
-             setClassesList(classesList.map(c => c.id === editingClassId ? { ...c, ...payload } : c));
-             setMessage({ type: 'success', text: 'Classe mise à jour (Local).' });
-          } else {
-             const newLocalClass: SchoolClass = {
-                 id: `local-${Date.now()}`,
-                 name: payload.name,
-                 email: payload.email,
-                 studentCount: 0,
-                 createdAt: new Date().toISOString()
-             };
-             setClassesList([...classesList, newLocalClass]);
-             setMessage({ type: 'success', text: 'Classe créée (Local).' });
-          }
-          setNewClass({ name: '', email: '' });
-          setEditingClassId(null);
-          return;
-      }
 
       try {
           if (editingClassId) {
@@ -278,39 +220,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
         return;
     }
 
-    // Mode Démo : Simulation locale
-    if (isDemoMode) {
-         await new Promise(r => setTimeout(r, 600)); // Fake network delay
-         const simulatedUser: User = {
-             id: editingUserId || `local-u-${Date.now()}`,
-             name: newUser.name,
-             email: newUser.email,
-             role: newUser.role as UserRole,
-             classLevel: newUser.classLevel,
-             avatar: `https://ui-avatars.com/api/?name=${newUser.name}&background=random`
-         };
-
-         if (editingUserId) {
-             setUsersList(usersList.map(u => u.id === editingUserId ? simulatedUser : u));
-             setMessage({ type: 'success', text: "Profil mis à jour (Local)." });
-         } else {
-             setUsersList([simulatedUser, ...usersList]);
-             setCreatedCredentials({
-                name: newUser.name,
-                email: newUser.email,
-                role: newUser.role,
-                pass: newUser.password || 'passer25'
-             });
-             setMessage({ type: 'success', text: "Utilisateur créé (Local)." });
-         }
-         
-         if (!editingUserId) setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '', password: '' });
-         else setEditingUserId(null);
-
-         setIsLoading(false);
-         return;
-    }
-
     try {
         if (editingUserId) {
             // 1. Update Profile Metadata
@@ -324,7 +233,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
             let successText = "Profil mis à jour.";
 
-            // 2. Update Password if provided
+            // 2. Update Password if provided via RPC
             if (newUser.password && newUser.password.trim() !== '') {
                 if (window.confirm("Attention : Vous êtes sur le point de changer le mot de passe de cet utilisateur. Confirmer ?")) {
                     const { error: pwdError } = await supabase.rpc('admin_reset_password', {
@@ -343,7 +252,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
             setEditingUserId(null);
             fetchAdminData();
         } else {
-            // Create User via RPC
+            // Create User via RPC (Backend Function)
             const generatedPassword = newUser.password || 'passer25';
             
             const { data, error } = await supabase.rpc('create_user_with_profile', {
@@ -418,12 +327,6 @@ Rôle: ${createdCredentials.role}
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       
-      {isDemoMode && (
-          <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 p-3 rounded-lg flex items-center gap-2 text-sm font-bold border border-orange-100 dark:border-orange-900/30">
-              <AlertCircle size={18} /> Mode Démo / Hors Ligne actif. Les modifications sont locales et seront perdues au rechargement.
-          </div>
-      )}
-
       {/* DELETE CONFIRMATION MODAL */}
       {deleteConfirmation && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
