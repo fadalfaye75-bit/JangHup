@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Poll, User, UserRole } from '../types';
+import { Poll, User, UserRole, SchoolClass } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Plus, Check, X, Trash2, Users, Edit2, Loader2 } from 'lucide-react';
+import { Plus, Check, X, Trash2, Users, Edit2, Loader2, Copy, Share2 } from 'lucide-react';
 
 interface PollsProps {
   user: User;
@@ -10,14 +10,16 @@ interface PollsProps {
   updatePoll: (p: Poll) => void;
   deletePoll: (id: string) => void;
   votePoll: (pollId: string, optionId: string) => void;
+  classes: SchoolClass[];
 }
 
 const COLORS = ['#87CEEB', '#0ea5e9', '#0284c7', '#bae6fd'];
 
-export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, deletePoll, votePoll }) => {
+export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, deletePoll, votePoll, classes }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   
   // Changement ici : On stocke des objets {id, text} au lieu de simples strings pour tracker les IDs lors de l'édition
   const [options, setOptions] = useState<{id?: string, text: string}[]>([{text: ''}, {text: ''}]);
@@ -121,7 +123,27 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
     if (window.confirm("Voulez-vous vraiment supprimer ce sondage ?")) {
        deletePoll(poll.id);
     }
-  }
+  };
+
+  const handleCopy = (poll: Poll) => {
+      const text = `Sondage: ${poll.question}\nOptions: ${poll.options.map(o => o.text).join(', ')}`;
+      navigator.clipboard.writeText(text);
+      setCopiedId(poll.id);
+      setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleShare = (poll: Poll) => {
+      const targetClassObj = classes.find(c => c.name === poll.classLevel);
+      const emailTarget = targetClassObj?.email;
+
+      if (!emailTarget) {
+          alert("Impossible de trouver l'email de la classe.");
+          return;
+      }
+      const textToShare = `📊 Sondage en cours pour la classe ${poll.classLevel} !\n\nQuestion : ${poll.question}\n\nConnectez-vous sur JàngHub pour voter.`;
+      
+      window.location.href = `mailto:${emailTarget}?subject=${encodeURIComponent(`Sondage: ${poll.question}`)}&body=${encodeURIComponent(textToShare)}`;
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -199,19 +221,29 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
         {polls.map(poll => (
             <div key={poll.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-soft border border-white dark:border-slate-800 hover:shadow-lg transition-all relative">
                 <div className="flex justify-between items-start mb-8">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-white leading-tight max-w-[80%]">{poll.question}</h3>
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white leading-tight max-w-[70%]">{poll.question}</h3>
                     <div className="flex items-center gap-2">
                         <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">{poll.totalVotes} votes</span>
-                        {canModify(poll) && (
-                            <>
-                             <button onClick={() => handleEdit(poll)} className="p-2 text-action-edit bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/40 rounded-xl transition-colors" title="Modifier">
-                                <Edit2 size={18} className="text-sky-600 dark:text-sky-400" />
-                             </button>
-                             <button onClick={() => handleDelete(poll)} className="p-2 rounded-xl transition-all text-slate-300 hover:text-alert hover:bg-red-50 dark:hover:bg-red-900/20">
-                                 <Trash2 size={18} />
-                             </button>
-                            </>
-                        )}
+                        
+                        <div className="flex gap-1 ml-2">
+                            <button onClick={() => handleCopy(poll)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-action-copy transition-colors">
+                                {copiedId === poll.id ? <Check size={18} className="text-emerald-500 animate-in zoom-in duration-200" /> : <Copy size={18} />}
+                            </button>
+                            <button onClick={() => handleShare(poll)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-action-share transition-colors" title="Partager par email">
+                                <Share2 size={18} />
+                            </button>
+
+                            {canModify(poll) && (
+                                <>
+                                <button onClick={() => handleEdit(poll)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-action-edit transition-colors" title="Modifier">
+                                    <Edit2 size={18} />
+                                </button>
+                                <button onClick={() => handleDelete(poll)} className="p-2 rounded-xl transition-all text-slate-300 dark:text-slate-600 hover:text-alert">
+                                    <Trash2 size={18} />
+                                </button>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
                 

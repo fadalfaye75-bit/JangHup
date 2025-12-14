@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { User, UserRole, ScheduleItem } from '../types';
+import { User, UserRole, ScheduleItem, SchoolClass } from '../types';
 import { 
   FileSpreadsheet, Upload, Download, Eye, Clock, Trash2, 
-  History, X, Share2, Loader2, Users
+  History, X, Share2, Loader2, Users, Copy, Check
 } from 'lucide-react';
 
 interface ScheduleProps {
@@ -10,11 +10,13 @@ interface ScheduleProps {
   schedules: ScheduleItem[];
   addSchedule: (s: ScheduleItem) => void;
   deleteSchedule: (id: string) => void;
+  classes: SchoolClass[];
 }
 
-export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule, deleteSchedule }) => {
+export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule, deleteSchedule, classes }) => {
   const [viewingItem, setViewingItem] = useState<ScheduleItem | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const canEdit = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
 
@@ -54,10 +56,23 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
   };
 
   const handleShare = (item: ScheduleItem) => {
-      const classEmail = item.classLevel.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@janghub.sn';
+      const targetClassObj = classes.find(c => c.name === item.classLevel);
+      const emailTarget = targetClassObj?.email;
+
+      if (!emailTarget) {
+          alert("Impossible de trouver l'email de la classe.");
+          return;
+      }
       const subject = `Emploi du temps - ${item.classLevel}`;
       const body = `Veuillez trouver ci-joint le lien vers l'emploi du temps (${item.semester}) : \n\n${item.url}`;
-      window.location.href = `mailto:${classEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = `mailto:${emailTarget}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleCopy = (item: ScheduleItem) => {
+      const text = `Emploi du temps - ${item.title}\nLien : ${item.url}`;
+      navigator.clipboard.writeText(text);
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -126,7 +141,10 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
                         <History size={10} /> V{item.version}
                     </div>
                     <div className="flex gap-2">
-                         <button onClick={() => handleShare(item)} className="p-2 rounded-lg text-slate-500 hover:text-university dark:hover:text-sky-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all" title="Partager à la classe">
+                         <button onClick={() => handleCopy(item)} className="p-2 rounded-lg text-slate-500 hover:text-university dark:hover:text-sky-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all" title="Copier le lien">
+                            {copiedId === item.id ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                         </button>
+                         <button onClick={() => handleShare(item)} className="p-2 rounded-lg text-slate-500 hover:text-university dark:hover:text-sky-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all" title="Partager">
                             <Share2 size={18} />
                          </button>
                          <a href={item.url} download className="p-2 rounded-lg text-slate-500 hover:text-university dark:hover:text-sky-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all" title="Télécharger">

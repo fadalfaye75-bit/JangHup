@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Announcement, User, UserRole } from '../types';
+import { Announcement, User, UserRole, SchoolClass } from '../types';
 import { 
   MessageCircle, Link as LinkIcon, Image as ImageIcon, Trash2, Mail, Copy, 
   Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertCircle, Loader2, School
@@ -11,9 +11,10 @@ interface AnnouncementsProps {
   addAnnouncement: (a: Announcement) => void;
   updateAnnouncement: (a: Announcement) => void;
   deleteAnnouncement: (id: string) => void;
+  classes: SchoolClass[];
 }
 
-export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcements, addAnnouncement, updateAnnouncement, deleteAnnouncement }) => {
+export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcements, addAnnouncement, updateAnnouncement, deleteAnnouncement, classes }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -122,10 +123,25 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     }
   };
 
-  const copyToClipboard = (text: string, id: string) => {
+  const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleShare = (ann: Announcement) => {
+    const targetClassObj = classes.find(c => c.name === ann.classLevel);
+    const emailTarget = targetClassObj?.email;
+
+    if (!emailTarget) {
+      alert("Impossible de trouver l'email de la classe.");
+      return;
+    }
+    
+    const subject = `📢 Annonce - ${ann.classLevel}`;
+    const body = `Annonce de ${ann.authorName} :\n\n${ann.content}`;
+    
+    window.location.href = `mailto:${emailTarget}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const getLinkIcon = (type: string) => {
@@ -303,6 +319,13 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                     </div>
                     
                     <div className="flex gap-1">
+                        <button onClick={() => handleCopy(ann.content, ann.id)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Copier le texte">
+                            {copiedId === ann.id ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                        </button>
+                        <button onClick={() => handleShare(ann)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Partager par email">
+                            <Share2 size={16} />
+                        </button>
+
                         {hasRights(ann) && (
                             <>
                                 <button onClick={() => handleEdit(ann)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Modifier">

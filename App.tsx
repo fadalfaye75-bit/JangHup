@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, ViewState, Announcement, Exam, Poll, Meeting, UserRole, ScheduleItem } from './types';
+import { User, ViewState, Announcement, Exam, Poll, Meeting, UserRole, ScheduleItem, SchoolClass } from './types';
 import { Login } from './components/Login';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -40,6 +40,7 @@ function App() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
 
   // Apply Theme
   useEffect(() => {
@@ -135,14 +136,13 @@ function App() {
         const examQuery = supabase.from('exams').select('*').order('date', { ascending: true });
         const meetQuery = supabase.from('meetings').select('*').order('date', { ascending: true });
         const schedQuery = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
-        // Fetch polls with options
         const pollQuery = supabase.from('polls').select('*, poll_options(*)').order('created_at', { ascending: false });
+        const classQuery = supabase.from('classes').select('*');
         
-        // Fetch votes de l'utilisateur courant pour marquer ses choix
         const userVotesQuery = supabase.from('poll_votes').select('*').eq('user_id', user.id);
 
-        const [annResult, examResult, meetResult, pollResult, schedResult, userVotesResult] = await Promise.all([
-            annQuery, examQuery, meetQuery, pollQuery, schedQuery, userVotesQuery
+        const [annResult, examResult, meetResult, pollResult, schedResult, classResult, userVotesResult] = await Promise.all([
+            annQuery, examQuery, meetQuery, pollQuery, schedQuery, classQuery, userVotesQuery
         ]);
 
         if (annResult.data) setAnnouncements(annResult.data.map((d: any) => ({
@@ -188,6 +188,14 @@ function App() {
             url: d.url,
             uploadedAt: d.uploaded_at,
             version: d.version
+        })));
+        
+        if (classResult.data) setClasses(classResult.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            studentCount: c.student_count || 0,
+            createdAt: c.created_at
         })));
 
         if (pollResult.data) {
@@ -522,7 +530,8 @@ function App() {
             announcements={getFilteredData(announcements)} 
             addAnnouncement={handleAddAnnouncement} 
             updateAnnouncement={handleUpdateAnnouncement}
-            deleteAnnouncement={handleDeleteAnnouncement} 
+            deleteAnnouncement={handleDeleteAnnouncement}
+            classes={classes}
         />
       )}
       {currentView === 'SCHEDULE' && (
@@ -531,6 +540,7 @@ function App() {
             schedules={getFilteredData(schedules)} 
             addSchedule={handleAddSchedule}
             deleteSchedule={handleDeleteSchedule}
+            classes={classes}
         />
       )}
       {currentView === 'EXAMS' && (
@@ -539,7 +549,8 @@ function App() {
             exams={getFilteredData(exams)} 
             addExam={handleAddExam}
             updateExam={handleUpdateExam}
-            deleteExam={handleDeleteExam} 
+            deleteExam={handleDeleteExam}
+            classes={classes}
         />
       )}
       {currentView === 'POLLS' && (
@@ -549,7 +560,8 @@ function App() {
             addPoll={handleAddPoll}
             updatePoll={handleUpdatePoll}
             deletePoll={handleDeletePoll}
-            votePoll={handleVotePoll} 
+            votePoll={handleVotePoll}
+            classes={classes}
         />
       )}
       {currentView === 'MEET' && (
@@ -559,6 +571,7 @@ function App() {
             addMeeting={handleAddMeeting}
             updateMeeting={handleUpdateMeeting} 
             deleteMeeting={handleDeleteMeeting}
+            classes={classes}
         />
       )}
       {currentView === 'PROFILE' && (

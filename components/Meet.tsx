@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Meeting, User, UserRole } from '../types';
+import { Meeting, User, UserRole, SchoolClass } from '../types';
 import { 
   Video, Plus, Calendar, Clock, Trash2, ExternalLink, X, Check, Link as LinkIcon, Copy, Share2, Users, Edit2
 } from 'lucide-react';
@@ -10,9 +10,10 @@ interface MeetProps {
   addMeeting: (m: Meeting) => void;
   updateMeeting: (m: Meeting) => void;
   deleteMeeting: (id: string) => void;
+  classes: SchoolClass[];
 }
 
-export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMeeting, deleteMeeting }) => {
+export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMeeting, deleteMeeting, classes }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -82,10 +83,16 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
   };
 
   const handleShare = (m: Meeting) => {
-      const classEmail = m.classLevel.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@janghub.sn';
-      const subject = `Réunion ${user.classLevel}: ${m.title}`;
+      const targetClassObj = classes.find(c => c.name === m.classLevel);
+      const emailTarget = targetClassObj?.email;
+
+      if (!emailTarget) {
+          alert("Impossible de trouver l'email de la classe.");
+          return;
+      }
+      const subject = `Réunion ${m.classLevel}: ${m.title}`;
       const body = `Rejoignez la réunion "${m.title}" le ${new Date(m.date).toLocaleDateString()} à ${m.time}.\n\nLien : ${m.link}`;
-      window.location.href = `mailto:${classEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = `mailto:${emailTarget}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const sortedMeetings = [...meetings].sort((a, b) => {
@@ -148,7 +155,7 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
                         <div className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800">{meeting.platform}</div>
                         <div className="flex gap-1">
                              <button onClick={() => handleCopy(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-copy transition-colors p-2">{copiedId === meeting.id ? <Check size={18} className="text-emerald-500 animate-in zoom-in duration-200" /> : <Copy size={18} />}</button>
-                             <button onClick={() => handleShare(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-share transition-colors p-2"><Share2 size={18} /></button>
+                             <button onClick={() => handleShare(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-share transition-colors p-2" title="Partager par email"><Share2 size={18} /></button>
                              {canModify(meeting) && (
                                 <>
                                  <button onClick={() => handleEdit(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-edit transition-colors p-2">

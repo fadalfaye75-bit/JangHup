@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Exam, User, UserRole } from '../types';
+import { Exam, User, UserRole, SchoolClass } from '../types';
 import { 
   Calendar as CalendarIcon, Clock, MapPin, Plus, Trash2, AlertTriangle, 
-  Check, Copy, Mail, Users, Edit2, X, Hourglass
+  Check, Copy, Mail, Users, Edit2, X, Hourglass, Share2
 } from 'lucide-react';
 
 interface ExamsProps {
@@ -11,9 +11,10 @@ interface ExamsProps {
   addExam: (e: Exam) => void;
   updateExam: (e: Exam) => void;
   deleteExam: (id: string) => void;
+  classes: SchoolClass[];
 }
 
-export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, deleteExam }) => {
+export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, deleteExam, classes }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -83,6 +84,19 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
     navigator.clipboard.writeText(text);
     setCopiedId(exam.id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleShare = (exam: Exam) => {
+      const targetClassObj = classes.find(c => c.name === exam.classLevel);
+      const emailTarget = targetClassObj?.email;
+
+      if (!emailTarget) {
+          alert("Impossible de trouver l'email de la classe.");
+          return;
+      }
+      const textToShare = `📅 Examen programmé !\n\nMatière : ${exam.subject}\nDate : ${new Date(exam.date).toLocaleDateString('fr-FR')} à ${new Date(exam.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}\nSalle : ${exam.room}\nDurée : ${exam.duration}`;
+      
+      window.location.href = `mailto:${emailTarget}?subject=${encodeURIComponent(`Examen: ${exam.subject}`)}&body=${encodeURIComponent(textToShare)}`;
   };
 
   const sortedExams = [...exams].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -242,9 +256,13 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
                              </div>
                              
                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <button onClick={() => handleCopy(exam)} className="p-2 text-slate-300 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                                 <button onClick={() => handleCopy(exam)} className="p-2 text-slate-300 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300 transition-colors" title="Copier les détails">
                                      {copiedId === exam.id ? <Check size={18} className="text-emerald-500 animate-in zoom-in duration-200" /> : <Copy size={18}/>}
                                  </button>
+                                 <button onClick={() => handleShare(exam)} className="p-2 text-slate-300 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300 transition-colors" title="Partager par email">
+                                     <Share2 size={18}/>
+                                 </button>
+
                                  {canModify(exam) && (
                                      <>
                                          <button onClick={() => handleEdit(exam)} className="p-2 text-slate-300 hover:text-university dark:text-slate-600 dark:hover:text-sky-400 transition-colors">
