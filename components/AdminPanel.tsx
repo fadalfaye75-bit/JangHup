@@ -173,12 +173,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
     setMessage(null);
 
     try {
+        // Sanitize Input for DB Constraints
+        const sanitizedClassLevel = newUser.classLevel && newUser.classLevel.trim() !== '' ? newUser.classLevel : null;
+
         if (editingUserId) {
             // Update Existing User
             const { error } = await supabase.from('profiles').update({
-                full_name: newUser.name, // On met à jour le nom d'affichage
+                full_name: newUser.name, 
                 role: newUser.role,
-                class_level: newUser.classLevel
+                class_level: sanitizedClassLevel
             }).eq('id', editingUserId);
 
             if (error) throw error;
@@ -187,7 +190,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                 ...u,
                 name: newUser.name,
                 role: newUser.role,
-                classLevel: newUser.classLevel
+                classLevel: sanitizedClassLevel || 'Non assigné'
             } : u));
             setMessage({ type: 'success', text: "Droits utilisateur mis à jour." });
             setEditingUserId(null);
@@ -200,8 +203,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                 return;
             }
 
-            // Create a temporary client that doesn't persist the session
-            // This allows creating a user without replacing the current Admin session
             const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
                 auth: {
                     persistSession: false,
@@ -217,7 +218,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                     data: {
                         full_name: newUser.name,
                         role: newUser.role,
-                        class_level: newUser.classLevel
+                        class_level: sanitizedClassLevel
                     }
                 }
             });
@@ -225,8 +226,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
             if (error) throw error;
 
             if (data.user) {
-                // Refresh list to show new user (triggered by DB trigger usually)
-                // Add slight delay to allow trigger to run
                 setTimeout(() => fetchAdminData(), 1000);
                 
                 setMessage({ type: 'success', text: "Utilisateur créé avec succès." });
@@ -235,7 +234,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
         }
     } catch (e: any) {
         console.error(e);
-        setMessage({ type: 'error', text: e.message || "Erreur lors de l'opération." });
+        // Translate common Supabase/Postgres errors
+        let msg = e.message || "Erreur lors de l'opération.";
+        if (msg.includes("Database error saving new user")) msg = "Erreur base de données : Vérifiez que la classe existe et que les données sont valides.";
+        
+        setMessage({ type: 'error', text: msg });
     } finally {
         setIsLoading(false);
     }
