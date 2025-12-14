@@ -99,9 +99,9 @@ export const Layout: React.FC<LayoutProps> = ({
     return (
         <button 
             onClick={() => handleMobileNav(view)}
-            className={`flex flex-col items-center justify-center w-full pt-3 pb-1 transition-all duration-200 relative`}
+            className={`flex flex-col items-center justify-center w-full pt-3 pb-1 transition-all duration-200 relative group`}
         >
-            <div className={`p-1.5 rounded-xl mb-1 transition-all ${isActive ? 'bg-university text-white shadow-md transform -translate-y-1 dark:bg-sky-600' : 'text-slate-400 dark:text-slate-500'}`}>
+            <div className={`p-1.5 rounded-xl mb-1 transition-all ${isActive ? 'bg-university text-white shadow-md transform -translate-y-1 dark:bg-sky-600' : 'text-slate-400 dark:text-slate-500 group-active:scale-90'}`}>
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
             </div>
             <span className={`text-[10px] font-bold ${isActive ? 'text-university dark:text-sky-400' : 'text-slate-400 dark:text-slate-600'}`}>
@@ -233,15 +233,26 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* --- MAIN CONTENT WRAPPER --- */}
       <main className="flex-1 md:ml-72 w-full relative min-h-screen pb-24 md:pb-10 transition-colors duration-300">
         
-        {/* MOBILE HEADER (Sticky) */}
+        {/* MOBILE HEADER (Sticky with Hamburger) */}
         <header className="md:hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex justify-between items-center shadow-sm transition-all">
-            <div className="flex items-center gap-2.5">
-                <JangHubLogo className="w-8 h-8" />
-                <div>
-                  <h1 className="text-lg font-bold text-slate-800 dark:text-white leading-none">JàngHub</h1>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Portail {user.classLevel}</p>
+            <div className="flex items-center gap-3">
+                {/* Hamburger Menu Trigger */}
+                <button 
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                    <Menu size={24} />
+                </button>
+                
+                <div className="flex items-center gap-2">
+                    <JangHubLogo className="w-8 h-8" />
+                    <div>
+                      <h1 className="text-lg font-bold text-slate-800 dark:text-white leading-none">JàngHub</h1>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Portail {user.classLevel}</p>
+                    </div>
                 </div>
             </div>
+            
             <div className="flex items-center gap-2">
                 <button 
                     onClick={onOpenSearch} 
@@ -250,7 +261,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     <Search size={20} />
                 </button>
                 <button 
-                    onClick={() => setIsMobileMenuOpen(true)} 
+                    onClick={() => setView('PROFILE')} 
                     className="relative p-0.5 rounded-full border border-slate-200 dark:border-slate-700 hover:border-university dark:hover:border-sky-500 transition-colors"
                 >
                      <img src={user.avatar} alt="User" className="w-8 h-8 rounded-full object-cover" />
@@ -262,15 +273,15 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* MOBILE DRAWER (Off-canvas Menu) */}
         {isMobileMenuOpen && (
-            <div className="md:hidden fixed inset-0 z-50 flex justify-end">
+            <div className="md:hidden fixed inset-0 z-50 flex justify-start">
                 {/* Backdrop */}
                 <div 
                     className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
                     onClick={() => setIsMobileMenuOpen(false)}
                 ></div>
                 
-                {/* Menu Content */}
-                <div className="relative w-[80%] max-w-sm bg-white dark:bg-slate-900 h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col border-l border-slate-200 dark:border-slate-800">
+                {/* Menu Content (Slide from Left standard) */}
+                <div className="relative w-[80%] max-w-sm bg-white dark:bg-slate-900 h-full shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col border-r border-slate-200 dark:border-slate-800">
                     <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <img src={user.avatar} alt="Profile" className="w-12 h-12 rounded-full border-2 border-white dark:border-slate-700 shadow-sm" />
@@ -327,7 +338,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </main>
 
-      {/* MOBILE BOTTOM NAV (Glassmorphism) */}
+      {/* MOBILE BOTTOM NAV (Glassmorphism - Only Main Tabs) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200/60 dark:border-slate-800/60 flex justify-around items-end z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.03)]">
         <MobileNavItem view="HOME" icon={Home} label="Accueil" />
         <MobileNavItem view="SCHEDULE" icon={Calendar} label="Planning" />
