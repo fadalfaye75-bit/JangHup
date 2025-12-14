@@ -74,7 +74,7 @@ function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-          // On ne recharge le profil que si l'utilisateur change ou s'il n'est pas encore chargé
+          // Si on a une session mais pas d'user local, on charge
           if (!user || user.id !== session.user.id) {
             fetchUserProfile(session.user.id, session.user.email || '');
           }
@@ -95,83 +95,71 @@ function App() {
   }, [user]);
 
   const fetchUserProfile = async (userId: string, email: string) => {
-    try {
-        const normalizedEmail = email.toLowerCase().trim();
-        const isAdminEmail = normalizedEmail === 'faye@janghub.sn';
+    // Définition des valeurs par défaut basées sur l'email
+    const isAdminEmail = email.toLowerCase().includes('admin') || email === 'faye@janghub.sn';
+    const defaultRole = isAdminEmail ? UserRole.ADMIN : UserRole.STUDENT;
+    const defaultClass = isAdminEmail ? 'ADMINISTRATION' : 'Non assigné';
+    const defaultName = email.split('@')[0];
 
-        // 1. Tentative de récupération du profil
+    try {
+        // 1. On essaie de récupérer le profil
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
-            .maybeSingle(); // Utilise maybeSingle pour éviter l'erreur si vide
+            .maybeSingle();
 
-        // 2. Logique de réparation (Self-Healing)
-        if (!data) {
-             console.warn("Profil introuvable, création automatique...");
-             
-             const newProfile = {
-                 id: userId,
-                 email: email,
-                 full_name: email.split('@')[0], 
-                 role: isAdminEmail ? 'ADMIN' : 'STUDENT', 
-                 class_level: isAdminEmail ? 'ADMINISTRATION' : 'Non assigné',
-                 avatar_url: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`
-             };
-
-             const { error: insertError } = await supabase.from('profiles').insert(newProfile);
-             
-             if (!insertError) {
-                 setUser({
-                    id: userId,
-                    name: newProfile.full_name,
-                    email: newProfile.email,
-                    role: newProfile.role as UserRole,
-                    classLevel: newProfile.class_level,
-                    avatar: newProfile.avatar_url
-                 });
-             } else {
-                 console.error("Échec création profil", insertError);
-                 // Si on ne peut pas créer le profil, on utilise les données de session temporairement pour ne pas bloquer
-                 setUser({
-                    id: userId,
-                    name: email.split('@')[0],
-                    email: email,
-                    role: isAdminEmail ? UserRole.ADMIN : UserRole.STUDENT,
-                    classLevel: 'Non assigné',
-                    avatar: `https://ui-avatars.com/api/?name=${email}&background=random`
-                 });
-             }
-        } else {
-            // 3. Vérification et correction du rôle Admin si nécessaire
-            if (isAdminEmail && data.role !== 'ADMIN') {
-                await supabase.from('profiles').update({ role: 'ADMIN', class_level: 'ADMINISTRATION' }).eq('id', userId);
-                data.role = 'ADMIN';
-                data.class_level = 'ADMINISTRATION';
-            }
-
+        if (data) {
+            // Profil trouvé : on l'utilise
             setUser({
                 id: data.id,
-                name: data.full_name || email,
+                name: data.full_name || defaultName,
                 email: data.email || email,
-                role: (data.role as UserRole) || UserRole.STUDENT,
-                classLevel: data.class_level || 'Non assigné',
-                avatar: data.avatar_url || `https://ui-avatars.com/api/?name=${data.full_name || email}&background=random`
+                role: (data.role as UserRole) || defaultRole,
+                classLevel: data.class_level || defaultClass,
+                avatar: data.avatar_url || `https://ui-avatars.com/api/?name=${data.full_name || defaultName}&background=random`
+            });
+        } else {
+            // 2. Profil introuvable : On tente de le créer
+            console.warn("Profil manquant. Tentative de création...");
+            
+            const newProfile = {
+                id: userId,
+                email: email,
+                full_name: defaultName,
+                role: defaultRole,
+                class_level: defaultClass,
+                avatar_url: `https://ui-avatars.com/api/?name=${defaultName}&background=random`
+            };
+
+            const { error: insertError } = await supabase.from('profiles').insert(newProfile);
+
+            if (insertError) {
+                console.error("Impossible de créer le profil en base:", insertError);
+            }
+
+            // 3. MODE SECOURS : Même si l'insertion échoue, on connecte l'utilisateur avec les données en mémoire
+            // Cela permet de ne jamais bloquer l'utilisateur à l'entrée
+            setUser({
+                id: userId,
+                name: defaultName,
+                email: email,
+                role: defaultRole,
+                classLevel: defaultClass,
+                avatar: newProfile.avatar_url
             });
         }
     } catch (e) {
-        console.error("Critical error fetching profile", e);
-        // Fallback ultime pour ne jamais bloquer l'admin
-        if (email === 'faye@janghub.sn') {
-             setUser({
-                id: userId,
-                name: 'Admin Faye',
-                email: email,
-                role: UserRole.ADMIN,
-                classLevel: 'ADMINISTRATION',
-                avatar: ''
-             });
-        }
+        console.error("Erreur critique fetchProfile:", e);
+        // 4. MODE ULTIME SECOURS
+        setUser({
+            id: userId,
+            name: email.split('@')[0],
+            email: email,
+            role: defaultRole,
+            classLevel: defaultClass,
+            avatar: `https://ui-avatars.com/api/?name=${email}&background=random`
+        });
     } finally {
         setLoading(false);
     }
@@ -179,13 +167,14 @@ function App() {
 
   const fetchData = async () => {
     if (!user) return;
-
+    
+    // On enveloppe tout dans un try/catch global pour éviter qu'une erreur de donnée ne crash l'app
     try {
         const annQuery = supabase.from('announcements').select('*').order('date', { ascending: false });
         const examQuery = supabase.from('exams').select('*').order('date', { ascending: true });
         const meetQuery = supabase.from('meetings').select('*').order('date', { ascending: true });
-        const scheduleQuery = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
         const pollQuery = supabase.from('polls').select('*, poll_options(*)').order('created_at', { ascending: false });
+        const scheduleQuery = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
 
         const [annResult, examResult, meetResult, pollResult, schedResult] = await Promise.all([
             annQuery, examQuery, meetQuery, pollQuery, scheduleQuery
@@ -194,10 +183,10 @@ function App() {
         if (annResult.data) setAnnouncements(annResult.data.map((d: any) => ({
             id: d.id,
             authorId: d.author_id,
-            authorName: d.author_name,
-            classLevel: d.class_level,
-            content: d.content,
-            date: d.date,
+            authorName: d.author_name || 'Inconnu',
+            classLevel: d.class_level || 'Général',
+            content: d.content || '',
+            date: d.date || new Date().toISOString(),
             links: d.links || [],
             images: d.images || [],
             attachments: d.attachments || []
@@ -205,23 +194,23 @@ function App() {
         
         if (examResult.data) setExams(examResult.data.map((d: any) => ({
             id: d.id,
-            subject: d.subject,
-            classLevel: d.class_level,
-            date: d.date,
-            duration: d.duration,
-            room: d.room,
+            subject: d.subject || 'Sujet inconnu',
+            classLevel: d.class_level || 'Général',
+            date: d.date || new Date().toISOString(),
+            duration: d.duration || '2h',
+            room: d.room || 'Salle inconnue',
             notes: d.notes,
             authorId: d.author_id
         })));
 
         if (meetResult.data) setMeetings(meetResult.data.map((d: any) => ({
             id: d.id,
-            title: d.title,
+            title: d.title || 'Réunion',
             classLevel: d.class_level,
             date: d.date,
             time: d.time,
             link: d.link,
-            platform: d.platform,
+            platform: d.platform || 'Autre',
             authorId: d.author_id,
             authorName: d.author_name
         })));
@@ -249,7 +238,7 @@ function App() {
             setPolls(formattedPolls);
         }
     } catch (err) {
-        console.error("Error fetching data:", err);
+        console.error("Erreur lors du chargement des données (non bloquant):", err);
     }
   };
 
@@ -278,7 +267,7 @@ function App() {
         <div className="min-h-screen flex items-center justify-center bg-[#F6F9FC] dark:bg-slate-950">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="animate-spin text-university dark:text-sky-400" size={48} />
-                <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Chargement sécurisé...</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Connexion à JàngHub...</p>
             </div>
         </div>
     );
