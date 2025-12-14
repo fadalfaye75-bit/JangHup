@@ -16,8 +16,7 @@ import {
   ChevronRight,
   Moon,
   Sun,
-  Search,
-  MessageSquare
+  Search
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -192,7 +191,6 @@ export const Layout: React.FC<LayoutProps> = ({
               <NavItem view="EXAMS" icon={FileText} label="Examens & DS" />
               <NavItem view="MEET" icon={Video} label="Visioconférences" />
               <NavItem view="POLLS" icon={BarChart2} label="Consultations" />
-              <NavItem view="FORUM" icon={MessageSquare} label="Forum de discussion" />
               
               <div className="my-6 border-t border-slate-100 dark:border-slate-800 mx-2"></div>
               
@@ -297,7 +295,6 @@ export const Layout: React.FC<LayoutProps> = ({
                         <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 mb-2">Autres Modules</p>
                         <NavItem view="MEET" icon={Video} label="Visioconférences" onClick={() => handleMobileNav('MEET')} />
                         <NavItem view="POLLS" icon={BarChart2} label="Consultations (Votes)" onClick={() => handleMobileNav('POLLS')} />
-                        <NavItem view="FORUM" icon={MessageSquare} label="Forum" onClick={() => handleMobileNav('FORUM')} />
                         <NavItem view="PROFILE" icon={UserIcon} label="Mon Profil" onClick={() => handleMobileNav('PROFILE')} />
                         <NavItem view="ADMIN" icon={Shield} label="Administration" onClick={() => handleMobileNav('ADMIN')} />
                     </div>

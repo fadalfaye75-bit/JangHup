@@ -81,6 +81,7 @@ export interface Poll {
   authorId: string;
   active: boolean;
   totalVotes: number;
+  userVoteOptionId?: string; // ID de l'option votée par l'utilisateur courant
 }
 
 export interface Meeting {
@@ -97,29 +98,22 @@ export interface Meeting {
 
 export interface ForumReply {
   id: string;
+  content: string;
   authorId: string;
   authorName: string;
-  content: string;
   createdAt: string;
 }
 
 export interface ForumPost {
   id: string;
-  categoryId: string;
-  authorId: string;
-  authorName: string;
   title: string;
   content: string;
+  authorId: string;
+  authorName: string;
+  categoryId: string;
   createdAt: string;
   views: number;
   replies: ForumReply[];
 }
 
-export interface ForumCategory {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-}
-
-export type ViewState = 'HOME' | 'ANNOUNCEMENTS' | 'SCHEDULE' | 'EXAMS' | 'POLLS' | 'MEET' | 'ADMIN' | 'PROFILE' | 'FORUM';
+export type ViewState = 'HOME' | 'ANNOUNCEMENTS' | 'SCHEDULE' | 'EXAMS' | 'POLLS' | 'MEET' | 'ADMIN' | 'PROFILE';

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Poll, User, UserRole } from '../types';
 import { reformulatePollQuestion } from '../services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Plus, CheckCircle2, X, Trash2, Users, Edit2, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Check, X, Trash2, Users, Edit2, Loader2, Sparkles } from 'lucide-react';
 
 interface PollsProps {
   user: User;
@@ -19,7 +19,10 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '']);
+  
+  // Changement ici : On stocke des objets {id, text} au lieu de simples strings pour tracker les IDs lors de l'édition
+  const [options, setOptions] = useState<{id?: string, text: string}[]>([{text: ''}, {text: ''}]);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReformulating, setIsReformulating] = useState(false);
 
@@ -34,24 +37,31 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
 
   const handleOptionChange = (idx: number, val: string) => {
     const newOpts = [...options];
-    newOpts[idx] = val;
+    newOpts[idx] = { ...newOpts[idx], text: val };
     setOptions(newOpts);
   };
 
-  const addOptionField = () => setOptions([...options, '']);
+  const addOptionField = () => setOptions([...options, { text: '' }]);
+
+  const removeOptionField = (idx: number) => {
+      if (options.length <= 2) return;
+      const newOpts = options.filter((_, i) => i !== idx);
+      setOptions(newOpts);
+  };
 
   const resetForm = () => {
     setIsCreating(false);
     setEditingId(null);
     setQuestion(''); 
-    setOptions(['', '']);
+    setOptions([{text: ''}, {text: ''}]);
     setIsSubmitting(false);
   };
 
   const handleEdit = (poll: Poll) => {
       setEditingId(poll.id);
       setQuestion(poll.question);
-      setOptions(poll.options.map(o => o.text));
+      // On map les options existantes pour garder leurs IDs
+      setOptions(poll.options.map(o => ({ id: o.id, text: o.text })));
       setIsCreating(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -70,14 +80,31 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
   };
 
   const createOrUpdatePoll = async () => {
-    if (!question || options.some(o => !o.trim())) return;
+    if (!question || options.some(o => !o.text.trim())) return;
     setIsSubmitting(true);
 
     setTimeout(() => {
         if (editingId) {
             const originalPoll = polls.find(p => p.id === editingId);
             if (originalPoll) {
-                const updated: Poll = { ...originalPoll, question };
+                // Reconstruire les options pour l'update
+                const updatedOptions = options.map((opt, idx) => {
+                    // Si l'option a un ID, on garde l'ancien vote count, sinon 0 (nouvelle option)
+                    const originalOpt = originalPoll.options.find(o => o.id === opt.id);
+                    return {
+                        id: opt.id || `opt-${Date.now()}-${idx}`, // Nouvel ID si ajout
+                        text: opt.text,
+                        votes: originalOpt ? originalOpt.votes : 0
+                    };
+                });
+
+                const updated: Poll = { 
+                    ...originalPoll, 
+                    question,
+                    options: updatedOptions,
+                    // Recalcul du total des votes (au cas où on a supprimé une option avec des votes)
+                    totalVotes: updatedOptions.reduce((acc, curr) => acc + curr.votes, 0)
+                };
                 updatePoll(updated);
             }
         } else {
@@ -85,9 +112,9 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                 id: Date.now().toString(),
                 question,
                 classLevel: user.classLevel,
-                options: options.map((text, idx) => ({ 
+                options: options.map((opt, idx) => ({ 
                     id: `opt-${Date.now()}-${idx}`, 
-                    text, 
+                    text: opt.text, 
                     votes: 0 
                 })),
                 authorId: user.id,
@@ -131,7 +158,7 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
       {isCreating && (
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-sky-100 dark:border-slate-800 ring-4 ring-white/50 dark:ring-slate-800/50 animate-in zoom-in-95 duration-200">
               <div className="flex justify-between items-start mb-8">
-                  <h3 className="font-bold text-xl text-slate-800 dark:text-white">{editingId ? 'Modifier la question' : `Créer un sondage pour ${user.classLevel}`}</h3>
+                  <h3 className="font-bold text-xl text-slate-800 dark:text-white">{editingId ? 'Modifier le sondage' : `Créer un sondage pour ${user.classLevel}`}</h3>
                   <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"><X size={24} /></button>
               </div>
               
@@ -152,20 +179,34 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                 </button>
               </div>
               
-              {!editingId && (
-                  <div className="space-y-4 mb-8">
-                      {options.map((opt, idx) => (
-                          <div key={idx} className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-500 dark:text-slate-400">{idx + 1}</div>
-                              <input className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-brand dark:focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-800 dark:text-white" placeholder={`Option ${idx + 1}`} value={opt} onChange={(e) => handleOptionChange(idx, e.target.value)} />
+              <div className="space-y-4 mb-8">
+                  {options.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-500 dark:text-slate-400">{idx + 1}</div>
+                          <div className="relative flex-1">
+                              <input 
+                                className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-brand dark:focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-800 outline-none text-slate-800 dark:text-white pr-10" 
+                                placeholder={`Option ${idx + 1}`} 
+                                value={opt.text} 
+                                onChange={(e) => handleOptionChange(idx, e.target.value)} 
+                              />
+                              {options.length > 2 && (
+                                  <button 
+                                    onClick={() => removeOptionField(idx)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-alert p-1"
+                                  >
+                                      <X size={16} />
+                                  </button>
+                              )}
                           </div>
-                      ))}
-                  </div>
-              )}
-              {editingId && <p className="text-sm text-amber-500 font-bold mb-4 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">⚠️ Les options ne peuvent pas être modifiées une fois le sondage créé.</p>}
+                      </div>
+                  ))}
+              </div>
               
               <div className="flex justify-between items-center pt-6 border-t border-slate-50 dark:border-slate-800">
-                  {!editingId ? <button onClick={addOptionField} className="text-brand dark:text-sky-400 text-sm font-bold hover:underline px-2">+ Ajouter une option</button> : <div></div>}
+                  <button onClick={addOptionField} className="text-brand dark:text-sky-400 text-sm font-bold hover:underline px-2 flex items-center gap-1">
+                      <Plus size={16}/> Ajouter une option
+                  </button>
                   <div className="flex gap-3">
                        <button onClick={resetForm} className="text-slate-500 dark:text-slate-400 px-6 py-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl font-bold transition-colors">Annuler</button>
                        <button onClick={createOrUpdatePoll} disabled={isSubmitting} className="bg-brand dark:bg-sky-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-sky-400 dark:hover:bg-sky-500 shadow-md active:scale-95 flex items-center gap-2">
@@ -200,12 +241,31 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                 <div className="space-y-4 mb-10">
                     {poll.options.map(opt => {
                         const percent = poll.totalVotes > 0 ? Math.round((opt.votes / poll.totalVotes) * 100) : 0;
+                        const isSelected = poll.userVoteOptionId === opt.id;
+                        
                         return (
-                            <button key={opt.id} onClick={() => handleVote(poll.id, opt.id)} className="w-full relative overflow-hidden p-5 border border-slate-100 dark:border-slate-800 rounded-2xl hover:border-brand/50 dark:hover:border-sky-500/50 transition-all group text-left bg-slate-50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800">
-                                <div className="absolute top-0 bottom-0 left-0 bg-sky-100/50 dark:bg-sky-900/30 transition-all duration-700 ease-out" style={{width: `${percent}%`}}></div>
+                            <button 
+                                key={opt.id} 
+                                onClick={() => handleVote(poll.id, opt.id)} 
+                                className={`w-full relative overflow-hidden p-5 border rounded-2xl transition-all group text-left 
+                                    ${isSelected 
+                                        ? 'bg-sky-50 dark:bg-sky-900/10 border-sky-400 dark:border-sky-500 ring-2 ring-sky-200 dark:ring-sky-900/30' 
+                                        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-brand/50 dark:hover:border-sky-500/50'
+                                    }`}
+                            >
+                                <div className={`absolute top-0 bottom-0 left-0 transition-all duration-700 ease-out ${isSelected ? 'bg-sky-200/50 dark:bg-sky-800/30' : 'bg-slate-200/30 dark:bg-slate-700/30'}`} style={{width: `${percent}%`}}></div>
                                 <div className="relative flex justify-between items-center z-10">
-                                    <span className="text-slate-700 dark:text-slate-200 font-bold group-hover:text-brand dark:group-hover:text-sky-400 transition-colors text-sm">{opt.text}</span>
-                                    <div className="flex items-center gap-3"><span className="text-xs font-bold text-slate-400 dark:text-slate-500">{percent}%</span><CheckCircle2 size={18} className="text-slate-200 dark:text-slate-700 group-hover:text-brand dark:group-hover:text-sky-400 transition-colors" /></div>
+                                    <div className="flex items-center gap-3">
+                                        {isSelected && <Check size={18} className="text-university dark:text-sky-400" strokeWidth={3} />}
+                                        <span className={`font-bold text-sm ${isSelected ? 'text-university dark:text-sky-400' : 'text-slate-700 dark:text-slate-200 group-hover:text-brand dark:group-hover:text-sky-400'}`}>
+                                            {opt.text}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-xs font-bold ${isSelected ? 'text-university dark:text-sky-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                            {percent}%
+                                        </span>
+                                    </div>
                                 </div>
                             </button>
                         )

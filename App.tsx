@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, ViewState, Announcement, Exam, Poll, Meeting, UserRole, ScheduleItem, ForumPost } from './types';
+import { User, ViewState, Announcement, Exam, Poll, Meeting, UserRole, ScheduleItem } from './types';
 import { Login } from './components/Login';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -10,7 +10,6 @@ import { Polls } from './components/Polls';
 import { Meet } from './components/Meet';
 import { Profile } from './components/Profile';
 import { AdminPanel } from './components/AdminPanel';
-import { Forum } from './components/Forum';
 import { GlobalSearch } from './components/GlobalSearch';
 import { Loader2 } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
@@ -41,7 +40,6 @@ function App() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
 
   // Apply Theme
   useEffect(() => {
@@ -103,7 +101,7 @@ function App() {
 
         if (error) {
              console.error("Profile fetch error:", error);
-             // Fallback minimal si erreur (ex: premier login avant que le trigger ne finisse)
+             // Fallback minimal
              setUser({
                 id: userId,
                 name: email.split('@')[0],
@@ -139,11 +137,12 @@ function App() {
         const schedQuery = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
         // Fetch polls with options
         const pollQuery = supabase.from('polls').select('*, poll_options(*)').order('created_at', { ascending: false });
-        // Fetch forum posts with replies
-        const forumQuery = supabase.from('forum_posts').select('*, forum_replies(*)').order('created_at', { ascending: false });
+        
+        // Fetch votes de l'utilisateur courant pour marquer ses choix
+        const userVotesQuery = supabase.from('poll_votes').select('*').eq('user_id', user.id);
 
-        const [annResult, examResult, meetResult, pollResult, schedResult, forumResult] = await Promise.all([
-            annQuery, examQuery, meetQuery, pollQuery, schedQuery, forumQuery
+        const [annResult, examResult, meetResult, pollResult, schedResult, userVotesResult] = await Promise.all([
+            annQuery, examQuery, meetQuery, pollQuery, schedQuery, userVotesQuery
         ]);
 
         if (annResult.data) setAnnouncements(annResult.data.map((d: any) => ({
@@ -192,36 +191,21 @@ function App() {
         })));
 
         if (pollResult.data) {
-            const formattedPolls = pollResult.data.map((p: any) => ({
-                id: p.id,
-                question: p.question,
-                classLevel: p.class_level,
-                authorId: p.author_id,
-                active: p.active,
-                options: p.poll_options ? p.poll_options.sort((a: any, b: any) => a.id.localeCompare(b.id)) : [],
-                totalVotes: p.poll_options ? p.poll_options.reduce((acc: number, opt: any) => acc + opt.votes, 0) : 0
-            }));
+            const userVotes = userVotesResult.data || [];
+            const formattedPolls = pollResult.data.map((p: any) => {
+                const myVote = userVotes.find((v: any) => v.poll_id === p.id);
+                return {
+                    id: p.id,
+                    question: p.question,
+                    classLevel: p.class_level,
+                    authorId: p.author_id,
+                    active: p.active,
+                    options: p.poll_options ? p.poll_options.sort((a: any, b: any) => a.id.localeCompare(b.id)) : [],
+                    totalVotes: p.poll_options ? p.poll_options.reduce((acc: number, opt: any) => acc + opt.votes, 0) : 0,
+                    userVoteOptionId: myVote?.option_id
+                };
+            });
             setPolls(formattedPolls);
-        }
-
-        if (forumResult.data) {
-            setForumPosts(forumResult.data.map((p: any) => ({
-                id: p.id,
-                title: p.title,
-                content: p.content,
-                authorId: p.author_id,
-                authorName: p.author_name,
-                categoryId: p.category_id || 'general',
-                createdAt: p.created_at,
-                views: p.views || 0,
-                replies: p.forum_replies ? p.forum_replies.map((r: any) => ({
-                    id: r.id,
-                    authorId: r.author_id,
-                    authorName: r.author_name,
-                    content: r.content,
-                    createdAt: r.created_at
-                })) : []
-            })));
         }
     } catch (err) {
         console.error("Error fetching data:", err);
@@ -310,6 +294,7 @@ function App() {
   const handleAddPoll = async (p: Poll) => {
       setPolls([p, ...polls]);
       const { data } = await supabase.from('polls').insert({
+          id: p.id, // Explicitly send ID since we generate it in Polls.tsx as Date.now().toString()
           question: p.question,
           class_level: p.classLevel,
           author_id: user?.id
@@ -317,6 +302,7 @@ function App() {
 
       if (data) {
           const optionsToInsert = p.options.map(opt => ({
+              id: opt.id,
               poll_id: data.id,
               text: opt.text,
               votes: 0
@@ -327,11 +313,46 @@ function App() {
   };
 
   const handleUpdatePoll = async (p: Poll) => {
+      // Optimistic Update
       setPolls(polls.map(item => item.id === p.id ? p : item));
+      
+      // 1. Update Question
       await supabase.from('polls').update({
           question: p.question,
           active: p.active
       }).eq('id', p.id);
+
+      // 2. Synchronize Options
+      try {
+        // Fetch existing DB options to know what to delete
+        const { data: dbOptions } = await supabase.from('poll_options').select('id').eq('poll_id', p.id);
+        
+        if (dbOptions) {
+            const dbIds = dbOptions.map(o => o.id);
+            const currentIds = p.options.map(o => o.id);
+            
+            // Delete removed options
+            const idsToDelete = dbIds.filter(id => !currentIds.includes(id));
+            if (idsToDelete.length > 0) {
+                await supabase.from('poll_options').delete().in('id', idsToDelete);
+            }
+        }
+
+        // Upsert (Update existing + Insert new)
+        const optionsToUpsert = p.options.map(opt => ({
+            id: opt.id,
+            poll_id: p.id,
+            text: opt.text,
+            votes: opt.votes // Keep votes safe
+        }));
+
+        await supabase.from('poll_options').upsert(optionsToUpsert);
+
+      } catch (e) {
+        console.error("Error updating poll options", e);
+      }
+      
+      fetchData();
   };
 
   const handleDeletePoll = async (id: string) => {
@@ -340,18 +361,64 @@ function App() {
   };
 
   const handleVotePoll = async (pollId: string, optionId: string) => {
-      setPolls(polls.map(p => {
+      if (!user) return;
+      
+      const poll = polls.find(p => p.id === pollId);
+      if (!poll) return;
+
+      const previousOptionId = poll.userVoteOptionId;
+      if (previousOptionId === optionId) return; // Déjà voté pour cette option
+
+      // 1. Mise à jour Optimiste de l'UI
+      const newPolls = polls.map(p => {
           if (p.id !== pollId) return p;
+          
+          const newOptions = p.options.map(o => {
+             if (o.id === previousOptionId) return { ...o, votes: o.votes - 1 }; // Enlever l'ancien vote
+             if (o.id === optionId) return { ...o, votes: o.votes + 1 }; // Ajouter le nouveau
+             return o;
+          });
+
+          // Si changement de vote, le total reste le même. Si nouveau vote, +1.
+          const totalChange = previousOptionId ? 0 : 1; 
+
           return {
               ...p,
-              options: p.options.map(o => o.id === optionId ? { ...o, votes: o.votes + 1 } : o),
-              totalVotes: p.totalVotes + 1
+              options: newOptions,
+              totalVotes: p.totalVotes + totalChange,
+              userVoteOptionId: optionId
           };
-      }));
+      });
+      setPolls(newPolls);
 
-      const { data } = await supabase.from('poll_options').select('votes').eq('id', optionId).single();
-      if (data) {
-          await supabase.from('poll_options').update({ votes: data.votes + 1 }).eq('id', optionId);
+      try {
+        // 2. Mise à jour Base de Données
+        
+        // a. Enregistrer que l'utilisateur a voté pour cette option (Upsert sur la table de liaison)
+        const { error: voteError } = await supabase.from('poll_votes').upsert({
+             poll_id: pollId,
+             user_id: user.id,
+             option_id: optionId
+        });
+        
+        if (voteError) {
+             console.error("Erreur lors de l'enregistrement du vote:", voteError);
+             throw voteError;
+        }
+
+        // b. Mettre à jour les compteurs via RPC (Remote Procedure Call) pour l'atomicité
+        if (previousOptionId) {
+            const { error: rpcError } = await supabase.rpc('decrement_poll_option', { option_id_input: previousOptionId });
+            if (rpcError) console.error("Erreur decrement:", rpcError);
+        }
+        
+        const { error: rpcError2 } = await supabase.rpc('increment_poll_option', { option_id_input: optionId });
+        if (rpcError2) console.error("Erreur increment:", rpcError2);
+
+      } catch (err: any) {
+          console.error("Erreur critique vote:", JSON.stringify(err, null, 2) || err);
+          // Re-fetch data to sync with server state in case of error
+          fetchData(); 
       }
   };
 
@@ -371,19 +438,6 @@ function App() {
   const handleDeleteSchedule = async (id: string) => {
     setSchedules(schedules.filter(s => s.id !== id));
     await supabase.from('schedules').delete().eq('id', id);
-  };
-
-  const handleAddForumPost = async (p: ForumPost) => {
-    setForumPosts([p, ...forumPosts]);
-    await supabase.from('forum_posts').insert({
-        title: p.title,
-        content: p.content,
-        author_id: p.authorId,
-        author_name: p.authorName,
-        category_id: p.categoryId,
-        created_at: p.createdAt
-    });
-    fetchData();
   };
 
   // Filtering
@@ -486,13 +540,6 @@ function App() {
                  setMeetings(meetings.filter(m => m.id !== id));
                  supabase.from('meetings').delete().eq('id', id).then();
             }}
-        />
-      )}
-      {currentView === 'FORUM' && (
-        <Forum 
-            user={user}
-            posts={forumPosts} // Pass all posts as forum is usually global or we can filter if needed
-            addPost={handleAddForumPost}
         />
       )}
       {currentView === 'PROFILE' && (
