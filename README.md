@@ -18,13 +18,28 @@ JàngHub est une application web moderne de gestion scolaire destinée aux unive
 
 ## 🗄️ Configuration Base de Données (Supabase)
 
-Pour que l'application fonctionne, vous devez exécuter le script SQL fourni dans l'interface de Supabase (SQL Editor).
+Pour que l'application fonctionne, vous devez exécuter les scripts SQL dans l'interface de Supabase (SQL Editor).
 
-Ce script crée :
-- Les tables : `profiles`, `classes`, `announcements`, `exams`, `schedules`, `polls`, `meetings`, `audit_logs`.
-- Les buckets de stockage : `images`, `files`.
-- Les politiques de sécurité (RLS).
-- Le premier administrateur.
+### 1. Initialisation des Tables
+1.  Ouvrez le fichier `db_schema.sql` situé à la racine du projet.
+2.  Copiez tout le contenu.
+3.  Collez-le dans l'éditeur SQL de Supabase et cliquez sur "Run".
+
+### 2. Création du Compte Administrateur (Obligatoire)
+Puisque l'inscription publique est désactivée, vous devez créer le premier compte admin manuellement :
+
+1.  Allez dans **Supabase > Authentication > Users** et cliquez sur "Add User".
+2.  Créez un utilisateur avec votre email (ex: `admin@janghub.sn`).
+3.  Allez dans **Supabase > SQL Editor** et exécutez ce script pour donner les droits Admin :
+
+```sql
+UPDATE public.profiles
+SET 
+  role = 'ADMIN',
+  class_level = 'ADMINISTRATION',
+  full_name = 'Super Admin'
+WHERE email = 'admin@janghub.sn'; -- ⚠️ Remplacez par votre email
+```
 
 ## 🌍 Déploiement (Vercel / Netlify)
 

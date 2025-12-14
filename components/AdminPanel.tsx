@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, SchoolClass, AuditLog, Announcement, Exam } from '../types';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 import { 
   UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, 
-  School, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, X, Copy, Eye, EyeOff, Megaphone, Calendar, Plus, AtSign, Key, Info
+  School, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, X, Copy, Eye, EyeOff, Megaphone, Calendar, Plus, AtSign, Key, Info, Lock
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -37,7 +38,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   
   // Form States
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: UserRole.STUDENT, classLevel: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: UserRole.STUDENT, classLevel: '' });
   const [newClass, setNewClass] = useState({ name: '', email: '' });
 
   useEffect(() => {
@@ -153,7 +154,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
       setEditingUserId(user.id);
       setNewUser({ 
           name: user.name, 
-          email: user.email, 
+          email: user.email,
+          password: '',
           role: user.role, 
           classLevel: user.classLevel,
       });
@@ -162,7 +164,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
   const handleCancelUserEdit = () => {
       setEditingUserId(null);
-      setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '' });
+      setNewUser({ name: '', email: '', password: '', role: UserRole.STUDENT, classLevel: '' });
   };
 
   const handleSubmitUser = async (e: React.FormEvent) => {
@@ -189,13 +191,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
             } : u));
             setMessage({ type: 'success', text: "Droits utilisateur mis à jour." });
             setEditingUserId(null);
-            setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '' });
+            setNewUser({ name: '', email: '', password: '', role: UserRole.STUDENT, classLevel: '' });
         } else {
-            setMessage({ type: 'error', text: "L'inscription est désactivée." });
+            // Create User using temporary client to avoid logging out admin
+            if (!newUser.email || !newUser.password || newUser.password.length < 6) {
+                setMessage({ type: 'error', text: "Email requis et mot de passe de 6 caractères min." });
+                setIsLoading(false);
+                return;
+            }
+
+            // Create a temporary client that doesn't persist the session
+            // This allows creating a user without replacing the current Admin session
+            const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                }
+            });
+
+            const { data, error } = await tempClient.auth.signUp({
+                email: newUser.email,
+                password: newUser.password,
+                options: {
+                    data: {
+                        full_name: newUser.name,
+                        role: newUser.role,
+                        class_level: newUser.classLevel
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            if (data.user) {
+                // Refresh list to show new user (triggered by DB trigger usually)
+                // Add slight delay to allow trigger to run
+                setTimeout(() => fetchAdminData(), 1000);
+                
+                setMessage({ type: 'success', text: "Utilisateur créé avec succès." });
+                setNewUser({ name: '', email: '', password: '', role: UserRole.STUDENT, classLevel: '' });
+            }
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
-        setMessage({ type: 'error', text: "Erreur lors de la mise à jour." });
+        setMessage({ type: 'error', text: e.message || "Erreur lors de l'opération." });
     } finally {
         setIsLoading(false);
     }
@@ -449,7 +489,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                    <div className="flex justify-between items-center mb-4">
                         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-                            {editingUserId ? `Modifier ${newUser.name}` : 'Attribution des accès'}
+                            {editingUserId ? `Modifier ${newUser.name}` : 'Nouveau compte utilisateur'}
                         </span>
                         {editingUserId && (
                             <button onClick={handleCancelUserEdit} className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1">
@@ -458,56 +498,87 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                         )}
                    </div>
                    
-                   {!editingUserId ? (
-                       <div className="flex items-start gap-3 p-4 bg-sky-50 dark:bg-sky-900/10 text-sky-700 dark:text-sky-300 rounded-lg border border-sky-100 dark:border-sky-900/20 text-sm">
+                   {!editingUserId && (
+                       <div className="flex items-start gap-3 p-4 mb-4 bg-sky-50 dark:bg-sky-900/10 text-sky-700 dark:text-sky-300 rounded-lg border border-sky-100 dark:border-sky-900/20 text-sm">
                            <Info size={20} className="shrink-0 mt-0.5" />
                            <p>
-                               <strong>Gestion des utilisateurs :</strong> L'inscription publique est désactivée. Utilisez l'interface Supabase pour inviter de nouveaux utilisateurs ou réactivez l'inscription temporairement.
+                               <strong>Création manuelle :</strong> Remplissez le formulaire ci-dessous pour créer un nouvel utilisateur. Un email de confirmation sera envoyé si la configuration Supabase l'exige.
                            </p>
                        </div>
-                   ) : (
-                       <form onSubmit={handleSubmitUser} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                           <div className="md:col-span-1">
-                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nom Complet</label>
-                                <input 
-                                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                    value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})}
-                                />
-                           </div>
-                           
-                           <div>
-                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Rôle</label>
-                                <select 
-                                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                    value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})}
-                                >
-                                    <option value={UserRole.STUDENT}>Élève</option>
-                                    <option value={UserRole.RESPONSIBLE}>Délégué</option>
-                                    <option value={UserRole.ADMIN}>Admin</option>
-                                </select>
-                           </div>
-
-                           <div>
-                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Classe</label>
-                                <select
-                                        className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                        value={newUser.classLevel} 
-                                        onChange={e => setNewUser({...newUser, classLevel: e.target.value})}
-                                    >
-                                        <option value="">-- Non assigné --</option>
-                                        <option value="ADMINISTRATION" className="font-bold bg-slate-100 dark:bg-slate-700">ADMINISTRATION</option>
-                                        {classesList.map(cls => (
-                                            <option key={cls.id} value={cls.name}>{cls.name}</option>
-                                        ))}
-                                </select>
-                           </div>
-                           
-                           <button disabled={isLoading} className="bg-university dark:bg-sky-600 text-white font-bold rounded-lg hover:bg-university-dark dark:hover:bg-sky-700 transition-colors px-4 py-2.5 flex items-center justify-center gap-2 text-xs shadow-sm">
-                               {isLoading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />} 
-                               Enregistrer
-                           </button>
-                       </form>
                    )}
+
+                    <form onSubmit={handleSubmitUser} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                        <div className="md:col-span-1">
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nom Complet</label>
+                            <input 
+                                className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})}
+                                required={!editingUserId}
+                            />
+                        </div>
+                        
+                        {/* Email field needed for creation, and read-only for edit usually, but simple input here */}
+                        {!editingUserId && (
+                             <div>
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email</label>
+                                <input 
+                                    type="email"
+                                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                    value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}
+                                    required
+                                />
+                             </div>
+                        )}
+
+                        {/* Password field only for creation */}
+                        {!editingUserId && (
+                             <div>
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Mot de passe</label>
+                                <div className="relative">
+                                    <input 
+                                        type="password"
+                                        className="w-full p-2.5 pr-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                        value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
+                                        placeholder="Min 6 car."
+                                        required
+                                    />
+                                    <Lock size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                                </div>
+                             </div>
+                        )}
+                        
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Rôle</label>
+                            <select 
+                                className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})}
+                            >
+                                <option value={UserRole.STUDENT}>Élève</option>
+                                <option value={UserRole.RESPONSIBLE}>Délégué</option>
+                                <option value={UserRole.ADMIN}>Admin</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Classe</label>
+                            <select
+                                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                    value={newUser.classLevel} 
+                                    onChange={e => setNewUser({...newUser, classLevel: e.target.value})}
+                                >
+                                    <option value="">-- Non assigné --</option>
+                                    <option value="ADMINISTRATION" className="font-bold bg-slate-100 dark:bg-slate-700">ADMINISTRATION</option>
+                                    {classesList.map(cls => (
+                                        <option key={cls.id} value={cls.name}>{cls.name}</option>
+                                    ))}
+                            </select>
+                        </div>
+                        
+                        <button disabled={isLoading} className="bg-university dark:bg-sky-600 text-white font-bold rounded-lg hover:bg-university-dark dark:hover:bg-sky-700 transition-colors px-4 py-2.5 flex items-center justify-center gap-2 text-xs shadow-sm min-w-[120px]">
+                            {isLoading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />} 
+                            {editingUserId ? 'Mettre à jour' : 'Créer Compte'}
+                        </button>
+                    </form>
                </div>
 
                <div className="overflow-x-auto">
