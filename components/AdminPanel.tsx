@@ -230,9 +230,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
             if (error) throw error;
 
             if (data.user) {
+                // IMPORTANT : Insertion explicite dans la table profiles
+                // Cela garantit que les données sont stockées même si le trigger automatique échoue
+                // ou si l'email n'est pas encore confirmé.
+                const { error: profileError } = await supabase.from('profiles').upsert({
+                    id: data.user.id,
+                    email: emailClean,
+                    full_name: newUser.name,
+                    role: newUser.role,
+                    class_level: sanitizedClassLevel,
+                    avatar_url: `https://ui-avatars.com/api/?name=${newUser.name}&background=random`,
+                    updated_at: new Date().toISOString()
+                });
+
+                if (profileError) {
+                    console.error("Erreur lors de l'insertion manuelle du profil:", profileError);
+                }
+
                 setTimeout(() => fetchAdminData(), 1000);
                 
-                setMessage({ type: 'success', text: "Utilisateur créé avec succès." });
+                setMessage({ type: 'success', text: "Utilisateur créé et profil enregistré avec succès." });
                 setNewUser({ name: '', email: '', password: '', role: UserRole.STUDENT, classLevel: '' });
             }
         }
