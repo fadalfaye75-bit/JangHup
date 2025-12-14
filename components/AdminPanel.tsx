@@ -122,7 +122,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
   const handleSubmitClass = async (e: React.FormEvent) => {
       e.preventDefault();
       
-      const emailClean = newClass.email.toLowerCase().replace(/[^a-z0-9@._+-]/g, '');
+      const emailClean = newClass.email.trim();
 
       const payload = {
           name: newClass.name,
@@ -174,7 +174,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
     setIsLoading(true);
     setMessage(null);
 
-    const emailClean = newUser.email.toLowerCase().replace(/[^a-z0-9@._+-]/g, '');
+    const emailClean = newUser.email.trim();
 
     try {
         // Sanitize Input for DB Constraints
@@ -241,7 +241,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
         // Translate common Supabase/Postgres errors
         let msg = e.message || "Erreur lors de l'opération.";
         if (msg.includes("Database error saving new user")) msg = "Erreur base de données : Vérifiez que la classe existe et que les données sont valides.";
-        if (msg.toLowerCase().includes("email address") && msg.toLowerCase().includes("invalid")) msg = "Adresse email invalide. Vérifiez qu'il n'y a pas d'espaces ou de fautes.";
+        if (msg.toLowerCase().includes("email address") && msg.toLowerCase().includes("invalid")) msg = "Adresse email invalide.";
         if (msg.includes("User already registered")) msg = "Un utilisateur avec cet email existe déjà.";
         if (msg.includes("weak_password")) msg = "Mot de passe trop faible (6 caractères minimum).";
         
@@ -433,7 +433,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                           <input 
                              placeholder="ex: tle.s2@janghub.sn" 
                              className="w-full pl-9 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                             value={newClass.email} onChange={e => setNewClass({...newClass, email: e.target.value.toLowerCase().replace(/[^a-z0-9@._+-]/g, '')})}
+                             value={newClass.email} onChange={e => setNewClass({...newClass, email: e.target.value})}
                           />
                       </div>
                   </div>
@@ -534,7 +534,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                                 <input 
                                     type="email"
                                     className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                    value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value.toLowerCase().replace(/[^a-z0-9@._+-]/g, '')})}
+                                    value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}
                                     required
                                 />
                              </div>
