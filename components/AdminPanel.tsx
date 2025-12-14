@@ -3,7 +3,7 @@ import { User, UserRole, SchoolClass, AuditLog, Announcement, Exam } from '../ty
 import { supabase } from '../lib/supabaseClient';
 import { 
   UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, 
-  School, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, X, Copy, Eye, EyeOff, Megaphone, Calendar, Plus, AtSign
+  School, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, X, Copy, Eye, EyeOff, Megaphone, Calendar, Plus, AtSign, Key
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -30,6 +30,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
   // Delete Confirmation State
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'USER' | 'CLASS', id: string, name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Password Reset State
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<{id: string, name: string} | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   // Edit States
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -138,6 +143,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
       }
   };
 
+  // --- PASSWORD RESET LOGIC ---
+  const requestPasswordReset = (user: User) => {
+      setResetPasswordTarget({ id: user.id, name: user.name });
+      setResetPasswordValue('');
+  };
+
+  const executePasswordReset = async () => {
+      if (!resetPasswordTarget || !resetPasswordValue) return;
+      setIsResetting(true);
+      setMessage(null);
+
+      try {
+          const { error } = await supabase.rpc('admin_reset_password', {
+              target_user_id: resetPasswordTarget.id,
+              new_password: resetPasswordValue
+          });
+
+          if (error) throw error;
+          
+          setMessage({ type: 'success', text: `Mot de passe de ${resetPasswordTarget.name} modifié avec succès.` });
+          setResetPasswordTarget(null);
+          setResetPasswordValue('');
+      } catch (err: any) {
+          setMessage({ type: 'error', text: err.message || "Erreur lors de la réinitialisation." });
+      } finally {
+          setIsResetting(false);
+      }
+  };
+
   // --- CLASSES LOGIC ---
 
   const handleEditClass = (cls: SchoolClass) => {
@@ -231,24 +265,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
             if (profileError) throw profileError;
 
-            let successText = "Profil mis à jour.";
-
-            // 2. Update Password if provided via RPC
-            if (newUser.password && newUser.password.trim() !== '') {
-                if (window.confirm("Attention : Vous êtes sur le point de changer le mot de passe de cet utilisateur. Confirmer ?")) {
-                    const { error: pwdError } = await supabase.rpc('admin_reset_password', {
-                        target_user_id: editingUserId,
-                        new_password: newUser.password
-                    });
-
-                    if (pwdError) {
-                        throw new Error(`Erreur mot de passe: ${pwdError.message}`);
-                    }
-                    successText = "Profil et mot de passe mis à jour.";
-                }
-            }
-
-            setMessage({ type: 'success', text: successText });
+            setMessage({ type: 'success', text: "Profil mis à jour." });
             setEditingUserId(null);
             fetchAdminData();
         } else {
@@ -356,6 +373,61 @@ Rôle: ${createdCredentials.role}
                           >
                               {isDeleting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
                               Supprimer
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* RESET PASSWORD MODAL */}
+      {resetPasswordTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in" onClick={() => setResetPasswordTarget(null)}></div>
+              <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+                  <div className="flex flex-col items-center text-center">
+                      <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mb-4">
+                          <Key size={24} />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Changer le mot de passe</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                          Définir un nouveau mot de passe pour <strong className="text-slate-800 dark:text-white">{resetPasswordTarget.name}</strong>.
+                      </p>
+                      
+                      <div className="w-full mb-6">
+                        <div className="relative">
+                            <input 
+                                type={showPassword ? "text" : "password"}
+                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none text-sm font-bold text-center text-slate-800 dark:text-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                                placeholder="Nouveau mot de passe"
+                                value={resetPasswordValue}
+                                onChange={(e) => setResetPasswordValue(e.target.value)}
+                                autoFocus
+                            />
+                            <button 
+                                type="button" 
+                                onClick={() => setShowPassword(!showPassword)} 
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            >
+                                {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
+                            </button>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 w-full">
+                          <button 
+                              onClick={() => setResetPasswordTarget(null)}
+                              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
+                          >
+                              Annuler
+                          </button>
+                          <button 
+                              onClick={executePasswordReset}
+                              disabled={isResetting || !resetPasswordValue}
+                              className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-sm disabled:opacity-70 disabled:grayscale"
+                          >
+                              {isResetting ? <Loader2 className="animate-spin" size={16} /> : <Key size={16} />}
+                              Confirmer
                           </button>
                       </div>
                   </div>
@@ -608,17 +680,19 @@ Rôle: ${createdCredentials.role}
                           value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} required
                        />
                        
-                       <div className="relative">
-                           <input 
-                              type={showPassword ? "text" : "password"}
-                              placeholder={editingUserId ? "Nouveau pass (optionnel)" : "Mot de passe (défaut: passer25)"}
-                              className="w-full p-2.5 pr-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                              value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
-                           />
-                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                           </button>
-                       </div>
+                       {!editingUserId && (
+                           <div className="relative">
+                               <input 
+                                  type={showPassword ? "text" : "password"}
+                                  placeholder="Mot de passe (défaut: passer25)"
+                                  className="w-full p-2.5 pr-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                  value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
+                               />
+                               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                               </button>
+                           </div>
+                       )}
 
                        <select 
                           className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
@@ -687,6 +761,13 @@ Rôle: ${createdCredentials.role}
                                         title="Copier les identifiants"
                                       >
                                           <Copy size={14}/>
+                                      </button>
+                                      <button 
+                                        onClick={() => requestPasswordReset(u)}
+                                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-all"
+                                        title="Changer mot de passe"
+                                      >
+                                          <Key size={14}/>
                                       </button>
                                       <button 
                                         onClick={() => handleEditUser(u)}
