@@ -19,8 +19,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
-    // Nettoyage strict de l'email : lowercase et suppression de tout caractère non standard
-    // Cela élimine les espaces invisibles, tabulations, et caractères spéciaux non désirés
+    // Double sécurité au submit, bien que le onChange filtre déjà
     const cleanEmail = email.toLowerCase().replace(/[^a-z0-9@._+-]/g, '');
 
     try {
@@ -84,7 +83,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                 required
                                 placeholder="nom@janghub.sn" 
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => setEmail(e.target.value.toLowerCase().replace(/[^a-z0-9@._+-]/g, ''))}
                                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium text-slate-700 dark:text-white focus:ring-2 focus:ring-university dark:focus:ring-sky-500 transition-all text-sm"
                             />
                         </div>

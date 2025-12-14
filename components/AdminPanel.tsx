@@ -433,7 +433,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                           <input 
                              placeholder="ex: tle.s2@janghub.sn" 
                              className="w-full pl-9 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                             value={newClass.email} onChange={e => setNewClass({...newClass, email: e.target.value})}
+                             value={newClass.email} onChange={e => setNewClass({...newClass, email: e.target.value.toLowerCase().replace(/[^a-z0-9@._+-]/g, '')})}
                           />
                       </div>
                   </div>
@@ -534,7 +534,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                                 <input 
                                     type="email"
                                     className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                    value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}
+                                    value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value.toLowerCase().replace(/[^a-z0-9@._+-]/g, '')})}
                                     required
                                 />
                              </div>
