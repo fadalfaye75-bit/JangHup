@@ -323,7 +323,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
       {message && (
           <div className={`p-3 rounded-lg flex items-center gap-3 text-sm font-bold animate-in slide-in-from-top-2 ${message.type === 'success' ? 'bg-success-light dark:bg-success/20 text-success dark:text-green-400 border border-success/20' : 'bg-alert-light dark:bg-alert/20 text-alert dark:text-red-400 border border-alert/20'}`}>
-              {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+              {message.type === 'success' ? <CheckCircle2 size={18} className="animate-in zoom-in duration-200" /> : <AlertCircle size={18} />}
               {message.text}
               <button onClick={() => setMessage(null)} className="ml-auto opacity-50 hover:opacity-100"><X size={16}/></button>
           </div>

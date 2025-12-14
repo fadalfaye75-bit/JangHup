@@ -256,7 +256,7 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                                 <div className={`absolute top-0 bottom-0 left-0 transition-all duration-700 ease-out ${isSelected ? 'bg-sky-200/50 dark:bg-sky-800/30' : 'bg-slate-200/30 dark:bg-slate-700/30'}`} style={{width: `${percent}%`}}></div>
                                 <div className="relative flex justify-between items-center z-10">
                                     <div className="flex items-center gap-3">
-                                        {isSelected && <Check size={18} className="text-university dark:text-sky-400" strokeWidth={3} />}
+                                        {isSelected && <Check size={18} className="text-university dark:text-sky-400 animate-in zoom-in duration-300" strokeWidth={3} />}
                                         <span className={`font-bold text-sm ${isSelected ? 'text-university dark:text-sky-400' : 'text-slate-700 dark:text-slate-200 group-hover:text-brand dark:group-hover:text-sky-400'}`}>
                                             {opt.text}
                                         </span>

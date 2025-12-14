@@ -147,7 +147,7 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
                     <div className="flex justify-between items-start mb-6">
                         <div className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800">{meeting.platform}</div>
                         <div className="flex gap-1">
-                             <button onClick={() => handleCopy(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-copy transition-colors p-2">{copiedId === meeting.id ? <Check size={18} /> : <Copy size={18} />}</button>
+                             <button onClick={() => handleCopy(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-copy transition-colors p-2">{copiedId === meeting.id ? <Check size={18} className="text-emerald-500 animate-in zoom-in duration-200" /> : <Copy size={18} />}</button>
                              <button onClick={() => handleShare(meeting)} className="text-slate-300 dark:text-slate-600 hover:text-action-share transition-colors p-2"><Share2 size={18} /></button>
                              {canModify(meeting) && (
                                 <>

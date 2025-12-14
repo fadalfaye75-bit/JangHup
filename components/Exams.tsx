@@ -243,7 +243,7 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
                              
                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                  <button onClick={() => handleCopy(exam)} className="p-2 text-slate-300 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                                     {copiedId === exam.id ? <Check size={18}/> : <Copy size={18}/>}
+                                     {copiedId === exam.id ? <Check size={18} className="text-emerald-500 animate-in zoom-in duration-200" /> : <Copy size={18}/>}
                                  </button>
                                  {canModify(exam) && (
                                      <>
