@@ -19,8 +19,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
-    // Nettoyage strict de l'email (supprime tous les espaces)
-    const cleanEmail = email.replace(/\s/g, '').toLowerCase();
+    // Nettoyage strict de l'email : lowercase et suppression de tout caractère non standard
+    // Cela élimine les espaces invisibles, tabulations, et caractères spéciaux non désirés
+    const cleanEmail = email.toLowerCase().replace(/[^a-z0-9@._+-]/g, '');
 
     try {
         const { error } = await supabase.auth.signInWithPassword({
@@ -32,8 +33,16 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } catch (err: any) {
         console.error("Auth error:", err);
         let msg = err.message;
-        if (msg === "Invalid login credentials") msg = "Email ou mot de passe incorrect.";
-        if (msg.includes("Email address") && msg.includes("is invalid")) msg = "Adresse email invalide (vérifiez le format).";
+        
+        // Traduction et amélioration des messages d'erreur courants
+        if (msg === "Invalid login credentials") {
+            msg = "Identifiants incorrects. Veuillez vérifier votre email et mot de passe.";
+        } else if (msg.toLowerCase().includes("email address") && msg.toLowerCase().includes("invalid")) {
+            msg = "Format d'email invalide. Vérifiez qu'il n'y a pas d'espaces ou de fautes de frappe.";
+        } else if (msg.includes("Email not confirmed")) {
+            msg = "Veuillez confirmer votre adresse email avant de vous connecter.";
+        }
+        
         setError(msg);
     } finally {
         setLoading(false);
@@ -61,7 +70,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <form onSubmit={handleLogin} className="space-y-5">
                 {error && (
                     <div className="p-3 bg-red-50 text-red-600 border border-red-100 rounded-lg text-xs font-bold flex items-center gap-2">
-                        <AlertCircle size={16} /> {error}
+                        <AlertCircle size={16} className="shrink-0" /> <span className="break-words">{error}</span>
                     </div>
                 )}
 
@@ -75,7 +84,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                 required
                                 placeholder="nom@janghub.sn" 
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value.replace(/\s/g, ''))}
+                                onChange={(e) => setEmail(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium text-slate-700 dark:text-white focus:ring-2 focus:ring-university dark:focus:ring-sky-500 transition-all text-sm"
                             />
                         </div>
@@ -95,7 +104,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                             >
                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
