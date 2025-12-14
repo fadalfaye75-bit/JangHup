@@ -243,7 +243,12 @@ function App() {
 
   const handleDeleteAnnouncement = async (id: string) => {
       setAnnouncements(announcements.filter(a => a.id !== id));
-      await supabase.from('announcements').delete().eq('id', id);
+      const { error } = await supabase.from('announcements').delete().eq('id', id);
+      if (error) {
+          console.error("Error deleting announcement:", error);
+          alert("Erreur lors de la suppression. Vérifiez vos droits.");
+          fetchData(); // Revert
+      }
   };
 
   const handleAddExam = async (e: Exam) => {
@@ -273,7 +278,12 @@ function App() {
 
   const handleDeleteExam = async (id: string) => {
       setExams(exams.filter(e => e.id !== id));
-      await supabase.from('exams').delete().eq('id', id);
+      const { error } = await supabase.from('exams').delete().eq('id', id);
+      if (error) {
+          console.error("Error deleting exam:", error);
+          alert("Erreur suppression examen.");
+          fetchData();
+      }
   };
 
   const handleAddMeeting = async (m: Meeting) => {
@@ -291,10 +301,20 @@ function App() {
       fetchData();
   };
 
+  const handleDeleteMeeting = async (id: string) => {
+      setMeetings(meetings.filter(m => m.id !== id));
+      const { error } = await supabase.from('meetings').delete().eq('id', id);
+      if (error) {
+          console.error("Error deleting meeting:", error);
+          alert("Impossible de supprimer la réunion.");
+          fetchData();
+      }
+  };
+
   const handleAddPoll = async (p: Poll) => {
       setPolls([p, ...polls]);
       const { data } = await supabase.from('polls').insert({
-          id: p.id, // Explicitly send ID since we generate it in Polls.tsx as Date.now().toString()
+          id: p.id,
           question: p.question,
           class_level: p.classLevel,
           author_id: user?.id
@@ -313,37 +333,30 @@ function App() {
   };
 
   const handleUpdatePoll = async (p: Poll) => {
-      // Optimistic Update
       setPolls(polls.map(item => item.id === p.id ? p : item));
       
-      // 1. Update Question
       await supabase.from('polls').update({
           question: p.question,
           active: p.active
       }).eq('id', p.id);
 
-      // 2. Synchronize Options
       try {
-        // Fetch existing DB options to know what to delete
         const { data: dbOptions } = await supabase.from('poll_options').select('id').eq('poll_id', p.id);
         
         if (dbOptions) {
             const dbIds = dbOptions.map(o => o.id);
             const currentIds = p.options.map(o => o.id);
-            
-            // Delete removed options
             const idsToDelete = dbIds.filter(id => !currentIds.includes(id));
             if (idsToDelete.length > 0) {
                 await supabase.from('poll_options').delete().in('id', idsToDelete);
             }
         }
 
-        // Upsert (Update existing + Insert new)
         const optionsToUpsert = p.options.map(opt => ({
             id: opt.id,
             poll_id: p.id,
             text: opt.text,
-            votes: opt.votes // Keep votes safe
+            votes: opt.votes 
         }));
 
         await supabase.from('poll_options').upsert(optionsToUpsert);
@@ -357,7 +370,13 @@ function App() {
 
   const handleDeletePoll = async (id: string) => {
       setPolls(polls.filter(p => p.id !== id));
-      await supabase.from('polls').delete().eq('id', id);
+      // La base de données doit avoir "ON DELETE CASCADE" configuré, sinon ceci échouera si des options/votes existent
+      const { error } = await supabase.from('polls').delete().eq('id', id);
+      if (error) {
+          console.error("Error deleting poll:", error);
+          alert(`Erreur lors de la suppression: ${error.message || 'Contrainte de base de données'}`);
+          fetchData(); // Revert state
+      }
   };
 
   const handleVotePoll = async (pollId: string, optionId: string) => {
@@ -367,19 +386,17 @@ function App() {
       if (!poll) return;
 
       const previousOptionId = poll.userVoteOptionId;
-      if (previousOptionId === optionId) return; // Déjà voté pour cette option
+      if (previousOptionId === optionId) return;
 
-      // 1. Mise à jour Optimiste de l'UI
       const newPolls = polls.map(p => {
           if (p.id !== pollId) return p;
           
           const newOptions = p.options.map(o => {
-             if (o.id === previousOptionId) return { ...o, votes: o.votes - 1 }; // Enlever l'ancien vote
-             if (o.id === optionId) return { ...o, votes: o.votes + 1 }; // Ajouter le nouveau
+             if (o.id === previousOptionId) return { ...o, votes: o.votes - 1 };
+             if (o.id === optionId) return { ...o, votes: o.votes + 1 };
              return o;
           });
 
-          // Si changement de vote, le total reste le même. Si nouveau vote, +1.
           const totalChange = previousOptionId ? 0 : 1; 
 
           return {
@@ -392,32 +409,21 @@ function App() {
       setPolls(newPolls);
 
       try {
-        // 2. Mise à jour Base de Données
-        
-        // a. Enregistrer que l'utilisateur a voté pour cette option (Upsert sur la table de liaison)
         const { error: voteError } = await supabase.from('poll_votes').upsert({
              poll_id: pollId,
              user_id: user.id,
              option_id: optionId
         });
         
-        if (voteError) {
-             console.error("Erreur lors de l'enregistrement du vote:", voteError);
-             throw voteError;
-        }
+        if (voteError) throw voteError;
 
-        // b. Mettre à jour les compteurs via RPC (Remote Procedure Call) pour l'atomicité
         if (previousOptionId) {
-            const { error: rpcError } = await supabase.rpc('decrement_poll_option', { option_id_input: previousOptionId });
-            if (rpcError) console.error("Erreur decrement:", rpcError);
+            await supabase.rpc('decrement_poll_option', { option_id_input: previousOptionId });
         }
-        
-        const { error: rpcError2 } = await supabase.rpc('increment_poll_option', { option_id_input: optionId });
-        if (rpcError2) console.error("Erreur increment:", rpcError2);
+        await supabase.rpc('increment_poll_option', { option_id_input: optionId });
 
       } catch (err: any) {
-          console.error("Erreur critique vote:", JSON.stringify(err, null, 2) || err);
-          // Re-fetch data to sync with server state in case of error
+          console.error("Erreur critique vote:", err);
           fetchData(); 
       }
   };
@@ -437,10 +443,14 @@ function App() {
 
   const handleDeleteSchedule = async (id: string) => {
     setSchedules(schedules.filter(s => s.id !== id));
-    await supabase.from('schedules').delete().eq('id', id);
+    const { error } = await supabase.from('schedules').delete().eq('id', id);
+    if (error) {
+        console.error("Delete schedule error", error);
+        alert("Erreur suppression emploi du temps");
+        fetchData();
+    }
   };
 
-  // Filtering
   const getFilteredData = <T extends { classLevel?: string }>(data: T[]) => {
       if (user?.role === UserRole.ADMIN) {
           if (adminClassFilter === 'ALL') return data;
@@ -536,10 +546,7 @@ function App() {
             meetings={getFilteredData(meetings)}
             addMeeting={handleAddMeeting}
             updateMeeting={(m) => setMeetings(meetings.map(item => item.id === m.id ? m : item))} 
-            deleteMeeting={(id) => {
-                 setMeetings(meetings.filter(m => m.id !== id));
-                 supabase.from('meetings').delete().eq('id', id).then();
-            }}
+            deleteMeeting={handleDeleteMeeting}
         />
       )}
       {currentView === 'PROFILE' && (
