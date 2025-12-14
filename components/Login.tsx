@@ -19,8 +19,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
-    // Simple trim to remove accidental spaces, no regex restrictions
-    const cleanEmail = email.trim();
+    // Nettoyage de l'email : trim, minuscules, et suppression des caractères invisibles ou quotes accidentelles
+    const cleanEmail = email.trim().toLowerCase().replace(/['"\u200b\u00a0]/g, '');
 
     try {
         const { error } = await supabase.auth.signInWithPassword({
@@ -116,10 +116,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3 bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white rounded-lg font-bold shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-70"
+                    className="relative overflow-hidden w-full py-3 bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white rounded-lg font-bold shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-70"
                 >
-                    {loading ? <Loader2 className="animate-spin" size={18} /> : "Connexion"}
-                    {!loading && <ArrowRight size={18} />}
+                    {loading && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-shimmer z-10"></div>
+                    )}
+                    <span className="relative z-20 flex items-center gap-2">
+                        {loading ? <Loader2 className="animate-spin" size={18} /> : "Connexion"}
+                        {!loading && <ArrowRight size={18} />}
+                    </span>
                 </button>
             </form>
         </div>

@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Announcement, User, UserRole, SchoolClass } from '../types';
 import { 
   MessageCircle, Link as LinkIcon, Image as ImageIcon, Trash2, Mail, Copy, 
-  Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertCircle, Loader2, School
+  Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertCircle, Loader2, School, Filter
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface AnnouncementsProps {
   user: User;
@@ -24,6 +26,9 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   const [targetClass, setTargetClass] = useState(user.classLevel); 
   const [links, setLinks] = useState<{ title: string; url: string; type: 'MEET' | 'FORMS' | 'DRIVE' | 'OTHER' }[]>([]);
   
+  // Admin Filter State
+  const [adminFilter, setAdminFilter] = useState('ALL');
+
   // Simplification : On simule l'upload en gardant juste le nom du fichier pour la démo
   const [images, setImages] = useState<string[]>([]); 
   const [attachments, setAttachments] = useState<{name: string, type: 'PDF' | 'IMAGE' | 'EXCEL', url: string}[]>([]);
@@ -162,6 +167,13 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     }
   };
 
+  // Filter Logic
+  const visibleAnnouncements = announcements.filter(ann => {
+    if (user.role !== UserRole.ADMIN) return true;
+    if (adminFilter === 'ALL') return true;
+    return ann.classLevel === adminFilter;
+  });
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
@@ -175,14 +187,34 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
            </div>
            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Communications officielles et ressources.</p>
         </div>
-        {canCreate && !isCreating && (
-          <button 
-            onClick={() => setIsCreating(true)}
-            className="bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 text-sm"
-          >
-            <Plus size={18} /> Nouvelle Annonce
-          </button>
-        )}
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+            {/* Admin Filter */}
+            {user.role === UserRole.ADMIN && (
+                <div className="relative">
+                    <select
+                        value={adminFilter}
+                        onChange={(e) => setAdminFilter(e.target.value)}
+                        className="appearance-none w-full sm:w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 py-2.5 pl-3 pr-8 rounded-lg text-xs font-bold focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 outline-none cursor-pointer shadow-sm"
+                    >
+                        <option value="ALL">Toutes les classes</option>
+                        {classes.map(c => (
+                            <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                    </select>
+                    <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                </div>
+            )}
+
+            {canCreate && !isCreating && (
+              <button 
+                onClick={() => setIsCreating(true)}
+                className="bg-university hover:bg-university-dark dark:bg-sky-600 dark:hover:bg-sky-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center justify-center gap-2 text-sm"
+              >
+                <Plus size={18} /> <span className="hidden sm:inline">Nouvelle Annonce</span><span className="sm:hidden">Créer</span>
+              </button>
+            )}
+        </div>
       </div>
 
       {isCreating && (
@@ -207,7 +239,7 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
             <div className="relative">
                 <textarea
                   className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 transition-all outline-none resize-none text-slate-700 dark:text-white min-h-[180px] placeholder:text-slate-400 text-sm leading-relaxed"
-                  placeholder="Saisissez le contenu de votre annonce ici..."
+                  placeholder="Saisissez le contenu de votre annonce ici... (Markdown supporté)"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   disabled={isSubmitting}
@@ -295,87 +327,131 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
       )}
 
       <div className="space-y-6">
-        {announcements.map(ann => (
-          <div key={ann.id} className="bg-white dark:bg-slate-900 rounded-xl p-0 shadow-card border border-slate-200 dark:border-slate-800 hover:border-university/30 dark:hover:border-sky-500/30 transition-all">
-             <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold text-white shadow-sm
-                                ${ann.authorName.includes('Admin') ? 'bg-university-dark dark:bg-sky-700' : 'bg-university dark:bg-sky-600'}`}
-                        >
-                                {ann.authorName.charAt(0)}
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-800 dark:text-white text-sm">{ann.authorName}</h3>
-                            <div className="flex gap-2 items-center text-xs text-slate-500 dark:text-slate-400">
-                                <span>{new Date(ann.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute:'2-digit' })}</span>
-                                {user.role === UserRole.ADMIN && (
-                                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                                        {ann.classLevel}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="flex gap-1">
-                        <button onClick={() => handleCopy(ann.content, ann.id)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Copier le texte">
-                            {copiedId === ann.id ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
-                        </button>
-                        <button onClick={() => handleShare(ann)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Partager par email">
-                            <Share2 size={16} />
-                        </button>
-
-                        {hasRights(ann) && (
-                            <>
-                                <button onClick={() => handleEdit(ann)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Modifier">
-                                    <Edit2 size={16} />
-                                </button>
-                                <button 
-                                    onClick={() => handleDelete(ann.id)} 
-                                    className="p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                <div className="prose prose-slate dark:prose-invert prose-sm max-w-none mb-6">
-                    <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">{ann.content}</p>
-                </div>
-
-                {ann.links && ann.links.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-6">
-                        {ann.links.map((link, i) => (
-                            <a 
-                                key={i} 
-                                href={link.url} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-xs transition-all border ${getLinkColor(link.type)} hover:brightness-95`}
+        {visibleAnnouncements.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                <MessageCircle size={48} className="mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                <h3 className="text-slate-800 dark:text-white font-bold mb-1">Aucune annonce trouvée</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">Il n'y a aucune annonce pour cette sélection.</p>
+            </div>
+        ) : (
+            visibleAnnouncements.map(ann => (
+              <div key={ann.id} className="bg-white dark:bg-slate-900 rounded-xl p-0 shadow-card border border-slate-200 dark:border-slate-800 hover:border-university/30 dark:hover:border-sky-500/30 transition-all">
+                 <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold text-white shadow-sm
+                                    ${ann.authorName.includes('Admin') ? 'bg-university-dark dark:bg-sky-700' : 'bg-university dark:bg-sky-600'}`}
                             >
-                                {getLinkIcon(link.type)}
-                                <span>{link.title}</span>
-                            </a>
-                        ))}
-                    </div>
-                )}
-
-                {/* Dummy Image Display */}
-                {ann.images && ann.images.length > 0 && (
-                    <div className={`grid gap-3 mb-6 ${ann.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
-                        {ann.images.map((img, i) => (
-                            <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                <img src={img} alt="Attachment" className="w-full h-full object-cover" />
+                                    {ann.authorName.charAt(0)}
                             </div>
-                        ))}
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-white text-sm">{ann.authorName}</h3>
+                                <div className="flex gap-2 items-center text-xs text-slate-500 dark:text-slate-400">
+                                    <span>{new Date(ann.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute:'2-digit' })}</span>
+                                    {user.role === UserRole.ADMIN && (
+                                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                            {ann.classLevel}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-1">
+                            <button onClick={() => handleCopy(ann.content, ann.id)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Copier le texte">
+                                {copiedId === ann.id ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                            </button>
+                            <button onClick={() => handleShare(ann)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Partager par email">
+                                <Share2 size={16} />
+                            </button>
+
+                            {hasRights(ann) && (
+                                <>
+                                    <button onClick={() => handleEdit(ann)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Modifier">
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDelete(ann.id)} 
+                                        className="p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     </div>
-                )}
-             </div>
-          </div>
-        ))}
+
+                    <div className="prose prose-slate dark:prose-invert prose-sm max-w-none mb-6">
+                        <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                a: ({node, href, children, ...props}) => {
+                                    const url = href || '';
+                                    let Icon = LinkIcon;
+                                    if (url.includes('meet.google') || url.includes('zoom') || url.includes('teams')) {
+                                        Icon = Video;
+                                    } else if (url.includes('drive.google')) {
+                                        Icon = HardDrive;
+                                    } else if (url.includes('docs.google') || url.includes('forms')) {
+                                        Icon = FileText;
+                                    }
+
+                                    return (
+                                        <a 
+                                            href={url} 
+                                            {...props} 
+                                            className="inline-flex items-center gap-1 text-university dark:text-sky-400 font-bold hover:underline" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                        >
+                                            <Icon size={14} className="shrink-0 opacity-80" />
+                                            {children}
+                                        </a>
+                                    );
+                                },
+                                ul: ({node, ...props}) => (
+                                    <ul {...props} className="list-disc pl-5 my-2" />
+                                ),
+                                ol: ({node, ...props}) => (
+                                    <ol {...props} className="list-decimal pl-5 my-2" />
+                                )
+                            }}
+                        >
+                            {ann.content}
+                        </ReactMarkdown>
+                    </div>
+
+                    {ann.links && ann.links.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-6">
+                            {ann.links.map((link, i) => (
+                                <a 
+                                    key={i} 
+                                    href={link.url} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-xs transition-all border ${getLinkColor(link.type)} hover:brightness-95`}
+                                >
+                                    {getLinkIcon(link.type)}
+                                    <span>{link.title}</span>
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Dummy Image Display */}
+                    {ann.images && ann.images.length > 0 && (
+                        <div className={`grid gap-3 mb-6 ${ann.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
+                            {ann.images.map((img, i) => (
+                                <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                    <img src={img} alt="Attachment" className="w-full h-full object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                 </div>
+              </div>
+            ))
+        )}
       </div>
     </div>
   );

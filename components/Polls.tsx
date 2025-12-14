@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Poll, User, UserRole, SchoolClass } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Plus, Check, X, Trash2, Users, Edit2, Loader2, Copy, Share2 } from 'lucide-react';
@@ -14,6 +14,39 @@ interface PollsProps {
 }
 
 const COLORS = ['#87CEEB', '#0ea5e9', '#0284c7', '#bae6fd'];
+
+// Composant pour l'animation des nombres
+const AnimatedPercent = ({ value }: { value: number }) => {
+    const [display, setDisplay] = useState(value);
+    
+    useEffect(() => {
+        const duration = 1000;
+        const start = display;
+        const end = value;
+        if (start === end) return;
+
+        const startTime = performance.now();
+        let rafId: number;
+
+        const animate = (now: number) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Cubic ease-out for smooth finish
+            const ease = 1 - Math.pow(1 - progress, 3);
+            
+            setDisplay(Math.round(start + (end - start) * ease));
+
+            if (progress < 1) {
+                rafId = requestAnimationFrame(animate);
+            }
+        };
+
+        rafId = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(rafId);
+    }, [value]); 
+
+    return <>{display}%</>;
+};
 
 export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, deletePoll, votePoll, classes }) => {
   const [isCreating, setIsCreating] = useState(false);
@@ -262,7 +295,7 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                                         : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-brand/50 dark:hover:border-sky-500/50'
                                     }`}
                             >
-                                <div className={`absolute top-0 bottom-0 left-0 transition-all duration-700 ease-out ${isSelected ? 'bg-sky-200/50 dark:bg-sky-800/30' : 'bg-slate-200/30 dark:bg-slate-700/30'}`} style={{width: `${percent}%`}}></div>
+                                <div className={`absolute top-0 bottom-0 left-0 transition-all duration-1000 ease-out ${isSelected ? 'bg-sky-200/50 dark:bg-sky-800/30' : 'bg-slate-200/30 dark:bg-slate-700/30'}`} style={{width: `${percent}%`}}></div>
                                 <div className="relative flex justify-between items-center z-10">
                                     <div className="flex items-center gap-3">
                                         {isSelected && <Check size={18} className="text-university dark:text-sky-400 animate-in zoom-in duration-300" strokeWidth={3} />}
@@ -272,7 +305,7 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className={`text-xs font-bold ${isSelected ? 'text-university dark:text-sky-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                                            {percent}%
+                                            <AnimatedPercent value={percent} />
                                         </span>
                                     </div>
                                 </div>
