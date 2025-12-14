@@ -174,7 +174,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
     setIsLoading(true);
     setMessage(null);
 
-    const emailClean = newUser.email.trim();
+    // Sanitize email (prevent hidden chars errors)
+    const emailClean = newUser.email.trim().toLowerCase().replace(/['"\u200b\u00a0]/g, '');
 
     try {
         // Sanitize Input for DB Constraints
