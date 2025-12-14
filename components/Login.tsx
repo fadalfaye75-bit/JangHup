@@ -19,16 +19,22 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
+    // Nettoyage strict de l'email (supprime tous les espaces)
+    const cleanEmail = email.replace(/\s/g, '').toLowerCase();
+
     try {
         const { error } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
+            email: cleanEmail,
             password
         });
         if (error) throw error;
         // La redirection est gérée par le listener dans App.tsx
     } catch (err: any) {
         console.error("Auth error:", err);
-        setError(err.message === "Invalid login credentials" ? "Email ou mot de passe incorrect." : err.message);
+        let msg = err.message;
+        if (msg === "Invalid login credentials") msg = "Email ou mot de passe incorrect.";
+        if (msg.includes("Email address") && msg.includes("is invalid")) msg = "Adresse email invalide (vérifiez le format).";
+        setError(msg);
     } finally {
         setLoading(false);
     }
@@ -69,7 +75,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                 required
                                 placeholder="nom@janghub.sn" 
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value.trim())}
+                                onChange={(e) => setEmail(e.target.value.replace(/\s/g, ''))}
                                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none font-medium text-slate-700 dark:text-white focus:ring-2 focus:ring-university dark:focus:ring-sky-500 transition-all text-sm"
                             />
                         </div>
