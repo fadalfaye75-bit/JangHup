@@ -1,12 +1,14 @@
+
 # JàngHub - Plateforme Scolaire Universitaire
 
-JàngHub est une application web moderne de gestion scolaire destinée aux universités et établissements supérieurs au Sénégal. Elle permet la gestion des emplois du temps, des annonces, des examens et des visioconférences.
+JàngHub est une application web moderne de gestion scolaire destinée aux universités et établissements supérieurs au Sénégal. Elle permet la gestion des emplois du temps, des annonces, des examens, des visioconférences et inclut un forum étudiant.
 
 ## 🚀 Fonctionnalités
 
 - **Authentification Sécurisée** : Gestion des rôles (Étudiant, Délégué, Admin).
 - **Tableau de Bord** : Vue d'ensemble des cours et alertes.
 - **Gestion Académique** : Emplois du temps, Examens (DS), Sondages.
+- **Forum Étudiant** : Espace de discussion et d'entraide (Support SQL inclus).
 - **Administration** : Panel complet pour gérer les utilisateurs et les classes.
 - **Communication** : Fil d'actualité et intégration Visioconférence.
 
@@ -20,13 +22,14 @@ JàngHub est une application web moderne de gestion scolaire destinée aux unive
 
 Pour que l'application fonctionne, vous devez exécuter les scripts SQL dans l'interface de Supabase (SQL Editor).
 
-### 1. Initialisation des Tables
+### 1. Initialisation des Tables (Nouveau)
 1.  Ouvrez le fichier `db_schema.sql` situé à la racine du projet.
 2.  Copiez tout le contenu.
-3.  Collez-le dans l'éditeur SQL de Supabase et cliquez sur "Run".
+3.  Collez-le dans l'éditeur SQL de Supabase (Tableau de bord Supabase > SQL Editor) et cliquez sur "Run".
+4.  Cela créera toutes les tables nécessaires : `profiles`, `classes`, `announcements`, `exams`, `forum_posts`, etc.
 
 ### 2. Création du Compte Administrateur (Obligatoire)
-Puisque l'inscription publique est désactivée, vous devez créer le premier compte admin manuellement :
+Puisque l'inscription publique est désactivée par défaut dans l'interface de démo, vous devez créer le premier compte admin manuellement ou via le panneau d'inscription si vous l'activez :
 
 1.  Allez dans **Supabase > Authentication > Users** et cliquez sur "Add User".
 2.  Créez un utilisateur avec votre email (ex: `admin@janghub.sn`).

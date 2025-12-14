@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Exam, User, UserRole } from '../types';
 import { 
   Calendar as CalendarIcon, Clock, MapPin, Plus, Trash2, AlertTriangle, 
-  Check, Copy, Mail, Users, Edit2, X
+  Check, Copy, Mail, Users, Edit2, X, Hourglass
 } from 'lucide-react';
 
 interface ExamsProps {
@@ -211,4 +211,80 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
              const isImminent = diffDays >= 0 && diffDays <= 7;
              
              return (
-                 <div key={exam.id} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-
+                 <div key={exam.id} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-6 relative overflow-hidden">
+                     {isImminent && (
+                         <div className="absolute top-0 right-0 bg-warning text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-sm flex items-center gap-1 z-10">
+                             <AlertTriangle size={12} /> J-{diffDays}
+                         </div>
+                     )}
+                     
+                     <div className="flex-shrink-0 flex flex-col items-center justify-center w-full md:w-20 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 py-4 md:py-0">
+                         <span className="text-3xl font-bold text-slate-800 dark:text-white">{new Date(exam.date).getDate()}</span>
+                         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{new Date(exam.date).toLocaleDateString('fr-FR', { month: 'short' })}</span>
+                     </div>
+
+                     <div className="flex-1">
+                         <div className="flex justify-between items-start mb-2">
+                             <div>
+                                 <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1 group-hover:text-university dark:group-hover:text-sky-400 transition-colors">{exam.subject}</h3>
+                                 <div className="flex flex-wrap gap-4 text-sm text-slate-500 dark:text-slate-400">
+                                     <div className="flex items-center gap-1.5">
+                                         <Clock size={16} className="text-slate-400" /> 
+                                         <span className="font-medium">{new Date(exam.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</span>
+                                         <span className="text-slate-300 mx-1">•</span>
+                                         <span className="flex items-center gap-1"><Hourglass size={14}/> {exam.duration}</span>
+                                     </div>
+                                     <div className="flex items-center gap-1.5">
+                                         <MapPin size={16} className="text-slate-400" /> 
+                                         <span className="font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">{exam.room}</span>
+                                     </div>
+                                 </div>
+                             </div>
+                             
+                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <button onClick={() => handleCopy(exam)} className="p-2 text-slate-300 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                                     {copiedId === exam.id ? <Check size={18}/> : <Copy size={18}/>}
+                                 </button>
+                                 {canModify(exam) && (
+                                     <>
+                                         <button onClick={() => handleEdit(exam)} className="p-2 text-slate-300 hover:text-university dark:text-slate-600 dark:hover:text-sky-400 transition-colors">
+                                             <Edit2 size={18}/>
+                                         </button>
+                                         <button onClick={() => handleDelete(exam.id)} className="p-2 text-slate-300 hover:text-alert dark:text-slate-600 dark:hover:text-red-400 transition-colors">
+                                             <Trash2 size={18}/>
+                                         </button>
+                                     </>
+                                 )}
+                             </div>
+                         </div>
+                         
+                         {exam.notes && (
+                             <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                                 <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                                     <span className="font-bold not-italic mr-1">Notes:</span> {exam.notes}
+                                 </p>
+                             </div>
+                         )}
+                     </div>
+                 </div>
+             );
+         })}
+         
+         {exams.length === 0 && (
+             <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                 <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 dark:text-slate-600">
+                     <CalendarIcon size={32} />
+                 </div>
+                 <h3 className="text-slate-800 dark:text-white font-bold text-lg">Aucun examen programmé</h3>
+                 <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Le calendrier est vide pour le moment.</p>
+                 {canCreate && (
+                     <button onClick={() => setIsAdding(true)} className="mt-4 text-university dark:text-sky-400 text-sm font-bold hover:underline">
+                         Programmer le premier devoir
+                     </button>
+                 )}
+             </div>
+         )}
+      </div>
+    </div>
+  );
+};
