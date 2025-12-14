@@ -19,8 +19,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
-    // Nettoyage de l'email : trim, minuscules, et suppression des caractères invisibles ou quotes accidentelles
-    const cleanEmail = email.trim().toLowerCase().replace(/['"\u200b\u00a0]/g, '');
+    // Nettoyage strict de l'email : minuscule, retrait de TOUS les espaces (visibles/invisibles) et quotes
+    const cleanEmail = email.toLowerCase().replace(/[\s\u200b\u00a0]/g, '').replace(/['"]/g, '');
 
     try {
         const { error } = await supabase.auth.signInWithPassword({

@@ -174,8 +174,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
     setIsLoading(true);
     setMessage(null);
 
-    // Sanitize email (prevent hidden chars errors)
-    const emailClean = newUser.email.trim().toLowerCase().replace(/['"\u200b\u00a0]/g, '');
+    // Sanitize email: remove ALL whitespace and invisible characters
+    const emailClean = newUser.email.toLowerCase().replace(/[\s\u200b\u00a0]/g, '').replace(/['"]/g, '');
 
     try {
         // Sanitize Input for DB Constraints
@@ -232,9 +232,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
             if (data.user) {
                 // IMPORTANT : Insertion explicite dans la table profiles
-                // Cela garantit que les données sont stockées même si le trigger automatique échoue
-                // ou si l'email n'est pas encore confirmé.
-                const { error: profileError } = await supabase.from('profiles').upsert({
+                // On utilise tempClient si disponible (session active) pour respecter RLS "insert own profile"
+                const clientForProfile = data.session ? tempClient : supabase;
+
+                const { error: profileError } = await clientForProfile.from('profiles').upsert({
                     id: data.user.id,
                     email: emailClean,
                     full_name: newUser.name,
@@ -245,7 +246,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                 });
 
                 if (profileError) {
-                    console.error("Erreur lors de l'insertion manuelle du profil:", profileError);
+                    console.error("Erreur insertion profil:", profileError);
+                    throw new Error("Erreur profil: " + (profileError.message || JSON.stringify(profileError)));
                 }
 
                 setTimeout(() => fetchAdminData(), 1000);
