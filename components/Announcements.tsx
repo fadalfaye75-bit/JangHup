@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Announcement, User, UserRole } from '../types';
-import { generateAnnouncement } from '../services/geminiService';
 import { 
   MessageCircle, Link as LinkIcon, Image as ImageIcon, Trash2, Mail, Copy, 
-  Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertCircle, Loader2, School, PenTool
+  Video, FileText, HardDrive, X, Check, Plus, Share2, Edit2, File, AlertCircle, Loader2, School
 } from 'lucide-react';
 
 interface AnnouncementsProps {
@@ -33,7 +32,6 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   const [linkTitle, setLinkTitle] = useState('');
   const [linkType, setLinkType] = useState<'MEET' | 'FORMS' | 'DRIVE' | 'OTHER'>('OTHER');
   
-  const [isGenerating, setIsGenerating] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const canCreate = user.role === UserRole.ADMIN || user.role === UserRole.RESPONSIBLE;
@@ -66,19 +64,6 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
       if (user.role === UserRole.ADMIN) setTargetClass(ann.classLevel);
       setIsCreating(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleAiGeneration = async () => {
-      if (!content.trim()) return;
-      setIsGenerating(true);
-      try {
-          const generated = await generateAnnouncement(content, user.role);
-          setContent(generated);
-      } catch (e) {
-          alert("Erreur IA");
-      } finally {
-          setIsGenerating(false);
-      }
   };
 
   const handleAddLink = () => {
@@ -206,19 +191,11 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
             <div className="relative">
                 <textarea
                   className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-university/20 dark:focus:ring-sky-500/20 focus:border-university dark:focus:border-sky-500 transition-all outline-none resize-none text-slate-700 dark:text-white min-h-[180px] placeholder:text-slate-400 text-sm leading-relaxed"
-                  placeholder={user.role === UserRole.ADMIN ? "Entrez les points clés, l'IA rédigera l'annonce pour vous..." : "Sujet de l'annonce, l'IA se charge de la rédaction..."}
+                  placeholder="Saisissez le contenu de votre annonce ici..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   disabled={isSubmitting}
                 />
-                <button 
-                    onClick={handleAiGeneration}
-                    disabled={isGenerating || !content || isSubmitting}
-                    className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-xs font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 border border-indigo-100 dark:border-indigo-800"
-                >
-                    {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <PenTool size={12} />}
-                    {isGenerating ? 'Rédaction...' : 'IA'}
-                </button>
             </div>
             
             {(links.length > 0 || images.length > 0 || attachments.length > 0) && (

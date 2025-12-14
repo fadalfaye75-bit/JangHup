@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Poll, User, UserRole } from '../types';
-import { reformulatePollQuestion } from '../services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Plus, Check, X, Trash2, Users, Edit2, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Check, X, Trash2, Users, Edit2, Loader2 } from 'lucide-react';
 
 interface PollsProps {
   user: User;
@@ -24,7 +23,6 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
   const [options, setOptions] = useState<{id?: string, text: string}[]>([{text: ''}, {text: ''}]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isReformulating, setIsReformulating] = useState(false);
 
   // Admin cannot create polls (Pedagogical content)
   const canCreate = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
@@ -64,19 +62,6 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
       setOptions(poll.options.map(o => ({ id: o.id, text: o.text })));
       setIsCreating(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleReformulate = async () => {
-      if (!question.trim()) return;
-      setIsReformulating(true);
-      try {
-          const reformulated = await reformulatePollQuestion(question);
-          setQuestion(reformulated);
-      } catch(e) {
-          console.error(e);
-      } finally {
-          setIsReformulating(false);
-      }
   };
 
   const createOrUpdatePoll = async () => {
@@ -169,14 +154,6 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
                     value={question} 
                     onChange={(e) => setQuestion(e.target.value)} 
                 />
-                <button 
-                    onClick={handleReformulate} 
-                    disabled={isReformulating || !question}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors disabled:opacity-50"
-                    title="Reformuler avec l'IA"
-                >
-                    {isReformulating ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
-                </button>
               </div>
               
               <div className="space-y-4 mb-8">
