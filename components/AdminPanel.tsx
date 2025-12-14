@@ -124,7 +124,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
       
       const payload = {
           name: newClass.name,
-          email: newClass.email,
+          email: newClass.email.trim(),
       };
 
       try {
@@ -172,6 +172,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
     setIsLoading(true);
     setMessage(null);
 
+    const emailTrimmed = newUser.email.trim();
+
     try {
         // Sanitize Input for DB Constraints
         const sanitizedClassLevel = newUser.classLevel && newUser.classLevel.trim() !== '' ? newUser.classLevel : null;
@@ -197,7 +199,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
             setNewUser({ name: '', email: '', password: '', role: UserRole.STUDENT, classLevel: '' });
         } else {
             // Create User using temporary client to avoid logging out admin
-            if (!newUser.email || !newUser.password || newUser.password.length < 6) {
+            if (!emailTrimmed || !newUser.password || newUser.password.length < 6) {
                 setMessage({ type: 'error', text: "Email requis et mot de passe de 6 caractères min." });
                 setIsLoading(false);
                 return;
@@ -212,7 +214,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
             });
 
             const { data, error } = await tempClient.auth.signUp({
-                email: newUser.email,
+                email: emailTrimmed,
                 password: newUser.password,
                 options: {
                     data: {
@@ -237,6 +239,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
         // Translate common Supabase/Postgres errors
         let msg = e.message || "Erreur lors de l'opération.";
         if (msg.includes("Database error saving new user")) msg = "Erreur base de données : Vérifiez que la classe existe et que les données sont valides.";
+        if (msg.includes("Email address") && msg.includes("is invalid")) msg = "Adresse email invalide (vérifiez les espaces ou le format).";
         
         setMessage({ type: 'error', text: msg });
     } finally {
@@ -426,7 +429,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                           <input 
                              placeholder="ex: tle.s2@janghub.sn" 
                              className="w-full pl-9 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                             value={newClass.email} onChange={e => setNewClass({...newClass, email: e.target.value})}
+                             value={newClass.email} onChange={e => setNewClass({...newClass, email: e.target.value.trim()})}
                           />
                       </div>
                   </div>
@@ -527,7 +530,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
                                 <input 
                                     type="email"
                                     className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                    value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}
+                                    value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value.trim()})}
                                     required
                                 />
                              </div>
