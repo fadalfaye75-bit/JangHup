@@ -1,63 +1,45 @@
 import React, { useState } from 'react';
 import { User, ForumPost } from '../types';
-import { MessageSquare, Plus, Search, MessageCircle, Heart, Share2 } from 'lucide-react';
+import { MessageSquare, Plus, MessageCircle, Heart, Share2, Loader2, Trash2 } from 'lucide-react';
 
 interface ForumProps {
   user: User;
+  posts: ForumPost[];
+  addPost: (post: ForumPost) => void;
 }
 
-// Données fictives pour le forum (Local Mock)
-const INITIAL_POSTS: ForumPost[] = [
-    {
-        id: '1',
-        title: 'Entraide pour le projet de Java',
-        content: 'Salut tout le monde, je suis bloqué sur la partie Héritage du TP. Quelqu\'un aurait un exemple simple ?',
-        authorId: 'etu-1',
-        authorName: 'Fatou Ndiaye',
-        categoryId: 'dev',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-        views: 45,
-        replies: []
-    },
-    {
-        id: '2',
-        title: 'Date des partiels S1',
-        content: 'Est-ce que l\'administration a confirmé les dates pour les examens de janvier ?',
-        authorId: 'del-1',
-        authorName: 'Moussa Diop',
-        categoryId: 'info',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        views: 120,
-        replies: []
-    }
-];
-
-export const Forum: React.FC<ForumProps> = ({ user }) => {
-  const [posts, setPosts] = useState<ForumPost[]>(INITIAL_POSTS);
+export const Forum: React.FC<ForumProps> = ({ user, posts, addPost }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreatePost = (e: React.FormEvent) => {
       e.preventDefault();
       if(!newPostTitle || !newPostContent) return;
 
-      const newPost: ForumPost = {
-          id: Date.now().toString(),
-          title: newPostTitle,
-          content: newPostContent,
-          authorId: user.id,
-          authorName: user.name,
-          categoryId: 'general',
-          createdAt: new Date().toISOString(),
-          views: 0,
-          replies: []
-      };
+      setIsSubmitting(true);
+      
+      // Simulate network delay for better UX
+      setTimeout(() => {
+          const newPost: ForumPost = {
+              id: Date.now().toString(),
+              title: newPostTitle,
+              content: newPostContent,
+              authorId: user.id,
+              authorName: user.name,
+              categoryId: 'general',
+              createdAt: new Date().toISOString(),
+              views: 0,
+              replies: []
+          };
 
-      setPosts([newPost, ...posts]);
-      setIsCreating(false);
-      setNewPostTitle('');
-      setNewPostContent('');
+          addPost(newPost);
+          setIsCreating(false);
+          setNewPostTitle('');
+          setNewPostContent('');
+          setIsSubmitting(false);
+      }, 500);
   };
 
   return (
@@ -89,23 +71,27 @@ export const Forum: React.FC<ForumProps> = ({ user }) => {
                         value={newPostTitle}
                         onChange={e => setNewPostTitle(e.target.value)}
                         autoFocus
+                        disabled={isSubmitting}
                     />
                     <textarea 
                         className="w-full p-3 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 min-h-[120px]"
                         placeholder="Détaillez votre question ou message ici..."
                         value={newPostContent}
                         onChange={e => setNewPostContent(e.target.value)}
+                        disabled={isSubmitting}
                     />
                     <div className="flex justify-end gap-3">
-                        <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Annuler</button>
-                        <button type="submit" className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Publier</button>
+                        <button type="button" onClick={() => setIsCreating(false)} disabled={isSubmitting} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Annuler</button>
+                        <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                            {isSubmitting && <Loader2 className="animate-spin" size={16} />} Publier
+                        </button>
                     </div>
                 </form>
             </div>
         )}
 
         <div className="space-y-4">
-            {posts.map(post => (
+            {posts.length > 0 ? posts.map(post => (
                 <div key={post.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer group">
                     <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -120,7 +106,7 @@ export const Forum: React.FC<ForumProps> = ({ user }) => {
                             </div>
                         </div>
                         <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase rounded-lg">
-                            {post.categoryId}
+                            {post.categoryId || 'General'}
                         </span>
                     </div>
                     
@@ -130,7 +116,7 @@ export const Forum: React.FC<ForumProps> = ({ user }) => {
 
                     <div className="flex items-center gap-6 pl-[52px] text-slate-400 text-xs font-bold">
                         <div className="flex items-center gap-1.5 hover:text-indigo-500 transition-colors">
-                            <MessageCircle size={16} /> {post.replies.length} réponses
+                            <MessageCircle size={16} /> {post.replies ? post.replies.length : 0} réponses
                         </div>
                         <div className="flex items-center gap-1.5 hover:text-pink-500 transition-colors">
                             <Heart size={16} /> J'aime
@@ -140,7 +126,13 @@ export const Forum: React.FC<ForumProps> = ({ user }) => {
                         </div>
                     </div>
                 </div>
-            ))}
+            )) : (
+                <div className="py-20 text-center bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                    <MessageSquare size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                    <p className="text-slate-500 dark:text-slate-400 font-medium">Aucune discussion pour le moment.</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Soyez le premier à lancer un sujet !</p>
+                </div>
+            )}
         </div>
     </div>
   );

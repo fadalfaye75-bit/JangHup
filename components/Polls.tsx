@@ -9,12 +9,13 @@ interface PollsProps {
   polls: Poll[];
   addPoll: (p: Poll) => void;
   updatePoll: (p: Poll) => void;
+  deletePoll: (id: string) => void;
   votePoll: (pollId: string, optionId: string) => void;
 }
 
 const COLORS = ['#87CEEB', '#0ea5e9', '#0284c7', '#bae6fd'];
 
-export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, votePoll }) => {
+export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, deletePoll, votePoll }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
@@ -106,14 +107,7 @@ export const Polls: React.FC<PollsProps> = ({ user, polls, addPoll, updatePoll, 
 
   const handleDelete = (poll: Poll) => {
     if (window.confirm("Voulez-vous vraiment supprimer ce sondage ?")) {
-       // Dans une vraie app, on appellerait une prop deletePoll
-       // Ici on triche un peu pour la démo en simulant une mise à jour 'cachée' ou on assume que le parent gère
-       // Pour être propre, il faudrait ajouter deletePoll aux props, mais votePoll fera un refresh dans App.tsx
-       // On va supposer que l'App gère la suppression si on passe null ou via une prop dédiée si elle existait.
-       // Comme votePoll déclenche fetchData dans App.tsx, et que c'est local, on ne peut pas vraiment supprimer sans la prop.
-       // NOTE: J'ajoute deletePoll aux props si nécessaire, mais je vais utiliser updatePoll pour le marquer inactif pour l'instant
-       // ou simplement ne rien faire car App.tsx n'a pas deletePoll pour les sondages dans les props passées.
-       alert("Fonction suppression simulée.");
+       deletePoll(poll.id);
     }
   }
 

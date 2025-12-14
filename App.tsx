@@ -41,6 +41,7 @@ function App() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
 
   // Apply Theme
   useEffect(() => {
@@ -136,12 +137,13 @@ function App() {
         const examQuery = supabase.from('exams').select('*').order('date', { ascending: true });
         const meetQuery = supabase.from('meetings').select('*').order('date', { ascending: true });
         const schedQuery = supabase.from('schedules').select('*').order('uploaded_at', { ascending: false });
-        
-        // Pour les sondages, on récupère aussi les options
+        // Fetch polls with options
         const pollQuery = supabase.from('polls').select('*, poll_options(*)').order('created_at', { ascending: false });
+        // Fetch forum posts with replies
+        const forumQuery = supabase.from('forum_posts').select('*, forum_replies(*)').order('created_at', { ascending: false });
 
-        const [annResult, examResult, meetResult, pollResult, schedResult] = await Promise.all([
-            annQuery, examQuery, meetQuery, pollQuery, schedQuery
+        const [annResult, examResult, meetResult, pollResult, schedResult, forumResult] = await Promise.all([
+            annQuery, examQuery, meetQuery, pollQuery, schedQuery, forumQuery
         ]);
 
         if (annResult.data) setAnnouncements(annResult.data.map((d: any) => ({
@@ -201,6 +203,26 @@ function App() {
             }));
             setPolls(formattedPolls);
         }
+
+        if (forumResult.data) {
+            setForumPosts(forumResult.data.map((p: any) => ({
+                id: p.id,
+                title: p.title,
+                content: p.content,
+                authorId: p.author_id,
+                authorName: p.author_name,
+                categoryId: p.category_id || 'general',
+                createdAt: p.created_at,
+                views: p.views || 0,
+                replies: p.forum_replies ? p.forum_replies.map((r: any) => ({
+                    id: r.id,
+                    authorId: r.author_id,
+                    authorName: r.author_name,
+                    content: r.content,
+                    createdAt: r.created_at
+                })) : []
+            })));
+        }
     } catch (err) {
         console.error("Error fetching data:", err);
     }
@@ -211,11 +233,9 @@ function App() {
     setUser(null);
   };
 
-  // --- CRUD WRAPPERS ---
+  // --- CRUD HANDLERS ---
   const handleAddAnnouncement = async (a: Announcement) => {
-      // Optimistic update
       setAnnouncements([a, ...announcements]);
-      // DB Insert
       await supabase.from('announcements').insert({
           author_id: user?.id,
           author_name: user?.name,
@@ -225,7 +245,7 @@ function App() {
           images: a.images,
           attachments: a.attachments
       });
-      fetchData(); // Refresh IDs
+      fetchData();
   };
 
   const handleUpdateAnnouncement = async (a: Announcement) => {
@@ -242,7 +262,6 @@ function App() {
       await supabase.from('announcements').delete().eq('id', id);
   };
 
-  // Exam Wrappers
   const handleAddExam = async (e: Exam) => {
       setExams([...exams, e]);
       await supabase.from('exams').insert({
@@ -257,12 +276,22 @@ function App() {
       fetchData();
   };
 
+  const handleUpdateExam = async (e: Exam) => {
+      setExams(exams.map(item => item.id === e.id ? e : item));
+      await supabase.from('exams').update({
+          subject: e.subject,
+          date: e.date,
+          duration: e.duration,
+          room: e.room,
+          notes: e.notes
+      }).eq('id', e.id);
+  };
+
   const handleDeleteExam = async (id: string) => {
       setExams(exams.filter(e => e.id !== id));
       await supabase.from('exams').delete().eq('id', id);
   };
 
-  // Meet Wrappers
   const handleAddMeeting = async (m: Meeting) => {
       setMeetings([...meetings, m]);
       await supabase.from('meetings').insert({
@@ -278,18 +307,15 @@ function App() {
       fetchData();
   };
 
-  // Poll Wrappers
   const handleAddPoll = async (p: Poll) => {
       setPolls([p, ...polls]);
-      // 1. Insert Poll
-      const { data, error } = await supabase.from('polls').insert({
+      const { data } = await supabase.from('polls').insert({
           question: p.question,
           class_level: p.classLevel,
           author_id: user?.id
       }).select().single();
 
       if (data) {
-          // 2. Insert Options
           const optionsToInsert = p.options.map(opt => ({
               poll_id: data.id,
               text: opt.text,
@@ -300,8 +326,20 @@ function App() {
       }
   };
 
+  const handleUpdatePoll = async (p: Poll) => {
+      setPolls(polls.map(item => item.id === p.id ? p : item));
+      await supabase.from('polls').update({
+          question: p.question,
+          active: p.active
+      }).eq('id', p.id);
+  };
+
+  const handleDeletePoll = async (id: string) => {
+      setPolls(polls.filter(p => p.id !== id));
+      await supabase.from('polls').delete().eq('id', id);
+  };
+
   const handleVotePoll = async (pollId: string, optionId: string) => {
-      // Optimistic
       setPolls(polls.map(p => {
           if (p.id !== pollId) return p;
           return {
@@ -311,16 +349,45 @@ function App() {
           };
       }));
 
-      // DB RPC call usually better, but simple update here
-      // Note: This is race-condition prone in production, normally use a stored procedure increment
       const { data } = await supabase.from('poll_options').select('votes').eq('id', optionId).single();
       if (data) {
           await supabase.from('poll_options').update({ votes: data.votes + 1 }).eq('id', optionId);
       }
   };
 
+  const handleAddSchedule = async (s: ScheduleItem) => {
+    setSchedules([s, ...schedules]);
+    await supabase.from('schedules').insert({
+        title: s.title,
+        class_level: s.classLevel,
+        semester: s.semester,
+        url: s.url,
+        uploaded_at: s.uploadedAt,
+        version: s.version
+    });
+    fetchData();
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    setSchedules(schedules.filter(s => s.id !== id));
+    await supabase.from('schedules').delete().eq('id', id);
+  };
+
+  const handleAddForumPost = async (p: ForumPost) => {
+    setForumPosts([p, ...forumPosts]);
+    await supabase.from('forum_posts').insert({
+        title: p.title,
+        content: p.content,
+        author_id: p.authorId,
+        author_name: p.authorName,
+        category_id: p.categoryId,
+        created_at: p.createdAt
+    });
+    fetchData();
+  };
+
   // Filtering
-  const getFilteredData = <T extends { classLevel: string }>(data: T[]) => {
+  const getFilteredData = <T extends { classLevel?: string }>(data: T[]) => {
       if (user?.role === UserRole.ADMIN) {
           if (adminClassFilter === 'ALL') return data;
           return data.filter(item => item.classLevel === adminClassFilter);
@@ -386,8 +453,8 @@ function App() {
         <Schedule 
             user={user} 
             schedules={getFilteredData(schedules)} 
-            addSchedule={(s) => setSchedules([s, ...schedules])} // TODO: Add DB hook
-            deleteSchedule={(id) => setSchedules(schedules.filter(s => s.id !== id))}
+            addSchedule={handleAddSchedule}
+            deleteSchedule={handleDeleteSchedule}
         />
       )}
       {currentView === 'EXAMS' && (
@@ -395,7 +462,7 @@ function App() {
             user={user} 
             exams={getFilteredData(exams)} 
             addExam={handleAddExam}
-            updateExam={() => {}} // TODO: Add update DB hook
+            updateExam={handleUpdateExam}
             deleteExam={handleDeleteExam} 
         />
       )}
@@ -404,7 +471,8 @@ function App() {
             user={user} 
             polls={getFilteredData(polls)} 
             addPoll={handleAddPoll}
-            updatePoll={() => {}} // Implémenter si besoin
+            updatePoll={handleUpdatePoll}
+            deletePoll={handleDeletePoll}
             votePoll={handleVotePoll} 
         />
       )}
@@ -413,7 +481,7 @@ function App() {
             user={user}
             meetings={getFilteredData(meetings)}
             addMeeting={handleAddMeeting}
-            updateMeeting={() => {}}
+            updateMeeting={(m) => setMeetings(meetings.map(item => item.id === m.id ? m : item))} 
             deleteMeeting={(id) => {
                  setMeetings(meetings.filter(m => m.id !== id));
                  supabase.from('meetings').delete().eq('id', id).then();
@@ -423,6 +491,8 @@ function App() {
       {currentView === 'FORUM' && (
         <Forum 
             user={user}
+            posts={forumPosts} // Pass all posts as forum is usually global or we can filter if needed
+            addPost={handleAddForumPost}
         />
       )}
       {currentView === 'PROFILE' && (
