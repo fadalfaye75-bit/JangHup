@@ -382,6 +382,7 @@ function App() {
 
   const handleDeletePoll = async (id: string) => {
       setPolls(polls.filter(p => p.id !== id));
+      // Nécessite ON DELETE CASCADE en base de données pour fonctionner correctement
       const { error } = await supabase.from('polls').delete().eq('id', id);
       if (error) {
           console.error("Error deleting poll:", error);
