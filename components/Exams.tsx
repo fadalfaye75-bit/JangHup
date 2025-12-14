@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Exam, User, UserRole } from '../types';
-import { supabase } from '../lib/supabaseClient';
 import { 
   Calendar as CalendarIcon, Clock, MapPin, Plus, Trash2, AlertTriangle, 
-  Check, X, Copy, Mail, Users, Edit2
+  Check, Copy, Mail, Users, Edit2, X
 } from 'lucide-react';
 
 interface ExamsProps {
@@ -52,73 +51,38 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
       setIsAdding(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject || !date || !time) return;
 
-    try {
-        const payload = {
-          subject,
-          class_level: user.classLevel, 
-          date: new Date(`${date}T${time}`).toISOString(),
-          duration,
-          room,
-          notes,
-          author_id: user.id
-        };
+    const newExam: Exam = {
+        id: editingId || Date.now().toString(),
+        subject,
+        classLevel: user.classLevel, 
+        date: new Date(`${date}T${time}`).toISOString(),
+        duration,
+        room,
+        notes,
+        authorId: user.id
+    };
 
-        let data, error;
-        
-        if (editingId) {
-            const res = await supabase.from('exams').update(payload).eq('id', editingId).select().single();
-            data = res.data; error = res.error;
-        } else {
-            const res = await supabase.from('exams').insert(payload).select().single();
-            data = res.data; error = res.error;
-        }
-        
-        if (error) throw error;
-        const formattedExam: Exam = {
-            id: data.id,
-            subject: data.subject,
-            classLevel: data.class_level,
-            date: data.date,
-            duration: data.duration,
-            room: data.room,
-            notes: data.notes,
-            authorId: data.author_id
-        };
-        if (editingId) updateExam(formattedExam);
-        else addExam(formattedExam);
-        resetForm();
-    } catch (error: any) {
-        alert(`Erreur : ${error.message}`);
-    }
+    if (editingId) updateExam(newExam);
+    else addExam(newExam);
+    
+    resetForm();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cet examen ?")) {
-      const { error } = await supabase.from('exams').delete().eq('id', id);
-      if (error) {
-          alert("Erreur lors de la suppression");
-          return;
-      }
       deleteExam(id);
     }
   };
 
   const handleCopy = (exam: Exam) => {
-    const text = `DS: ${exam.subject}\nDate: ${new Date(exam.date).toLocaleDateString()} à ${new Date(exam.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\nSalle: ${exam.room}\nDurée: ${exam.duration}\nNotes: ${exam.notes || 'Aucune'}`;
+    const text = `DS: ${exam.subject}\nDate: ${new Date(exam.date).toLocaleDateString()} à ${new Date(exam.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\nSalle: ${exam.room}\nDurée: ${exam.duration}`;
     navigator.clipboard.writeText(text);
     setCopiedId(exam.id);
     setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleShare = (exam: Exam) => {
-    const classEmail = exam.classLevel.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@janghub.sn';
-    const subject = `[Rappel DS] ${exam.subject}`;
-    const body = `Bonjour,\n\nUn devoir surveillé est programmé :\n\nMatière : ${exam.subject}\nDate : ${new Date(exam.date).toLocaleDateString()} à ${new Date(exam.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\nSalle : ${exam.room}\nDurée : ${exam.duration}\n\nNotes : ${exam.notes || 'N/A'}\n\nCordialement.`;
-    window.location.href = `mailto:${classEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const sortedExams = [...exams].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -245,81 +209,6 @@ export const Exams: React.FC<ExamsProps> = ({ user, exams, addExam, updateExam, 
              const diffTime = examDate.getTime() - now.getTime();
              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
              const isImminent = diffDays >= 0 && diffDays <= 7;
-             const isPast = diffDays < 0;
-
+             
              return (
-                 <div key={exam.id} className={`group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-0 flex flex-col md:flex-row overflow-hidden hover:shadow-elevation transition-all duration-300 ${isPast ? 'opacity-50 grayscale-[0.5]' : ''}`}>
-                     
-                     {/* Date Column - Refined */}
-                     <div className={`w-full md:w-28 flex flex-col items-center justify-center p-5 border-b md:border-b-0 md:border-r border-slate-100/50 dark:border-slate-800 transition-colors ${isImminent ? 'bg-orange-50/50 dark:bg-orange-900/20' : 'bg-slate-50/30 dark:bg-slate-800/30 group-hover:bg-slate-50/80 dark:group-hover:bg-slate-800/80'}`}>
-                         <span className={`text-2xl font-bold tracking-tight ${isImminent ? 'text-orange-500' : 'text-slate-700 dark:text-slate-200'}`}>{examDate.getDate()}</span>
-                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-1">{examDate.toLocaleDateString('fr-FR', { month: 'short' })}</span>
-                         {isImminent && <span className="mt-3 text-[9px] font-bold text-orange-600 dark:text-orange-400 bg-orange-100/80 dark:bg-orange-900/40 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle size={8} /> J-{diffDays}</span>}
-                     </div>
-
-                     <div className="flex-1 p-5 md:p-6 flex flex-col justify-between relative">
-                         <div className="flex justify-between items-start mb-3 gap-4">
-                             <div>
-                                 <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white leading-tight mb-2 group-hover:text-university dark:group-hover:text-sky-400 transition-colors">{exam.subject}</h3>
-                                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                                     <div className="flex items-center gap-1.5">
-                                         <Clock size={14} className="text-slate-400" />
-                                         {examDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit'})} • {exam.duration}
-                                     </div>
-                                     <div className="flex items-center gap-1.5">
-                                         <MapPin size={14} className="text-slate-400" />
-                                         {exam.room}
-                                     </div>
-                                 </div>
-                             </div>
-                             {user.role === UserRole.ADMIN && (
-                                 <span className="shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-2 py-1 rounded-md border border-slate-200/50 dark:border-slate-700">
-                                     {exam.classLevel}
-                                 </span>
-                             )}
-                         </div>
-
-                         {exam.notes && (
-                             <div className="mt-2 mb-4">
-                                 <p className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 leading-relaxed">
-                                     <span className="font-bold text-slate-400 block mb-1 text-[10px] uppercase">Notes</span>
-                                     {exam.notes}
-                                 </p>
-                             </div>
-                         )}
-
-                         <div className="flex justify-end items-center gap-2 pt-4 mt-auto border-t border-slate-50 dark:border-slate-800">
-                             <button onClick={() => handleCopy(exam)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all" title="Copier détails">
-                                 {copiedId === exam.id ? <Check size={16} className="text-success" /> : <Copy size={16} />}
-                             </button>
-                             
-                             <button onClick={() => handleShare(exam)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all" title="Partager par mail">
-                                 <Mail size={16} />
-                             </button>
-
-                             {canModify(exam) && (
-                                 <>
-                                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                                    <button onClick={() => handleEdit(exam)} className="p-2 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all" title="Modifier">
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button onClick={() => handleDelete(exam.id)} className="p-2 rounded-lg transition-all text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10">
-                                        <Trash2 size={16} />
-                                    </button>
-                                 </>
-                             )}
-                         </div>
-                     </div>
-                 </div>
-             );
-         })}
-         {sortedExams.length === 0 && (
-             <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                 <CalendarIcon size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                 <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Aucun examen programmé.</p>
-             </div>
-         )}
-      </div>
-    </div>
-  );
-};
+                 <div key={exam.id} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-

@@ -3,7 +3,7 @@ import { User, UserRole, SchoolClass, AuditLog, Announcement, Exam } from '../ty
 import { supabase } from '../lib/supabaseClient';
 import { 
   UserPlus, Users, Shield, CheckCircle2, AlertCircle, Loader2, 
-  School, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, X, Copy, Eye, EyeOff, Megaphone, Calendar, Plus, AtSign, Key
+  School, Database, FileText, Trash2, Edit, Activity, Save, AlertOctagon, X, Copy, Eye, EyeOff, Megaphone, Calendar, Plus, AtSign, Key, Info
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -20,10 +20,11 @@ interface AdminPanelProps {
 export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnouncements, allExams, globalStats }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'classes' | 'users' | 'logs'>('dashboard');
   
-  // Data States - No Mocks
+  // Data States
   const [usersList, setUsersList] = useState<User[]>([]);
   const [classesList, setClassesList] = useState<SchoolClass[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -31,23 +32,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'USER' | 'CLASS', id: string, name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Password Reset State
-  const [resetPasswordTarget, setResetPasswordTarget] = useState<{id: string, name: string} | null>(null);
-  const [resetPasswordValue, setResetPasswordValue] = useState('');
-  const [isResetting, setIsResetting] = useState(false);
-
   // Edit States
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   
-  // UI States
-  const [showPassword, setShowPassword] = useState(false);
-
-  // New User Credentials Display (Temporary storage for copy)
-  const [createdCredentials, setCreatedCredentials] = useState<{name: string, email: string, role: string, pass: string} | null>(null);
-
   // Form States
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: UserRole.STUDENT, classLevel: '', password: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: UserRole.STUDENT, classLevel: '' });
   const [newClass, setNewClass] = useState({ name: '', email: '' });
 
   useEffect(() => {
@@ -56,53 +46,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
   const fetchAdminData = async () => {
     setIsLoading(true);
-    
     try {
         // Fetch Users (Profiles)
         const { data: profiles, error: profilesError } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-        if (profilesError) throw profilesError;
-        
         if (profiles) {
             setUsersList(profiles.map((p: any) => ({
                 id: p.id,
                 name: p.full_name || p.email,
                 email: p.email,
-                role: p.role,
+                role: p.role as UserRole,
                 classLevel: p.class_level,
-                avatar: p.avatar_url || `https://ui-avatars.com/api/?name=${p.full_name || 'U'}&background=random`
+                avatar: p.avatar_url || `https://ui-avatars.com/api/?name=${p.full_name}&background=random`
             })));
         }
 
         // Fetch Classes
-        const { data: classesData, error: classesError } = await supabase.from('classes').select('*').order('name');
-        if (!classesError && classesData) {
-            setClassesList(classesData.map((c: any) => ({
+        const { data: classes, error: classesError } = await supabase.from('classes').select('*').order('name', { ascending: true });
+        if (classes) {
+            setClassesList(classes.map((c: any) => ({
                 id: c.id,
                 name: c.name,
-                email: c.email || `${c.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@janghub.sn`,
+                email: c.email,
                 studentCount: c.student_count || 0,
-                delegateId: c.delegate_id,
-                delegateName: c.delegate_name || 'Non assigné',
                 createdAt: c.created_at
             })));
         }
-
-        // Fetch Logs
-        const { data: logsData } = await supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(50);
-        if (logsData) {
-            setLogs(logsData.map((l: any) => ({
-                id: l.id,
-                actorName: l.actor_name || 'System',
-                actorRole: l.actor_role || UserRole.ADMIN,
-                action: l.action,
-                targetClass: l.target_class || 'Global',
-                details: l.details,
-                timestamp: l.timestamp
-            })));
-        }
-
-    } catch (error: any) {
-        console.error("Admin fetch error:", error);
+    } catch (e) {
+        console.error("Erreur chargement admin", e);
     } finally {
         setIsLoading(false);
     }
@@ -124,75 +94,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
       try {
           if (deleteConfirmation.type === 'CLASS') {
-              const { error } = await supabase.from('classes').delete().eq('id', deleteConfirmation.id);
-              if (error) throw error;
+              await supabase.from('classes').delete().eq('id', deleteConfirmation.id);
               setClassesList(classesList.filter(c => c.id !== deleteConfirmation.id));
               setMessage({ type: 'success', text: `Classe "${deleteConfirmation.name}" supprimée.` });
           } else {
-              const { error } = await supabase.from('profiles').delete().eq('id', deleteConfirmation.id);
-              if (error) throw error;
+              // Note: Supprimer le profil ne supprime pas l'utilisateur Auth Supabase (nécessite fonction backend).
+              await supabase.from('profiles').delete().eq('id', deleteConfirmation.id);
               setUsersList(usersList.filter(u => u.id !== deleteConfirmation.id));
-              setMessage({ type: 'success', text: `Utilisateur "${deleteConfirmation.name}" supprimé.` });
+              setMessage({ type: 'success', text: `Accès révoqué pour "${deleteConfirmation.name}".` });
           }
-      } catch (err: any) {
-          console.error(err);
-          setMessage({ type: 'error', text: "Impossible de supprimer. Vérifiez qu'il n'y a pas de données liées (examens, etc.)." });
+      } catch (e) {
+          setMessage({ type: 'error', text: "Erreur lors de la suppression." });
       } finally {
           setIsDeleting(false);
           setDeleteConfirmation(null);
       }
   };
 
-  // --- PASSWORD RESET LOGIC ---
-  const requestPasswordReset = (user: User) => {
-      setResetPasswordTarget({ id: user.id, name: user.name });
-      setResetPasswordValue('');
-  };
-
-  const executePasswordReset = async () => {
-      if (!resetPasswordTarget || !resetPasswordValue) return;
-      setIsResetting(true);
-      setMessage(null);
-
-      try {
-          const { error } = await supabase.rpc('admin_reset_password', {
-              target_user_id: resetPasswordTarget.id,
-              new_password: resetPasswordValue
-          });
-
-          if (error) throw error;
-          
-          setMessage({ type: 'success', text: `Mot de passe de ${resetPasswordTarget.name} modifié avec succès.` });
-          setResetPasswordTarget(null);
-          setResetPasswordValue('');
-      } catch (err: any) {
-          setMessage({ type: 'error', text: err.message || "Erreur lors de la réinitialisation." });
-      } finally {
-          setIsResetting(false);
-      }
-  };
-
   // --- CLASSES LOGIC ---
-
   const handleEditClass = (cls: SchoolClass) => {
       setEditingClassId(cls.id);
       setNewClass({ name: cls.name, email: cls.email });
       setMessage(null);
-  };
-
-  const handleCancelClassEdit = () => {
-      setEditingClassId(null);
-      setNewClass({ name: '', email: '' });
-  };
-
-  // Auto-fill email based on class name if email is empty
-  const handleClassNameChange = (name: string) => {
-      const generatedEmail = `${name.trim().toLowerCase().replace(/[^a-z0-9]/g, '.')}@janghub.sn`;
-      if (!editingClassId && (newClass.email === '' || newClass.email.includes('@janghub.sn'))) {
-          setNewClass({ name, email: generatedEmail });
-      } else {
-          setNewClass({ ...newClass, name });
-      }
   };
 
   const handleSubmitClass = async (e: React.FormEvent) => {
@@ -205,41 +128,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
 
       try {
           if (editingClassId) {
-             const { error } = await supabase.from('classes').update(payload).eq('id', editingClassId);
-             if (error) throw error;
-             setMessage({ type: 'success', text: 'Classe mise à jour.' });
+                await supabase.from('classes').update(payload).eq('id', editingClassId);
+                setClassesList(classesList.map(c => c.id === editingClassId ? { ...c, ...payload } : c));
+                setMessage({ type: 'success', text: 'Classe mise à jour.' });
           } else {
-             const { error } = await supabase.from('classes').insert(payload);
-             if (error) throw error;
-             setMessage({ type: 'success', text: 'Classe créée.' });
+                const { data } = await supabase.from('classes').insert(payload).select().single();
+                if (data) {
+                    setClassesList([...classesList, { 
+                        id: data.id, name: data.name, email: data.email, studentCount: 0, createdAt: data.created_at 
+                    }]);
+                    setMessage({ type: 'success', text: 'Classe créée.' });
+                }
           }
-          fetchAdminData();
-          setNewClass({ name: '', email: '' });
-          setEditingClassId(null);
-      } catch (err: any) {
-          setMessage({ type: 'error', text: err.message });
+      } catch (e) {
+          setMessage({ type: 'error', text: "Erreur lors de l'enregistrement de la classe." });
       }
+      
+      setNewClass({ name: '', email: '' });
+      setEditingClassId(null);
   };
 
   // --- USERS LOGIC ---
-
   const handleEditUser = (user: User) => {
       setEditingUserId(user.id);
       setNewUser({ 
           name: user.name, 
           email: user.email, 
           role: user.role, 
-          classLevel: user.classLevel, 
-          password: '' 
+          classLevel: user.classLevel,
       });
-      setCreatedCredentials(null);
       setMessage(null);
-      setShowPassword(false);
   };
 
   const handleCancelUserEdit = () => {
       setEditingUserId(null);
-      setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '', password: '' });
+      setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '' });
   };
 
   const handleSubmitUser = async (e: React.FormEvent) => {
@@ -247,86 +170,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, allAnnounce
     setIsLoading(true);
     setMessage(null);
 
-    // Validation basique
-    if (!newUser.classLevel) {
-        setMessage({ type: 'error', text: "Veuillez sélectionner une classe." });
-        setIsLoading(false);
-        return;
-    }
-
     try {
         if (editingUserId) {
-            // 1. Update Profile Metadata
-            const { error: profileError } = await supabase.from('profiles').update({
-                full_name: newUser.name,
+            // Update Existing User
+            const { error } = await supabase.from('profiles').update({
+                full_name: newUser.name, // On met à jour le nom d'affichage
                 role: newUser.role,
                 class_level: newUser.classLevel
             }).eq('id', editingUserId);
 
-            if (profileError) throw profileError;
-
-            setMessage({ type: 'success', text: "Profil mis à jour." });
-            setEditingUserId(null);
-            fetchAdminData();
-        } else {
-            // Create User via RPC (Backend Function)
-            const generatedPassword = newUser.password || 'passer25';
-            
-            const { data, error } = await supabase.rpc('create_user_with_profile', {
-                user_email: newUser.email,
-                user_password: generatedPassword,
-                user_name: newUser.name,
-                user_role: newUser.role,
-                user_class: newUser.classLevel
-            });
-
             if (error) throw error;
 
-            setCreatedCredentials({
+            setUsersList(usersList.map(u => u.id === editingUserId ? {
+                ...u,
                 name: newUser.name,
-                email: newUser.email,
                 role: newUser.role,
-                pass: generatedPassword
-            });
-            
-            setMessage({ type: 'success', text: `Utilisateur créé avec succès.` });
-            fetchAdminData();
+                classLevel: newUser.classLevel
+            } : u));
+            setMessage({ type: 'success', text: "Droits utilisateur mis à jour." });
+            setEditingUserId(null);
+            setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '' });
+        } else {
+            setMessage({ type: 'error', text: "L'inscription est désactivée." });
         }
-        
-        if (!createdCredentials) {
-             setNewUser({ name: '', email: '', role: UserRole.STUDENT, classLevel: '', password: '' });
-        }
-    } catch (err: any) {
-        console.error(err);
-        setMessage({ type: 'error', text: err.message || "Erreur lors de l'opération." });
+    } catch (e) {
+        console.error(e);
+        setMessage({ type: 'error', text: "Erreur lors de la mise à jour." });
     } finally {
         setIsLoading(false);
     }
-  };
-
-  const copyCredentials = () => {
-      if (!createdCredentials) return;
-      const text = `
---------------------------------
-JàngHub - Nouveaux Identifiants
---------------------------------
-Nom: ${createdCredentials.name}
-Email: ${createdCredentials.email}
-Mot de passe: ${createdCredentials.pass}
-Rôle: ${createdCredentials.role}
---------------------------------
-`.trim();
-
-      navigator.clipboard.writeText(text).then(() => {
-          setMessage({ type: 'success', text: 'Coordonnées copiées !' });
-      });
-  };
-
-  const copyUserCredentials = (u: User) => {
-      const text = `Email: ${u.email}\nMot de passe: passer25`;
-      navigator.clipboard.writeText(text).then(() => {
-          setMessage({ type: 'success', text: 'Identifiants (défaut) copiés.' });
-      });
   };
 
   const StatCard = ({ title, value, icon: Icon, color }: any) => (
@@ -356,7 +228,7 @@ Rôle: ${createdCredentials.role}
                       <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Confirmer la suppression</h3>
                       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                           Êtes-vous sûr de vouloir supprimer <strong className="text-slate-800 dark:text-white">{deleteConfirmation.name}</strong> ? 
-                          <br/><span className="text-xs mt-1 block text-red-500">Cette action est irréversible.</span>
+                          <br/><span className="text-xs mt-1 block text-red-500">Cela révoquera l'accès immédiatement.</span>
                       </p>
                       
                       <div className="flex gap-3 w-full">
@@ -380,61 +252,6 @@ Rôle: ${createdCredentials.role}
           </div>
       )}
 
-      {/* RESET PASSWORD MODAL */}
-      {resetPasswordTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in" onClick={() => setResetPasswordTarget(null)}></div>
-              <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
-                  <div className="flex flex-col items-center text-center">
-                      <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mb-4">
-                          <Key size={24} />
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Changer le mot de passe</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                          Définir un nouveau mot de passe pour <strong className="text-slate-800 dark:text-white">{resetPasswordTarget.name}</strong>.
-                      </p>
-                      
-                      <div className="w-full mb-6">
-                        <div className="relative">
-                            <input 
-                                type={showPassword ? "text" : "password"}
-                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none text-sm font-bold text-center text-slate-800 dark:text-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                                placeholder="Nouveau mot de passe"
-                                value={resetPasswordValue}
-                                onChange={(e) => setResetPasswordValue(e.target.value)}
-                                autoFocus
-                            />
-                            <button 
-                                type="button" 
-                                onClick={() => setShowPassword(!showPassword)} 
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                            >
-                                {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
-                            </button>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-3 w-full">
-                          <button 
-                              onClick={() => setResetPasswordTarget(null)}
-                              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
-                          >
-                              Annuler
-                          </button>
-                          <button 
-                              onClick={executePasswordReset}
-                              disabled={isResetting || !resetPasswordValue}
-                              className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-sm disabled:opacity-70 disabled:grayscale"
-                          >
-                              {isResetting ? <Loader2 className="animate-spin" size={16} /> : <Key size={16} />}
-                              Confirmer
-                          </button>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
         <div>
@@ -449,7 +266,6 @@ Rôle: ${createdCredentials.role}
                 { id: 'dashboard', label: 'Tableau de Bord', icon: Activity },
                 { id: 'classes', label: 'Gestion Classes', icon: School },
                 { id: 'users', label: 'Utilisateurs', icon: Users },
-                { id: 'logs', label: 'Logs', icon: FileText },
             ].map(tab => (
                 <button 
                     key={tab.id}
@@ -481,7 +297,7 @@ Rôle: ${createdCredentials.role}
                   <StatCard title="Utilisateurs" value={usersList.length} icon={Users} color="bg-university dark:bg-sky-600" />
                   <StatCard title="Classes" value={classesList.length} icon={School} color="bg-emerald-600" />
                   <StatCard title="Publications" value={(globalStats?.announcements || 0) + (globalStats?.exams || 0)} icon={FileText} color="bg-purple-600" />
-                  <StatCard title="Logs (24h)" value={logs.length} icon={Database} color="bg-orange-600" />
+                  <StatCard title="Connnexions" value={usersList.length} icon={Activity} color="bg-orange-600" />
               </div>
 
               {/* Class Specific Stats Grid */}
@@ -530,7 +346,7 @@ Rôle: ${createdCredentials.role}
                     </div>
                  ) : (
                      <div className="text-center py-10 bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 text-sm">
-                         Aucune classe configurée.
+                         Aucune classe configurée. Ajoutez des classes dans l'onglet "Gestion Classes".
                      </div>
                  )}
               </div>
@@ -545,7 +361,7 @@ Rôle: ${createdCredentials.role}
                     <School className="text-university dark:text-sky-400" size={20} /> Gestion des Classes
                  </h3>
                  {editingClassId && (
-                     <button onClick={handleCancelClassEdit} className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1">
+                     <button onClick={() => { setEditingClassId(null); setNewClass({name: '', email: ''}); }} className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1">
                          <X size={14} /> Annuler
                      </button>
                  )}
@@ -557,7 +373,7 @@ Rôle: ${createdCredentials.role}
                       <input 
                          placeholder="ex: Tle S2, L1 Informatique..." 
                          className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                         value={newClass.name} onChange={e => handleClassNameChange(e.target.value)} required
+                         value={newClass.name} onChange={e => setNewClass({...newClass, name: e.target.value})} required
                       />
                   </div>
                   <div className="flex-1 w-full">
@@ -629,37 +445,11 @@ Rôle: ${createdCredentials.role}
       {/* --- USERS TAB --- */}
       {activeTab === 'users' && (
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-card overflow-hidden">
-               {/* New User Credentials Modal */}
-               {createdCredentials && (
-                   <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900/50 flex flex-col md:flex-row items-center justify-between gap-4">
-                       <div className="flex items-start gap-4">
-                           <div className="bg-emerald-100 dark:bg-emerald-900/50 p-2.5 rounded-full mt-1 text-emerald-600 dark:text-emerald-400">
-                               <CheckCircle2 size={24} />
-                           </div>
-                           <div>
-                               <h4 className="font-bold text-slate-800 dark:text-white text-sm">Compte créé avec succès !</h4>
-                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-2">Veuillez sauvegarder ces identifiants maintenant.</p>
-                               <div className="flex flex-col gap-1">
-                                    <code className="text-xs font-mono bg-white dark:bg-slate-800 px-3 py-1.5 rounded border border-emerald-100 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 font-bold select-all">{createdCredentials.email}</code>
-                                    <code className="text-xs font-mono bg-white dark:bg-slate-800 px-3 py-1.5 rounded border border-emerald-100 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 font-bold select-all">Pass: {createdCredentials.pass}</code>
-                               </div>
-                           </div>
-                       </div>
-                       <div className="flex gap-2">
-                           <button onClick={copyCredentials} className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">
-                               <Copy size={16} /> Copier
-                           </button>
-                           <button onClick={() => setCreatedCredentials(null)} className="p-2.5 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                               <X size={18} />
-                           </button>
-                       </div>
-                   </div>
-               )}
-
+               
                <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                    <div className="flex justify-between items-center mb-4">
                         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-                            {editingUserId ? 'Modifier l\'utilisateur' : 'Créer un compte'}
+                            {editingUserId ? `Modifier ${newUser.name}` : 'Attribution des accès'}
                         </span>
                         {editingUserId && (
                             <button onClick={handleCancelUserEdit} className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1">
@@ -668,61 +458,56 @@ Rôle: ${createdCredentials.role}
                         )}
                    </div>
                    
-                   <form onSubmit={handleSubmitUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                       <input 
-                          placeholder="Nom complet" 
-                          className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                          value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} required
-                       />
-                       <input 
-                          placeholder="Email" 
-                          className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                          value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} required
-                       />
-                       
-                       {!editingUserId && (
-                           <div className="relative">
-                               <input 
-                                  type={showPassword ? "text" : "password"}
-                                  placeholder="Mot de passe (défaut: passer25)"
-                                  className="w-full p-2.5 pr-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                  value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
-                               />
-                               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                               </button>
-                           </div>
-                       )}
-
-                       <select 
-                          className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                          value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})}
-                       >
-                           <option value={UserRole.STUDENT}>Élève</option>
-                           <option value={UserRole.RESPONSIBLE}>Délégué</option>
-                           <option value={UserRole.ADMIN}>Admin</option>
-                       </select>
-                       
-                       <div className="flex gap-2">
-                           <select
-                                className="flex-1 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
-                                value={newUser.classLevel} 
-                                onChange={e => setNewUser({...newUser, classLevel: e.target.value})}
-                                required
-                            >
-                                <option value="">-- Classe --</option>
-                                <option value="ADMINISTRATION" className="font-bold bg-slate-100 dark:bg-slate-700">ADMINISTRATION</option>
-                                {classesList.map(cls => (
-                                    <option key={cls.id} value={cls.name}>{cls.name}</option>
-                                ))}
-                            </select>
-
-                           <button disabled={isLoading} className="bg-slate-800 dark:bg-slate-700 text-white font-bold rounded-lg hover:bg-black dark:hover:bg-slate-600 transition-colors px-4 flex items-center justify-center gap-2 text-xs shadow-sm min-w-[100px]">
-                               {isLoading ? <Loader2 className="animate-spin" size={14} /> : editingUserId ? <Save size={14} /> : <UserPlus size={14} />} 
-                               {editingUserId ? 'MAJ' : 'Ajouter'}
-                           </button>
+                   {!editingUserId ? (
+                       <div className="flex items-start gap-3 p-4 bg-sky-50 dark:bg-sky-900/10 text-sky-700 dark:text-sky-300 rounded-lg border border-sky-100 dark:border-sky-900/20 text-sm">
+                           <Info size={20} className="shrink-0 mt-0.5" />
+                           <p>
+                               <strong>Gestion des utilisateurs :</strong> L'inscription publique est désactivée. Utilisez l'interface Supabase pour inviter de nouveaux utilisateurs ou réactivez l'inscription temporairement.
+                           </p>
                        </div>
-                   </form>
+                   ) : (
+                       <form onSubmit={handleSubmitUser} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                           <div className="md:col-span-1">
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nom Complet</label>
+                                <input 
+                                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                    value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})}
+                                />
+                           </div>
+                           
+                           <div>
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Rôle</label>
+                                <select 
+                                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                    value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})}
+                                >
+                                    <option value={UserRole.STUDENT}>Élève</option>
+                                    <option value={UserRole.RESPONSIBLE}>Délégué</option>
+                                    <option value={UserRole.ADMIN}>Admin</option>
+                                </select>
+                           </div>
+
+                           <div>
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Classe</label>
+                                <select
+                                        className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-university dark:focus:border-sky-500 font-medium text-slate-800 dark:text-white"
+                                        value={newUser.classLevel} 
+                                        onChange={e => setNewUser({...newUser, classLevel: e.target.value})}
+                                    >
+                                        <option value="">-- Non assigné --</option>
+                                        <option value="ADMINISTRATION" className="font-bold bg-slate-100 dark:bg-slate-700">ADMINISTRATION</option>
+                                        {classesList.map(cls => (
+                                            <option key={cls.id} value={cls.name}>{cls.name}</option>
+                                        ))}
+                                </select>
+                           </div>
+                           
+                           <button disabled={isLoading} className="bg-university dark:bg-sky-600 text-white font-bold rounded-lg hover:bg-university-dark dark:hover:bg-sky-700 transition-colors px-4 py-2.5 flex items-center justify-center gap-2 text-xs shadow-sm">
+                               {isLoading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />} 
+                               Enregistrer
+                           </button>
+                       </form>
+                   )}
                </div>
 
                <div className="overflow-x-auto">
@@ -753,31 +538,19 @@ Rôle: ${createdCredentials.role}
                                           u.role === UserRole.RESPONSIBLE ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                                       }`}>{u.role === UserRole.RESPONSIBLE ? 'Délégué' : u.role}</span>
                                   </td>
-                                  <td className="p-4 font-medium">{u.classLevel}</td>
+                                  <td className="p-4 font-medium">{u.classLevel || 'Non assigné'}</td>
                                   <td className="p-4 flex gap-1 justify-end items-center">
-                                      <button 
-                                        onClick={() => copyUserCredentials(u)}
-                                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded transition-all"
-                                        title="Copier les identifiants"
-                                      >
-                                          <Copy size={14}/>
-                                      </button>
-                                      <button 
-                                        onClick={() => requestPasswordReset(u)}
-                                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-all"
-                                        title="Changer mot de passe"
-                                      >
-                                          <Key size={14}/>
-                                      </button>
                                       <button 
                                         onClick={() => handleEditUser(u)}
                                         className="p-1.5 text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"
+                                        title="Modifier les droits"
                                       >
                                           <Edit size={14}/>
                                       </button>
                                       <button 
                                         onClick={() => requestDeleteUser(u)}
                                         className="p-1.5 text-slate-400 hover:text-alert hover:bg-alert-light dark:hover:bg-alert/10 rounded transition-all"
+                                        title="Révoquer l'accès"
                                       >
                                           <Trash2 size={14}/>
                                       </button>
@@ -786,35 +559,6 @@ Rôle: ${createdCredentials.role}
                           ))}
                       </tbody>
                    </table>
-               </div>
-          </div>
-      )}
-
-      {/* --- LOGS TAB --- */}
-      {activeTab === 'logs' && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-card p-6">
-               <h3 className="font-bold text-sm text-slate-800 dark:text-white mb-4 uppercase flex items-center gap-2">
-                   <Activity size={16} /> Journal d'Audit
-               </h3>
-               <div className="space-y-2">
-                   {logs.map(log => (
-                       <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                           <div className={`p-2 rounded-md ${log.actorRole === UserRole.ADMIN ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400'}`}>
-                               <Shield size={16} />
-                           </div>
-                           <div className="flex-1">
-                               <p className="text-xs text-slate-800 dark:text-slate-200">
-                                   <span className="font-bold">{log.actorName}</span> 
-                                   <span className="text-slate-400 mx-1">•</span>
-                                   <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded text-slate-600 dark:text-slate-300">{log.action}</span>
-                               </p>
-                               <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{log.details}</p>
-                           </div>
-                           <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
-                               {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString()}
-                           </div>
-                       </div>
-                   ))}
                </div>
           </div>
       )}

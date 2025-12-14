@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Meeting, User, UserRole } from '../types';
-import { supabase } from '../lib/supabaseClient';
 import { 
   Video, Plus, Calendar, Clock, Trash2, ExternalLink, X, Check, Link as LinkIcon, Copy, Share2, Users, Edit2
 } from 'lucide-react';
@@ -24,10 +23,8 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
   const [link, setLink] = useState('');
   const [platform, setPlatform] = useState<'Google Meet' | 'Zoom' | 'Teams' | 'Autre'>('Google Meet');
 
-  // Admin and Responsible can create
   const canEdit = user.role === UserRole.RESPONSIBLE || user.role === UserRole.ADMIN;
   
-  // Delete/Edit Rights: Admin OR (Responsible AND Same Class)
   const canModify = (meeting: Meeting) => {
       if (user.role === UserRole.ADMIN) return true;
       if (user.role === UserRole.RESPONSIBLE && meeting.classLevel === user.classLevel) return true;
@@ -50,63 +47,30 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
       setIsAdding(true);
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !date || !time || !link) return;
 
-    try {
-        const payload = {
-          title, date, time, link, platform,
-          class_level: user.classLevel, // Auto-assign class
-          author_id: user.id,
-          author_name: user.name
-        };
+    const newMeeting: Meeting = {
+        id: editingId || Date.now().toString(),
+        title,
+        date,
+        time,
+        link,
+        platform,
+        classLevel: user.classLevel,
+        authorId: user.id,
+        authorName: user.name
+    };
 
-        let data, error;
-        
-        if (editingId) {
-            // Update
-            const res = await supabase.from('meetings').update(payload).eq('id', editingId).select().single();
-            data = res.data; error = res.error;
-        } else {
-            // Insert
-            const res = await supabase.from('meetings').insert(payload).select().single();
-            data = res.data; error = res.error;
-        }
-
-        if (error) throw error;
-
-        if (data) {
-            const formatted: Meeting = {
-                id: data.id,
-                title: data.title,
-                classLevel: data.class_level,
-                date: data.date,
-                time: data.time,
-                link: data.link,
-                platform: data.platform,
-                authorId: data.author_id,
-                authorName: data.author_name
-            };
-            
-            if (editingId) updateMeeting(formatted);
-            else addMeeting(formatted);
-            
-            resetForm();
-        }
-    } catch (error: any) {
-        alert(`Erreur : ${error.message || 'Erreur inconnue'}`);
-        console.error(error);
-    }
+    if (editingId) updateMeeting(newMeeting);
+    else addMeeting(newMeeting);
+    
+    resetForm();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette réunion ?")) {
-      const { error } = await supabase.from('meetings').delete().eq('id', id);
-      if (error) {
-          alert("Impossible de supprimer cette réunion.");
-          return;
-      }
       deleteMeeting(id);
     }
   };
@@ -157,7 +121,6 @@ export const Meet: React.FC<MeetProps> = ({ user, meetings, addMeeting, updateMe
                         <button onClick={resetForm} className="hover:bg-white/20 p-2 rounded-xl transition-colors"><X size={24} /></button>
                     </div>
                     <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                        {/* Simplified fields for brevity */}
                         <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl outline-none font-medium text-slate-800 dark:text-white" placeholder="Titre" required />
                         <div className="grid grid-cols-2 gap-5">
                             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-0 rounded-2xl outline-none text-slate-800 dark:text-white" required />

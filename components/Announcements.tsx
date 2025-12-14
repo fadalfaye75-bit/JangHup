@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Announcement, User, UserRole } from '../types';
-import { supabase } from '../lib/supabaseClient';
 import { generateAnnouncement } from '../services/geminiService';
 import { 
   MessageCircle, Link as LinkIcon, Image as ImageIcon, Trash2, Mail, Copy, 
@@ -24,33 +23,24 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
   const [content, setContent] = useState('');
   const [targetClass, setTargetClass] = useState(user.classLevel); 
   const [links, setLinks] = useState<{ title: string; url: string; type: 'MEET' | 'FORMS' | 'DRIVE' | 'OTHER' }[]>([]);
-  const [images, setImages] = useState<File[]>([]); 
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
+  
+  // Simplification : On simule l'upload en gardant juste le nom du fichier pour la démo
+  const [images, setImages] = useState<string[]>([]); 
+  const [attachments, setAttachments] = useState<{name: string, type: 'PDF' | 'IMAGE' | 'EXCEL', url: string}[]>([]);
 
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkTitle, setLinkTitle] = useState('');
   const [linkType, setLinkType] = useState<'MEET' | 'FORMS' | 'DRIVE' | 'OTHER'>('OTHER');
   
-  // AI Generation State
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // Upload Progress State
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Permissions
   const canCreate = user.role === UserRole.ADMIN || user.role === UserRole.RESPONSIBLE;
 
   const hasRights = (ann: Announcement) => {
-    // Admin has all rights
     if (user.role === UserRole.ADMIN) return true;
-    // Responsible has rights on their class content
     if (user.role === UserRole.RESPONSIBLE && ann.classLevel === user.classLevel) return true;
-    // Fallback: Author ownership (should match logic above usually)
     return user.id === ann.authorId;
   };
 
@@ -59,15 +49,11 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     setLinks([]);
     setImages([]);
     setAttachments([]);
-    setExistingImages([]);
-    setExistingAttachments([]);
     setTargetClass(user.classLevel);
     setIsCreating(false);
     setEditingId(null);
     setShowLinkInput(false);
     setIsSubmitting(false);
-    setUploadProgress(0);
-    setUploadStatus('');
     setUploadError(null);
   };
 
@@ -75,11 +61,10 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
       setEditingId(ann.id);
       setContent(ann.content);
       setLinks(ann.links || []);
-      setExistingImages(ann.images || []);
-      setExistingAttachments(ann.attachments || []);
+      setImages(ann.images || []);
+      setAttachments(ann.attachments || []);
       if (user.role === UserRole.ADMIN) setTargetClass(ann.classLevel);
       setIsCreating(true);
-      setUploadError(null);
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -90,7 +75,7 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
           const generated = await generateAnnouncement(content, user.role);
           setContent(generated);
       } catch (e) {
-          alert("Erreur de l'IA. Vérifiez votre connexion.");
+          alert("Erreur IA");
       } finally {
           setIsGenerating(false);
       }
@@ -105,135 +90,49 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     }
   };
 
+  // Simulation Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'IMAGE' | 'PDF') => {
-    setUploadError(null);
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
-      // Validation de taille (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-          setUploadError(`Le fichier "${file.name}" est trop volumineux (Max 10Mo).`);
-          return;
+      if (type === 'IMAGE') {
+          // Create fake local URL
+          const fakeUrl = URL.createObjectURL(file);
+          setImages([...images, fakeUrl]);
+      } else {
+          setAttachments([...attachments, { name: file.name, type: 'PDF', url: '#' }]);
       }
-
-      if (type === 'IMAGE') setImages([...images, file]);
-      else setAttachments([...attachments, file]);
     }
   };
 
-  const uploadFileToSupabase = async (file: File, bucket: string) => {
-    try {
-        const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
-        
-        const { data, error } = await supabase.storage.from(bucket).upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false
-        });
-
-        if (error) throw error;
-        
-        const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
-        return publicUrl;
-    } catch (error: any) {
-        console.error("File upload failed:", error);
-        throw new Error(`Échec envoi: ${file.name} (${error.message})`);
-    }
-  };
-
-  const handlePublish = async () => {
+  const handlePublish = () => {
     if (!content.trim()) return;
     setIsSubmitting(true);
-    setUploadProgress(0);
-    setUploadError(null);
-
-    try {
-        const totalFiles = images.length + attachments.length;
-        let processedFiles = 0;
-        
-        const newImageUrls: string[] = [];
-        const newAttachmentData: any[] = [];
-
-        // Upload Images Sequentially to track progress
-        for (const img of images) {
-            setUploadStatus(`Envoi de l'image : ${img.name}...`);
-            const url = await uploadFileToSupabase(img, 'images');
-            if (url) newImageUrls.push(url);
-            
-            processedFiles++;
-            setUploadProgress(Math.round((processedFiles / (totalFiles || 1)) * 100));
-        }
-
-        // Upload Attachments Sequentially
-        for (const file of attachments) {
-            setUploadStatus(`Envoi du fichier : ${file.name}...`);
-            const url = await uploadFileToSupabase(file, 'files');
-            if (url) newAttachmentData.push({ name: file.name, type: 'PDF', url });
-            
-            processedFiles++;
-            setUploadProgress(Math.round((processedFiles / (totalFiles || 1)) * 100));
-        }
-
-        setUploadStatus('Finalisation...');
-        
-        const finalImages = [...existingImages, ...newImageUrls];
-        const finalAttachments = [...existingAttachments, ...newAttachmentData];
+    
+    // Simuler délai réseau
+    setTimeout(() => {
         const finalClass = user.role === UserRole.ADMIN ? targetClass : user.classLevel;
 
-        const payload = {
-            author_id: user.id,
-            author_name: user.name,
-            class_level: finalClass,
+        const newAnn: Announcement = {
+            id: editingId || Date.now().toString(),
+            authorId: user.id,
+            authorName: user.name,
+            classLevel: finalClass,
             content,
+            date: editingId ? (announcements.find(a => a.id === editingId)?.date || new Date().toISOString()) : new Date().toISOString(),
             links: links,
-            images: finalImages,
-            attachments: finalAttachments,
-            ...(editingId ? {} : { date: new Date().toISOString() }) 
+            images: images,
+            attachments: attachments
         };
 
-        let data, error;
-        
-        if (editingId) {
-            const res = await supabase.from('announcements').update(payload).eq('id', editingId).select().single();
-            data = res.data; error = res.error;
-        } else {
-            const res = await supabase.from('announcements').insert(payload).select().single();
-            data = res.data; error = res.error;
-        }
-
-        if (error) throw error;
-
-        const formattedAnn: Announcement = {
-            id: data.id,
-            authorId: data.author_id,
-            authorName: data.author_name,
-            classLevel: data.class_level,
-            content: data.content,
-            date: data.date,
-            links: data.links,
-            images: data.images,
-            attachments: data.attachments
-        };
-
-        if (editingId) updateAnnouncement(formattedAnn);
-        else addAnnouncement(formattedAnn);
+        if (editingId) updateAnnouncement(newAnn);
+        else addAnnouncement(newAnn);
 
         resetForm();
-    } catch (error: any) {
-        console.error("Error publishing:", error);
-        setUploadError(error.message || "Une erreur est survenue lors de la publication.");
-    } finally {
-        setIsSubmitting(false);
-    }
+    }, 500);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.")) {
-      const { error } = await supabase.from('announcements').delete().eq('id', id);
-      if (error) {
-          alert("Erreur lors de la suppression");
-          return;
-      }
+  const handleDelete = (id: string) => {
+    if (window.confirm("Supprimer cette annonce ?")) {
       deleteAnnouncement(id);
     }
   };
@@ -242,13 +141,6 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const shareViaEmail = (ann: Announcement) => {
-    const classEmail = ann.classLevel.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@janghub.sn';
-    const subject = `Annonce ${ann.classLevel} - JàngHub`;
-    const body = `${ann.content}\n\nLien: ${window.location.href}`;
-    window.location.href = `mailto:${classEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const getLinkIcon = (type: string) => {
@@ -319,19 +211,17 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                   onChange={(e) => setContent(e.target.value)}
                   disabled={isSubmitting}
                 />
-                {/* AI Write Button */}
                 <button 
                     onClick={handleAiGeneration}
                     disabled={isGenerating || !content || isSubmitting}
                     className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-xs font-bold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 border border-indigo-100 dark:border-indigo-800"
-                    title="Laissez l'IA rédiger une annonce professionnelle à partir de vos notes"
                 >
                     {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <PenTool size={12} />}
-                    {isGenerating ? 'Rédaction en cours...' : 'Rédiger avec IA'}
+                    {isGenerating ? 'Rédaction...' : 'IA'}
                 </button>
             </div>
             
-            {(links.length > 0 || images.length > 0 || attachments.length > 0 || existingImages.length > 0 || existingAttachments.length > 0) && (
+            {(links.length > 0 || images.length > 0 || attachments.length > 0) && (
               <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                 {links.map((l, i) => (
                   <span key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
@@ -340,44 +230,20 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                   </span>
                 ))}
                 
-                {[...existingImages, ...images].map((img, i) => (
+                {images.map((img, i) => (
                   <span key={`img-${i}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
                     <ImageIcon size={14} /> Image {i+1}
-                    <button onClick={() => i < existingImages.length ? setExistingImages(existingImages.filter((_, idx) => idx !== i)) : setImages(images.filter((_, idx) => idx !== i - existingImages.length))} className="hover:text-alert"><X size={14} /></button>
+                    <button onClick={() => setImages(images.filter((_, idx) => idx !== i))} className="hover:text-alert"><X size={14} /></button>
                   </span>
                 ))}
 
-                {[...existingAttachments, ...attachments].map((att, i) => (
+                {attachments.map((att, i) => (
                   <span key={`att-${i}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
                     <File size={14} /> {att.name}
-                    <button onClick={() => i < existingAttachments.length ? setExistingAttachments(existingAttachments.filter((_, idx) => idx !== i)) : setAttachments(attachments.filter((_, idx) => idx !== i - existingAttachments.length))} className="hover:text-alert"><X size={14} /></button>
+                    <button onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} className="hover:text-alert"><X size={14} /></button>
                   </span>
                 ))}
               </div>
-            )}
-            
-            {/* Messages d'erreur */}
-            {uploadError && (
-                <div className="mt-4 p-3 rounded-lg bg-alert-light dark:bg-alert/10 border border-alert/20 text-alert-text dark:text-alert flex items-start gap-2 text-xs font-bold">
-                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                    {uploadError}
-                </div>
-            )}
-
-            {/* Barre de progression */}
-            {isSubmitting && (
-                <div className="mt-4">
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{uploadStatus || 'Traitement...'}</span>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{uploadProgress}%</span>
-                    </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                        <div 
-                            className="bg-university dark:bg-sky-500 h-2 rounded-full transition-all duration-300 ease-out" 
-                            style={{ width: `${uploadProgress}%` }}
-                        ></div>
-                    </div>
-                </div>
             )}
           </div>
 
@@ -497,21 +363,7 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                     </div>
                 )}
 
-                {ann.attachments && ann.attachments.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                        {ann.attachments.map((file, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-800/80 transition-colors">
-                                <div className="text-slate-500 dark:text-slate-400"><FileText size={20} /></div>
-                                <div className="flex-1 overflow-hidden">
-                                    <p className="font-bold text-slate-700 dark:text-slate-200 truncate text-xs">{file.name}</p>
-                                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{file.type}</p>
-                                </div>
-                                <a href={file.url} target="_blank" rel="noreferrer" className="text-university dark:text-sky-400 font-bold text-xs hover:underline px-2">Télécharger</a>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
+                {/* Dummy Image Display */}
                 {ann.images && ann.images.length > 0 && (
                     <div className={`grid gap-3 mb-6 ${ann.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
                         {ann.images.map((img, i) => (
@@ -522,36 +374,8 @@ export const Announcements: React.FC<AnnouncementsProps> = ({ user, announcement
                     </div>
                 )}
              </div>
-
-             <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between rounded-b-xl">
-                <div className="flex gap-3">
-                    <button 
-                      onClick={() => copyToClipboard(ann.content, ann.id)}
-                      className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-success hover:bg-success-light dark:hover:bg-success/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-success/20"
-                    >
-                       {copiedId === ann.id ? <Check size={14} /> : <Copy size={14} />}
-                       {copiedId === ann.id ? 'Copié' : 'Copier'}
-                    </button>
-                    <button 
-                      onClick={() => shareViaEmail(ann)}
-                      className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-university dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-sky-200 dark:hover:border-sky-800"
-                    >
-                       <Share2 size={14} /> Partager
-                    </button>
-                </div>
-             </div>
           </div>
         ))}
-
-        {announcements.length === 0 && !isCreating && (
-          <div className="text-center py-16 px-6 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-             <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700">
-                <MessageCircle size={24} />
-             </div>
-             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-1">Aucune annonce</h3>
-             <p className="text-slate-500 dark:text-slate-400 text-sm">Le fil d'actualité est vide pour le moment.</p>
-          </div>
-        )}
       </div>
     </div>
   );

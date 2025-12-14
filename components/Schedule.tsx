@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { User, UserRole, ScheduleItem } from '../types';
-import { supabase } from '../lib/supabaseClient';
 import { 
   FileSpreadsheet, Upload, Download, Eye, Clock, Trash2, 
   History, X, Share2, Loader2, Users
@@ -25,55 +24,32 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
       return false;
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setIsUploading(true);
       const file = e.target.files[0];
       
-      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const fileName = `${user.classLevel}/${Date.now()}_${sanitizedName}`;
-      
-      try {
-          const { error: uploadError } = await supabase.storage.from('files').upload(fileName, file);
-          if (uploadError) throw uploadError;
-          const { data: { publicUrl } } = supabase.storage.from('files').getPublicUrl(fileName);
-          const newItem = {
-            title: file.name.replace('.xlsx', ''),
-            class_level: user.classLevel,
-            semester: 'Semestre 2',
-            uploaded_at: new Date().toISOString(),
-            url: publicUrl,
-            version: 1,
-            author_id: user.id
+      // Simulation d'upload
+      setTimeout(() => {
+          const newItem: ScheduleItem = {
+              id: Date.now().toString(),
+              title: file.name.replace('.xlsx', ''),
+              classLevel: user.classLevel,
+              semester: 'Semestre 2', // Par défaut pour la démo
+              url: '#', // Lien factice
+              uploadedAt: new Date().toISOString(),
+              version: 1
           };
           
-          const { data, error: dbError } = await supabase.from('schedules').insert(newItem).select().single();
-          if (dbError) throw dbError;
-          
-          if (data) {
-              addSchedule({
-                  id: data.id,
-                  title: data.title,
-                  classLevel: data.class_level,
-                  semester: data.semester,
-                  url: data.url,
-                  uploadedAt: data.uploaded_at,
-                  version: data.version
-              });
-          }
-      } catch (error: any) {
-          console.error("Upload failed", error);
-          alert(`Erreur lors de l'envoi : ${error.message}`);
-      } finally {
+          addSchedule(newItem);
           setIsUploading(false);
-      }
+      }, 1000);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce planning ?")) {
-      const { error } = await supabase.from('schedules').delete().eq('id', id);
-      if (!error) deleteSchedule(id);
+      deleteSchedule(id);
     }
   };
 
@@ -194,7 +170,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ user, schedules, addSchedule
                         <FileSpreadsheet size={64} className="mx-auto text-emerald-200 dark:text-emerald-800 mb-4" />
                         <h4 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">Aperçu Excel</h4>
                         <p className="text-slate-500 dark:text-slate-400 font-medium mb-6 text-sm max-w-md mx-auto">
-                            L'affichage direct des fichiers Excel n'est pas supporté par le navigateur. Veuillez télécharger le fichier pour le consulter.
+                            L'affichage direct des fichiers Excel n'est pas supporté en mode local. Téléchargez le fichier pour le consulter.
                         </p>
                         <a href={viewingItem.url} download className="px-6 py-3 bg-university dark:bg-sky-600 text-white rounded-lg font-bold text-sm shadow-sm hover:bg-university-dark dark:hover:bg-sky-700 inline-flex items-center gap-2">
                             <Download size={18} /> Télécharger le fichier

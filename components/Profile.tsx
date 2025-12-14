@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
-import { supabase } from '../lib/supabaseClient';
 import { 
   LogOut, User as UserIcon, Mail, Shield, GraduationCap, Settings, 
   Bell, ChevronDown, Users, AtSign, Key, Eye, EyeOff, Loader2, CheckCircle2, Lock,
@@ -28,7 +27,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
     ? `${user.classLevel.toLowerCase().replace(/[^a-z0-9]/g, '.')}@janghub.sn`
     : 'N/A';
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
@@ -45,19 +44,13 @@ export const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
         return;
     }
 
-    try {
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
-        if (error) throw error;
-        
-        setMessage({ type: 'success', text: 'Mot de passe mis à jour avec succès.' });
+    setTimeout(() => {
+        setMessage({ type: 'success', text: 'Mot de passe mis à jour avec succès (Simulation).' });
         setNewPassword('');
         setConfirmPassword('');
-        setTimeout(() => setIsEditingPassword(false), 2000);
-    } catch (err: any) {
-        setMessage({ type: 'error', text: err.message || 'Erreur lors de la mise à jour.' });
-    } finally {
         setLoading(false);
-    }
+        setTimeout(() => setIsEditingPassword(false), 2000);
+    }, 800);
   };
 
   return (
