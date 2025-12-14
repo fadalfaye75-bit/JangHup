@@ -301,6 +301,18 @@ function App() {
       fetchData();
   };
 
+  const handleUpdateMeeting = async (m: Meeting) => {
+      setMeetings(meetings.map(item => item.id === m.id ? m : item));
+      await supabase.from('meetings').update({
+          title: m.title,
+          class_level: m.classLevel,
+          date: m.date,
+          time: m.time,
+          link: m.link,
+          platform: m.platform
+      }).eq('id', m.id);
+  };
+
   const handleDeleteMeeting = async (id: string) => {
       setMeetings(meetings.filter(m => m.id !== id));
       const { error } = await supabase.from('meetings').delete().eq('id', id);
@@ -370,7 +382,6 @@ function App() {
 
   const handleDeletePoll = async (id: string) => {
       setPolls(polls.filter(p => p.id !== id));
-      // La base de données doit avoir "ON DELETE CASCADE" configuré, sinon ceci échouera si des options/votes existent
       const { error } = await supabase.from('polls').delete().eq('id', id);
       if (error) {
           console.error("Error deleting poll:", error);
@@ -545,7 +556,7 @@ function App() {
             user={user}
             meetings={getFilteredData(meetings)}
             addMeeting={handleAddMeeting}
-            updateMeeting={(m) => setMeetings(meetings.map(item => item.id === m.id ? m : item))} 
+            updateMeeting={handleUpdateMeeting} 
             deleteMeeting={handleDeleteMeeting}
         />
       )}
