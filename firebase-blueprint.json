@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "User Profile",
+      "description": "Extended user information and roles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full name" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["ADMIN", "DELEGATE", "STUDENT"] },
+        "className": { "type": "string", "description": "Class name (e.g., GI3)" },
+        "schoolName": { "type": "string", "description": "Institution name" },
+        "avatar": { "type": "string", "format": "uri" },
+        "isActive": { "type": "boolean" },
+        "passwordChanged": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "email", "role", "className"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Class news and updates",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "author": { "type": "string" },
+        "priority": { "type": "string", "enum": ["normal", "important", "urgent"] },
+        "className": { "type": "string" },
+        "link": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "priority", "className"]
+    },
+    "SchoolClass": {
+      "title": "School Class",
+      "description": "Class definition and access codes",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "studentCount": { "type": "number" },
+        "color": { "type": "string" },
+        "delegateCode": { "type": "string" }
+      },
+      "required": ["name", "delegateCode"]
+    },
+    "Post": {
+      "title": "Forum Post",
+      "description": "A post in the forum",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "className": { "type": "string" },
+        "votesScore": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "userId", "authorName", "className"]
+    },
+    "Comment": {
+      "title": "Forum Comment",
+      "description": "A comment on a post or another comment",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "parentId": { "type": "string" },
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "votesScore": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "userId", "authorName", "content"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "Profile",
+      "description": "User profile documents"
+    },
+    "/announcements/{annId}": {
+      "schema": "Announcement",
+      "description": "Class announcements"
+    },
+    "/classes/{classId}": {
+      "schema": "SchoolClass",
+      "description": "Class metadata"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Forum posts"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Forum comments"
+    },
+    "/votes/{voteId}": {
+      "schema": "Vote",
+      "description": "User votes on posts and comments"
+    },
+    "/notifications/{notifId}": {
+      "schema": "ForumNotification",
+      "description": "User notifications"
+    }
+  }
+}

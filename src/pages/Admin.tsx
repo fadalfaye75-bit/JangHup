@@ -1,0 +1,614 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../lib/AuthContext';
+import { useTable, deleteRow, updateRow, insertRow } from '../../lib/hooks';
+import { User, SchoolClass, Poll, Announcement, ActivityLog, UserRole } from '../../types';
+import { Card, Badge, Spinner, ErrBox, Btn, Modal, ConfirmModal } from '../../components/ui';
+import { 
+  Users, 
+  Shield, 
+  BarChart3, 
+  Megaphone, 
+  Vote, 
+  Trash2, 
+  Edit2,
+  Search, 
+  Filter,
+  MoreVertical,
+  CheckCircle2,
+  XCircle,
+  TrendingUp,
+  Clock,
+  Settings,
+  LayoutDashboard,
+  UserCheck,
+  UserX,
+  GraduationCap,
+  ChevronRight
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
+import { fmtDate } from '../../lib/utils';
+import { collection, query, orderBy, limit, onSnapshot, where, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase';
+
+export const Admin: React.FC = () => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'content' | 'logs'>('overview');
+  
+  // Data fetching
+  const { data: users, loading: usersLoading } = useTable<User>('profiles', [orderBy('createdAt', 'desc')]);
+  const { data: classes } = useTable<SchoolClass>('classes', [orderBy('name', 'asc')]);
+  const { data: polls } = useTable<Poll>('polls');
+  const { data: announcements } = useTable<Announcement>('announcements');
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState<SchoolClass | null>(null);
+  const [newClassData, setNewClassData] = useState({ name: '', delegateCode: '', color: '#6C63FF' });
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  useEffect(() => {
+    const logsQ = query(collection(db, 'activity_logs'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribe = onSnapshot(logsQ, (snapshot) => {
+      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog)));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Stats calculation
+  const stats = [
+    { label: 'Utilisateurs', value: users.length, icon: Users, color: 'indigo' },
+    { label: 'Classes', value: classes.length, icon: Shield, color: 'amber' },
+    { label: 'Sondages', value: polls.length, icon: Vote, color: 'emerald' },
+    { label: 'Annonces', value: announcements.length, icon: Megaphone, color: 'rose' },
+  ];
+
+  // Activity chart data (aggregated from logs)
+  const chartData = React.useMemo(() => {
+    const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    const data = days.map(day => ({ name: day, activity: 0 }));
+    
+    logs.forEach(log => {
+      const date = new Date(log.createdAt);
+      const dayIndex = date.getDay();
+      data[dayIndex].activity += 1;
+    });
+
+    // Reorder to start from Monday or current day? Let's just keep it simple.
+    return data;
+  }, [logs]);
+
+  const handleToggleUserRole = (targetUser: User) => {
+    const newRole = targetUser.role === UserRole.ADMIN ? UserRole.STUDENT : UserRole.ADMIN;
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Changer le rôle',
+      message: `Voulez-vous vraiment changer le rôle de ${targetUser.name} en ${newRole} ?`,
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          await updateRow('profiles', targetUser.id, { role: newRole });
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
+  };
+
+  const handleEditClass = (cls: SchoolClass) => {
+    setEditingClass(cls);
+    setNewClassData({ name: cls.name, delegateCode: cls.delegateCode, color: cls.color });
+    setIsClassModalOpen(true);
+  };
+
+  const handleDeleteContent = (collectionName: string, id: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Supprimer le contenu',
+      message: 'Êtes-vous sûr de vouloir supprimer définitivement ce contenu ? Cette action est irréversible.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteRow(collectionName, id);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
+  };
+
+  if (user?.role !== UserRole.ADMIN) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <XCircle size={64} className="text-rose-500" />
+        <h1 className="text-2xl font-bold">Accès Refusé</h1>
+        <p className="text-slate-500">Vous n'avez pas les droits nécessaires pour accéder à cette page.</p>
+        <Link to="/" className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold">Retour au Dashboard</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-8 pb-20">
+      {/* Admin Sidebar */}
+      <aside className="lg:w-64 space-y-2">
+        <div className="p-4 mb-4">
+          <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Shield className="text-indigo-600" size={24} />
+            Admin Panel
+          </h1>
+        </div>
+        
+        <button 
+          onClick={() => setActiveTab('overview')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        >
+          <LayoutDashboard size={18} />
+          Vue d'ensemble
+        </button>
+        <button 
+          onClick={() => setActiveTab('users')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        >
+          <Users size={18} />
+          Utilisateurs
+        </button>
+        <button 
+          onClick={() => setActiveTab('classes')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'classes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        >
+          <GraduationCap size={18} />
+          Classes
+        </button>
+        <button 
+          onClick={() => setActiveTab('content')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'content' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        >
+          <Megaphone size={18} />
+          Contenu
+        </button>
+        <button 
+          onClick={() => setActiveTab('logs')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'logs' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        >
+          <Clock size={18} />
+          Logs d'activité
+        </button>
+        
+        <div className="pt-8 mt-8 border-t border-slate-100 dark:border-slate-800">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+            <Settings size={18} />
+            Paramètres
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 space-y-8">
+        <ConfirmModal 
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          message={confirmConfig.message}
+          type={confirmConfig.type}
+        />
+        <AnimatePresence mode="wait">
+          {activeTab === 'overview' && (
+            <motion.div 
+              key="overview"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-8"
+            >
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                {stats.map((stat) => (
+                  <Card 
+                    key={stat.label} 
+                    className="relative overflow-hidden group cursor-pointer hover:border-indigo-500/50 transition-all border-2 border-transparent"
+                    onClick={() => {
+                      if (stat.label === 'Utilisateurs') setActiveTab('users');
+                      if (stat.label === 'Classes') setActiveTab('classes');
+                      if (stat.label === 'Sondages' || stat.label === 'Annonces') setActiveTab('content');
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`p-3 rounded-2xl bg-${stat.color}-50 dark:bg-${stat.color}-900/20 text-${stat.color}-600 dark:text-${stat.color}-400 group-hover:scale-110 transition-transform`}>
+                        <stat.icon size={24} />
+                      </div>
+                    </div>
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stat.value}</h3>
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">{stat.label}</p>
+                    
+                    {/* Visual indicator for clickability */}
+                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ChevronRight size={16} className="text-indigo-500" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <Card className="h-[400px] flex flex-col">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <BarChart3 size={18} className="text-indigo-500" />
+                      Activité de la plateforme
+                    </h3>
+                    <select className="text-xs font-bold bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-1 px-2 outline-none">
+                      <option>7 derniers jours</option>
+                      <option>30 derniers jours</option>
+                    </select>
+                  </div>
+                  <div className="flex-1 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Area type="monotone" dataKey="activity" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorActivity)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+
+                <Card className="space-y-6">
+                  <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Clock size={18} className="text-amber-500" />
+                    Actions récentes
+                  </h3>
+                  <div className="space-y-4">
+                    {logs.slice(0, 6).map((log) => (
+                      <div key={log.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                          <Users size={14} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">
+                            <span className="text-indigo-600">{log.actor}</span> {log.action}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">{fmtDate(log.createdAt)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'users' && (
+            <motion.div 
+              key="users"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Gestion des Utilisateurs</h2>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Rechercher..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50">
+                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Utilisateur</th>
+                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Classe</th>
+                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Rôle</th>
+                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Inscription</th>
+                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                    {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase())).map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <img src={u.avatar || `https://ui-avatars.com/api/?name=${u.name}`} className="w-8 h-8 rounded-full" alt="" loading="lazy" />
+                            <div>
+                              <p className="text-sm font-bold text-slate-900 dark:text-white">{u.name}</p>
+                              <p className="text-xs text-slate-500">{u.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge type="primary">{u.className || 'N/A'}</Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge type={u.role === UserRole.ADMIN ? 'danger' : u.role === UserRole.DELEGATE ? 'warning' : 'primary'}>
+                            {u.role}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-slate-500">
+                          {fmtDate(u.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => handleToggleUserRole(u)}
+                              className={`p-2 rounded-lg transition-colors ${u.role === UserRole.ADMIN ? 'text-rose-500 bg-rose-50' : 'text-indigo-600 bg-indigo-50'}`}
+                              title={u.role === UserRole.ADMIN ? "Rétrograder" : "Promouvoir Admin"}
+                            >
+                              {u.role === UserRole.ADMIN ? <UserX size={16} /> : <UserCheck size={16} />}
+                            </button>
+                            <button className="p-2 text-slate-400 hover:text-slate-600">
+                              <MoreVertical size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'classes' && (
+            <motion.div 
+              key="classes"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Gestion des Classes</h2>
+                <Btn onClick={() => setIsClassModalOpen(true)}>
+                  Ajouter une classe
+                </Btn>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {classes.map((cls) => (
+                  <Card key={cls.id} className="relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: cls.color }} />
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl" style={{ backgroundColor: cls.color }}>
+                        {cls.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => handleEditClass(cls)}
+                          className="p-2 text-slate-300 hover:text-indigo-500 transition-colors"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteContent('classes', cls.id)}
+                          className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white">{cls.name}</h3>
+                    <div className="mt-4 space-y-2">
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-400 uppercase">Code Délégué</span>
+                        <code className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{cls.delegateCode}</code>
+                      </div>
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-400 uppercase">Étudiants</span>
+                        <span className="text-slate-700 dark:text-slate-300">{cls.studentCount || 0}</span>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              <Modal 
+                isOpen={isClassModalOpen} 
+                onClose={() => {
+                  setIsClassModalOpen(false);
+                  setEditingClass(null);
+                  setNewClassData({ name: '', delegateCode: '', color: '#6C63FF' });
+                }} 
+                title={editingClass ? "Modifier la classe" : "Ajouter une nouvelle classe"}
+              >
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    if (editingClass) {
+                      await updateRow('classes', editingClass.id, newClassData);
+                    } else {
+                      await insertRow('classes', { ...newClassData, studentCount: 0 });
+                    }
+                    setIsClassModalOpen(false);
+                    setEditingClass(null);
+                    setNewClassData({ name: '', delegateCode: '', color: '#6C63FF' });
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Nom de la classe</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newClassData.name}
+                      onChange={(e) => setNewClassData({ ...newClassData, name: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Ex: GI3"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Code Délégué</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newClassData.delegateCode}
+                      onChange={(e) => setNewClassData({ ...newClassData, delegateCode: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Ex: DEL-GI3-2024"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Couleur</label>
+                    <input 
+                      type="color" 
+                      value={newClassData.color}
+                      onChange={(e) => setNewClassData({ ...newClassData, color: e.target.value })}
+                      className="w-full h-10 p-1 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-4">
+                    <Btn type="button" variant="ghost" className="flex-1" onClick={() => {
+                      setIsClassModalOpen(false);
+                      setEditingClass(null);
+                      setNewClassData({ name: '', delegateCode: '', color: '#6C63FF' });
+                    }}>Annuler</Btn>
+                    <Btn type="submit" className="flex-1">{editingClass ? "Enregistrer" : "Créer la classe"}</Btn>
+                  </div>
+                </form>
+              </Modal>
+            </motion.div>
+          )}
+
+          {activeTab === 'content' && (
+            <motion.div 
+              key="content"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-8"
+            >
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* Polls Management */}
+                <Card className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Vote size={18} className="text-emerald-500" />
+                      Derniers Sondages
+                    </h3>
+                    <Link to="/polls" className="text-xs font-bold text-indigo-600 hover:underline">Gérer tout</Link>
+                  </div>
+                  <div className="space-y-3">
+                    {polls.slice(0, 5).map((poll) => (
+                      <div key={poll.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between group">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{poll.question}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">{poll.className} • {poll.totalVotes} votes</p>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteContent('polls', poll.id)}
+                          className="p-2 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Announcements Management */}
+                <Card className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Megaphone size={18} className="text-rose-500" />
+                      Dernières Annonces
+                    </h3>
+                    <Link to="/announcements" className="text-xs font-bold text-indigo-600 hover:underline">Gérer tout</Link>
+                  </div>
+                  <div className="space-y-3">
+                    {announcements.slice(0, 5).map((ann) => (
+                      <div key={ann.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between group">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{ann.title}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">{ann.author} • {ann.priority}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteContent('announcements', ann.id)}
+                          className="p-2 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'logs' && (
+            <motion.div 
+              key="logs"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Logs d'activité système</h2>
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                  {logs.map((log) => (
+                    <div key={log.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                        <Clock size={18} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                            <span className="text-indigo-600">{log.actor}</span> {log.action}
+                          </p>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">{fmtDate(log.createdAt)}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">ID Utilisateur: {log.userId}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+};

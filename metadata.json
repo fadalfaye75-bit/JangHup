@@ -1,0 +1,9 @@
+{
+  "name": "JangHup",
+  "description": "Plateforme universitaire complète JangHup pour la gestion académique et sociale.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
