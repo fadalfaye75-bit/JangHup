@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './lib/AuthContext';
-import { Login } from './components/Login';
+import { useAuth } from './src/context/AuthContext';
+import { Login } from './src/pages/Login';
 import { Layout } from './components/Layout';
 import { UserRole } from './types';
 import { Loader2 } from 'lucide-react';
@@ -64,7 +64,7 @@ function App() {
         </div>
       }>
         <Routes>
-          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login onLogin={() => {}} />} />
+          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
           
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />

@@ -22,7 +22,7 @@ import {
   Command,
   AlertTriangle
 } from 'lucide-react';
-import { useAuth } from '../lib/AuthContext';
+import { useAuth } from '../src/context/AuthContext';
 import { UserRole } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearch } from './GlobalSearch';

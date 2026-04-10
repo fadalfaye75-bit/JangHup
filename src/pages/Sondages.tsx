@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   collection, 
   query, 
@@ -73,12 +73,15 @@ export const Sondages: React.FC = () => {
   const [newOptions, setNewOptions] = useState(['', '']);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || (!user.class_name && user.role !== UserRole.ADMIN)) {
+      setLoading(false);
+      return;
+    }
 
     // 1. Listen to Polls
     const q = query(
       collection(db, 'polls'), 
-      where('className', '==', user.className),
+      where('className', '==', user.class_name || 'ADMIN'),
       orderBy('createdAt', 'desc')
     );
 
@@ -90,6 +93,9 @@ export const Sondages: React.FC = () => {
       } as Poll));
       setPolls(pollsData);
       setLoading(false);
+    }, (err) => {
+      console.error("🔥 Polls Snapshot Error:", err);
+      setLoading(false);
     });
 
     // 2. Listen to ALL Options for these polls (to get real-time vote counts)
@@ -100,6 +106,8 @@ export const Sondages: React.FC = () => {
         ...poll,
         options: allOptions.filter(opt => opt.pollId === poll.id)
       })));
+    }, (err) => {
+      console.error("🔥 Poll Options Snapshot Error:", err);
     });
 
     // 3. Listen to User's Votes
@@ -190,7 +198,7 @@ export const Sondages: React.FC = () => {
         const pollRef = await addDoc(collection(db, 'polls'), {
           question: newQuestion,
           userId: user.id,
-          className: user.className,
+          className: user.class_name,
           isActive: true,
           totalVotes: 0,
           createdAt: new Date().toISOString()
@@ -221,7 +229,7 @@ export const Sondages: React.FC = () => {
 
   const handleEditPoll = (poll: Poll) => {
     setEditingPoll(poll);
-    setNewQuestion(poll.question);
+    setNewQuestion(poll.question || '');
     setIsModalOpen(true);
   };
 

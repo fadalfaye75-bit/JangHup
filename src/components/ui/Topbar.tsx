@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Search, Bell, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../theme/theme';
-import { useAuth } from '../../../lib/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const Topbar = () => {
   const { theme, toggleTheme } = useTheme();

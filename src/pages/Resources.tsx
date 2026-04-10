@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useTable, insertRow, deleteRow, updateRow } from '../../lib/hooks';
 import { Resource, UserRole } from '../../types';
 import { 
@@ -70,7 +70,9 @@ export const Resources: React.FC = () => {
 
   const { data: resources, loading, error } = useTable<Resource>(
     'resources',
-    [where('className', '==', user?.className || ''), orderBy('createdAt', 'desc')]
+    [where('className', '==', user?.class_name || ''), orderBy('createdAt', 'desc')],
+    50,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
 
   const subjects = useMemo(() => {
@@ -103,7 +105,7 @@ export const Resources: React.FC = () => {
           ...formData,
           userId: user?.id,
           author: user?.name,
-          className: user?.className
+          className: user?.class_name
         });
       }
       setIsModalOpen(false);
@@ -117,11 +119,11 @@ export const Resources: React.FC = () => {
   const handleEdit = (res: Resource) => {
     setEditingResource(res);
     setFormData({
-      title: res.title,
-      description: res.description,
-      type: res.type,
-      url: res.url,
-      subject: res.subject
+      title: res.title || '',
+      description: res.description || '',
+      type: res.type || 'pdf',
+      url: res.url || '',
+      subject: res.subject || ''
     });
     setIsModalOpen(true);
   };
@@ -176,7 +178,7 @@ export const Resources: React.FC = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <SecHdr 
           title="Bibliothèque de Ressources" 
-          subtitle={`Accédez aux supports de cours de la classe ${user?.className}`}
+          subtitle={`Accédez aux supports de cours de la classe ${user?.class_name}`}
         />
         
         {canManage && (

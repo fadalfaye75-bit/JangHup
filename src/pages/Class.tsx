@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { User, UserRole, SchoolClass } from '../../types';
 import { Card, Badge, Spinner, ErrBox, Modal, Btn, ConfirmModal } from '../../components/ui';
@@ -41,15 +41,15 @@ export const Class: React.FC = () => {
   const [isConfirmLeaveOpen, setIsConfirmLeaveOpen] = useState(false);
 
   useEffect(() => {
-    if (!user?.className) {
+    if (!user?.class_name) {
       setLoading(false);
       return;
     }
 
     // Listen to class members
     const membersQ = query(
-      collection(db, 'profiles'),
-      where('className', '==', user.className)
+      collection(db, 'users'),
+      where('class_name', '==', user.class_name)
     );
 
     const unsubscribeMembers = onSnapshot(membersQ, (snapshot) => {
@@ -57,6 +57,7 @@ export const Class: React.FC = () => {
       setMembers(membersData);
       setLoading(false);
     }, (err) => {
+      console.error("🔥 Class Members Snapshot Error:", err);
       setError(err.message);
       setLoading(false);
     });
@@ -64,7 +65,7 @@ export const Class: React.FC = () => {
     // Listen to class info
     const classQ = query(
       collection(db, 'classes'),
-      where('name', '==', user.className),
+      where('name', '==', user.class_name),
       limit(1)
     );
 
@@ -72,17 +73,19 @@ export const Class: React.FC = () => {
       if (!snapshot.empty) {
         setClassInfo({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as SchoolClass);
       }
+    }, (err) => {
+      console.error("🔥 Class Info Snapshot Error:", err);
     });
 
     return () => {
       unsubscribeMembers();
       unsubscribeClass();
     };
-  }, [user?.className]);
+  }, [user?.class_name]);
 
   const handleCopyCode = () => {
-    if (classInfo?.delegateCode) {
-      navigator.clipboard.writeText(classInfo.delegateCode);
+    if (classInfo?.delegate_code) {
+      navigator.clipboard.writeText(classInfo.delegate_code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -94,7 +97,7 @@ export const Class: React.FC = () => {
     const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
       await updateDoc(doc(db, 'classes', classInfo.id), {
-        delegateCode: newCode
+        delegate_code: newCode
       });
     } catch (err) {
       console.error(err);
@@ -103,8 +106,8 @@ export const Class: React.FC = () => {
 
   const handleLeaveClass = async () => {
     try {
-      await updateDoc(doc(db, 'profiles', user!.id), {
-        className: '',
+      await updateDoc(doc(db, 'users', user!.id), {
+        class_name: '',
         role: UserRole.STUDENT // Reset to student if they were delegate
       });
       // Redirect or refresh will happen via AuthContext
@@ -119,7 +122,7 @@ export const Class: React.FC = () => {
   );
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
-  if (!user?.className) return (
+  if (!user?.class_name) return (
     <div className="max-w-2xl mx-auto text-center py-20 space-y-6">
       <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400">
         <Users size={40} />
@@ -136,7 +139,7 @@ export const Class: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Ma Classe : {user.className}</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Ma Classe : {user.class_name}</h1>
             <Badge type="primary" className="text-sm px-3 py-1">{members.length} membres</Badge>
           </div>
           <p className="text-slate-500 dark:text-slate-400 font-medium">Gérez votre environnement de classe et collaborez avec vos camarades.</p>
@@ -268,7 +271,7 @@ export const Class: React.FC = () => {
               </div>
               <div className="flex items-center justify-between gap-4">
                 <code className="text-xl font-black text-slate-900 dark:text-white tracking-widest font-mono">
-                  {classInfo?.delegateCode || '------'}
+                  {classInfo?.delegate_code || '------'}
                 </code>
                 <button 
                   onClick={handleCopyCode}
@@ -333,11 +336,11 @@ export const Class: React.FC = () => {
             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nom de la classe à partager</label>
             <div className="flex gap-2">
               <div className="flex-1 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl font-mono font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                {user.className}
+                {user.class_name}
               </div>
               <button 
                 onClick={() => {
-                  navigator.clipboard.writeText(user.className);
+                  navigator.clipboard.writeText(user.class_name);
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}

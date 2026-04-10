@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useTable, deleteRow, updateRow, insertRow } from '../../lib/hooks';
 import { User, SchoolClass, Poll, Announcement, ActivityLog, UserRole } from '../../types';
 import { Card, Badge, Spinner, ErrBox, Btn, Modal, ConfirmModal } from '../../components/ui';
@@ -23,7 +23,11 @@ import {
   UserCheck,
   UserX,
   GraduationCap,
-  ChevronRight
+  ChevronRight,
+  Copy,
+  RefreshCw,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { 
@@ -47,7 +51,7 @@ export const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'content' | 'logs'>('overview');
   
   // Data fetching
-  const { data: users, loading: usersLoading } = useTable<User>('profiles', [orderBy('createdAt', 'desc')]);
+  const { data: users, loading: usersLoading } = useTable<User>('users', [orderBy('created_at', 'desc')]);
   const { data: classes } = useTable<SchoolClass>('classes', [orderBy('name', 'asc')]);
   const { data: polls } = useTable<Poll>('polls');
   const { data: announcements } = useTable<Announcement>('announcements');
@@ -55,7 +59,21 @@ export const Admin: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<SchoolClass | null>(null);
-  const [newClassData, setNewClassData] = useState({ name: '', delegateCode: '', color: '#6C63FF' });
+  const [newClassData, setNewClassData] = useState({ name: '', delegate_code: '', color: '#6C63FF', class_email: '', studentCount: 0, password: 'passer25' });
+  const [showClassPassword, setShowClassPassword] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const generateDelegateCode = (className: string) => {
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const prefix = className ? className.substring(0, 3).toUpperCase() : 'DEL';
+    return `${prefix}-${random}`;
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -109,7 +127,7 @@ export const Admin: React.FC = () => {
       type: 'warning',
       onConfirm: async () => {
         try {
-          await updateRow('profiles', targetUser.id, { role: newRole });
+          await updateRow('users', targetUser.id, { role: newRole });
         } catch (err) {
           console.error(err);
         }
@@ -119,7 +137,14 @@ export const Admin: React.FC = () => {
 
   const handleEditClass = (cls: SchoolClass) => {
     setEditingClass(cls);
-    setNewClassData({ name: cls.name, delegateCode: cls.delegateCode, color: cls.color });
+    setNewClassData({ 
+      name: cls.name || '', 
+      delegate_code: cls.delegate_code || '', 
+      color: cls.color || '#6C63FF', 
+      class_email: cls.class_email || '', 
+      studentCount: cls.studentCount || 0,
+      password: cls.password || 'passer25'
+    });
     setIsClassModalOpen(true);
   };
 
@@ -357,7 +382,7 @@ export const Admin: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <Badge type="primary">{u.className || 'N/A'}</Badge>
+                          <Badge type="primary">{u.class_name || 'N/A'}</Badge>
                         </td>
                         <td className="px-6 py-4">
                           <Badge type={u.role === UserRole.ADMIN ? 'danger' : u.role === UserRole.DELEGATE ? 'warning' : 'primary'}>
@@ -365,7 +390,7 @@ export const Admin: React.FC = () => {
                           </Badge>
                         </td>
                         <td className="px-6 py-4 text-xs font-bold text-slate-500">
-                          {fmtDate(u.createdAt)}
+                          {fmtDate(u.created_at)}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -430,8 +455,21 @@ export const Admin: React.FC = () => {
                     <h3 className="text-xl font-black text-slate-900 dark:text-white">{cls.name}</h3>
                     <div className="mt-4 space-y-2">
                       <div className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-400 uppercase">Email</span>
+                        <span className="text-slate-700 dark:text-slate-300">{cls.class_email}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-bold">
                         <span className="text-slate-400 uppercase">Code Délégué</span>
-                        <code className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{cls.delegateCode}</code>
+                        <div className="flex items-center gap-2">
+                          <code className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{cls.delegate_code}</code>
+                          <button 
+                            onClick={() => handleCopyCode(cls.delegate_code)}
+                            className="text-slate-400 hover:text-indigo-600 transition-colors"
+                            title="Copier le code"
+                          >
+                            {copiedCode === cls.delegate_code ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                          </button>
+                        </div>
                       </div>
                       <div className="flex justify-between text-xs font-bold">
                         <span className="text-slate-400 uppercase">Étudiants</span>
@@ -447,21 +485,26 @@ export const Admin: React.FC = () => {
                 onClose={() => {
                   setIsClassModalOpen(false);
                   setEditingClass(null);
-                  setNewClassData({ name: '', delegateCode: '', color: '#6C63FF' });
+                  setNewClassData({ name: '', delegate_code: '', color: '#6C63FF', class_email: '', studentCount: 0, password: 'passer25' });
                 }} 
                 title={editingClass ? "Modifier la classe" : "Ajouter une nouvelle classe"}
               >
                 <form onSubmit={async (e) => {
                   e.preventDefault();
                   try {
+                    const dataToSave = {
+                      ...newClassData,
+                      created_by: user?.id || 'system',
+                      created_at: editingClass ? (editingClass.created_at || (editingClass as any).createdAt || new Date().toISOString()) : new Date().toISOString()
+                    };
                     if (editingClass) {
-                      await updateRow('classes', editingClass.id, newClassData);
+                      await updateRow('classes', editingClass.id, dataToSave);
                     } else {
-                      await insertRow('classes', { ...newClassData, studentCount: 0 });
+                      await insertRow('classes', dataToSave);
                     }
                     setIsClassModalOpen(false);
                     setEditingClass(null);
-                    setNewClassData({ name: '', delegateCode: '', color: '#6C63FF' });
+                    setNewClassData({ name: '', delegate_code: '', color: '#6C63FF', class_email: '', studentCount: 0, password: 'passer25' });
                   } catch (err) {
                     console.error(err);
                   }
@@ -479,13 +522,66 @@ export const Admin: React.FC = () => {
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500 uppercase">Code Délégué</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        required
+                        value={newClassData.delegate_code}
+                        onChange={(e) => setNewClassData({ ...newClassData, delegate_code: e.target.value })}
+                        className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Ex: DEL-GI3-2024"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setNewClassData({ ...newClassData, delegate_code: generateDelegateCode(newClassData.name) })}
+                        className="px-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
+                        title="Générer un code"
+                      >
+                        <RefreshCw size={18} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Email de la classe</label>
                     <input 
-                      type="text" 
+                      type="email" 
                       required
-                      value={newClassData.delegateCode}
-                      onChange={(e) => setNewClassData({ ...newClassData, delegateCode: e.target.value })}
+                      value={newClassData.class_email}
+                      onChange={(e) => setNewClassData({ ...newClassData, class_email: e.target.value })}
                       className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Ex: DEL-GI3-2024"
+                      placeholder="Ex: gi3@janghup.com"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Mot de passe par défaut</label>
+                    <div className="relative">
+                      <input 
+                        type={showClassPassword ? "text" : "password"} 
+                        required
+                        value={newClassData.password}
+                        onChange={(e) => setNewClassData({ ...newClassData, password: e.target.value })}
+                        className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 pr-10"
+                        placeholder="Ex: passer25"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowClassPassword(!showClassPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                      >
+                        {showClassPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Nombre d'étudiants</label>
+                    <input 
+                      type="number" 
+                      required
+                      min="0"
+                      value={newClassData.studentCount}
+                      onChange={(e) => setNewClassData({ ...newClassData, studentCount: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Ex: 30"
                     />
                   </div>
                   <div className="space-y-1">
@@ -501,7 +597,7 @@ export const Admin: React.FC = () => {
                     <Btn type="button" variant="ghost" className="flex-1" onClick={() => {
                       setIsClassModalOpen(false);
                       setEditingClass(null);
-                      setNewClassData({ name: '', delegateCode: '', color: '#6C63FF' });
+                      setNewClassData({ name: '', delegate_code: '', color: '#6C63FF', class_email: '', studentCount: 0, password: 'passer25' });
                     }}>Annuler</Btn>
                     <Btn type="submit" className="flex-1">{editingClass ? "Enregistrer" : "Créer la classe"}</Btn>
                   </div>

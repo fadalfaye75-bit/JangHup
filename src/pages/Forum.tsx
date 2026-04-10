@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { usePaginatedTable, insertRow, updateRow, deleteRow } from '../../lib/hooks';
 import { Post, Comment, Vote, UserRole } from '../../types';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -303,8 +303,9 @@ export const Forum: React.FC = () => {
     refetch
   } = usePaginatedTable<Post>(
     'posts',
-    [where('className', '==', user?.className || ''), orderBy('createdAt', 'desc')],
-    10
+    [where('className', '==', user?.class_name || ''), orderBy('createdAt', 'desc')],
+    10,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
 
   // Fetch user votes
@@ -318,6 +319,8 @@ export const Forum: React.FC = () => {
         votes[data.targetId] = data.type;
       });
       setUserVotes(votes);
+    }, (err) => {
+      console.error("🔥 Forum Votes Snapshot Error:", err);
     });
     return () => unsubscribe();
   }, [user]);
@@ -336,6 +339,8 @@ export const Forum: React.FC = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const comments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[];
       setPostComments(comments);
+    }, (err) => {
+      console.error("🔥 Forum Comments Snapshot Error:", err);
     });
     return () => unsubscribe();
   }, [selectedPost]);
@@ -400,7 +405,7 @@ export const Forum: React.FC = () => {
         ...newPostData,
         userId: user?.id,
         authorName: user?.name,
-        className: user?.className,
+        className: user?.class_name,
         votesScore: 0,
         commentsCount: 0
       });
@@ -533,7 +538,7 @@ export const Forum: React.FC = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <SecHdr 
           title="Forum Communautaire" 
-          subtitle={`Échangez avec vos camarades de la classe ${user?.className}`}
+          subtitle={`Échangez avec vos camarades de la classe ${user?.class_name}`}
         />
         
         <Btn onClick={() => setIsNewPostModalOpen(true)} className="lg:mb-8">

@@ -75,17 +75,18 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 /**
  * Real-time Table Hook with Enhanced Error Handling and Performance
  */
-export function useTable<T>(collectionName: string, constraints: QueryConstraint[] = [], maxItems = 50) {
+export function useTable<T>(collectionName: string, constraints: QueryConstraint[] = [], maxItems = 50, enabled = true) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!auth.currentUser) {
-      setLoading(false);
+    if (!auth.currentUser || !enabled) {
+      if (!enabled) setLoading(false);
       return;
     }
 
+    setLoading(true);
     // Optimization: Always apply a limit and order by createdAt if not specified
     const q = query(
       collection(db, collectionName), 
@@ -105,12 +106,13 @@ export function useTable<T>(collectionName: string, constraints: QueryConstraint
       (err) => {
         setError(err.message);
         setLoading(false);
+        // Only report if it's not a permission error due to missing data (which we should have caught with 'enabled')
         handleFirestoreError(err, OperationType.LIST, collectionName);
       }
     );
 
     return () => unsubscribe();
-  }, [collectionName, JSON.stringify(constraints)]);
+  }, [collectionName, JSON.stringify(constraints), enabled]);
 
   return { data, loading, error };
 }
@@ -118,7 +120,7 @@ export function useTable<T>(collectionName: string, constraints: QueryConstraint
 /**
  * Paginated Fetch Hook (No active listener, better for large lists)
  */
-export function usePaginatedTable<T>(collectionName: string, constraints: QueryConstraint[] = [], pageSize = 20) {
+export function usePaginatedTable<T>(collectionName: string, constraints: QueryConstraint[] = [], pageSize = 20, enabled = true) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -127,7 +129,10 @@ export function usePaginatedTable<T>(collectionName: string, constraints: QueryC
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
 
   const fetchInitial = useCallback(async () => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser || !enabled) {
+      if (!enabled) setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const q = query(collection(db, collectionName), ...constraints, limit(pageSize));
@@ -143,7 +148,7 @@ export function usePaginatedTable<T>(collectionName: string, constraints: QueryC
     } finally {
       setLoading(false);
     }
-  }, [collectionName, JSON.stringify(constraints), pageSize]);
+  }, [collectionName, JSON.stringify(constraints), pageSize, enabled]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc || !auth.currentUser) return;

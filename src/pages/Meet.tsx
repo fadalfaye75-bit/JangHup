@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useTable, insertRow, updateRow, deleteRow } from '../../lib/hooks';
 import { MeetLink, UserRole } from '../../types';
 import { Card, Badge, SecHdr, Spinner, ErrBox, Btn, Modal, ConfirmModal } from '../../components/ui';
@@ -24,7 +24,9 @@ export const Meet: React.FC = () => {
   const { user } = useAuth();
   const { data: meetings, loading, error } = useTable<MeetLink>(
     'meetings',
-    [where('className', '==', user?.className || ''), orderBy('time', 'asc')]
+    [where('className', '==', user?.class_name || ''), orderBy('time', 'asc')],
+    50,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,7 +62,7 @@ export const Meet: React.FC = () => {
         await insertRow('meetings', {
           ...formData,
           userId: user?.id,
-          className: user?.className,
+          className: user?.class_name,
           createdAt: new Date().toISOString()
         });
       }
@@ -75,10 +77,10 @@ export const Meet: React.FC = () => {
   const handleEdit = (meet: MeetLink) => {
     setEditingMeet(meet);
     setFormData({
-      title: meet.title,
-      platform: meet.platform,
-      url: meet.url,
-      time: meet.time
+      title: meet.title || '',
+      platform: meet.platform || 'Google Meet',
+      url: meet.url || '',
+      time: meet.time || ''
     });
     setIsModalOpen(true);
   };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useTable } from '../../lib/hooks';
 import { Announcement, Exam, MeetLink, Poll, Resource, ActivityLog, User } from '../../types';
 import { Card, Badge, Skeleton } from '../../components/ui';
@@ -54,37 +54,44 @@ export const Dashboard: React.FC = () => {
   // Data Fetching
   const { data: announcements, loading: annLoading } = useTable<Announcement>(
     'announcements', 
-    [where('className', '==', user?.className || ''), orderBy('createdAt', 'desc')],
-    5
+    [where('className', '==', user?.class_name || ''), orderBy('createdAt', 'desc')],
+    5,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
   
   const { data: exams, loading: examLoading } = useTable<Exam>(
     'exams', 
-    [where('className', '==', user?.className || ''), orderBy('date', 'asc')],
-    5
+    [where('className', '==', user?.class_name || ''), orderBy('date', 'asc')],
+    5,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
   
   const { data: meetings, loading: meetLoading } = useTable<MeetLink>(
     'meetings', 
-    [where('className', '==', user?.className || ''), orderBy('time', 'asc')],
-    5
+    [where('className', '==', user?.class_name || ''), orderBy('time', 'asc')],
+    5,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
   
   const { data: polls, loading: pollLoading } = useTable<Poll>(
     'polls', 
-    [where('className', '==', user?.className || ''), where('isActive', '==', true)],
-    10
+    [where('className', '==', user?.class_name || ''), where('isActive', '==', true)],
+    10,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
 
   const { data: classUsers, loading: usersLoading } = useTable<User>(
-    'profiles',
-    [where('className', '==', user?.className || '')]
+    'users',
+    [where('class_name', '==', user?.class_name || '')],
+    50,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
 
   const { data: activities, loading: activityLoading } = useTable<ActivityLog>(
     'activity_logs',
     [where('userId', '==', user?.id || ''), orderBy('createdAt', 'desc')],
-    10
+    10,
+    !!user?.id
   );
 
   const [readStatuses, setReadStatuses] = React.useState<Record<string, boolean>>({});
@@ -121,7 +128,7 @@ export const Dashboard: React.FC = () => {
         <div className="flex items-center gap-3 text-slate-400 mb-2">
           <span className="text-sm font-medium">Workspace</span>
           <ChevronRight size={14} />
-          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{user?.className || 'Ma Classe'}</span>
+          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{user?.class_name || 'Ma Classe'}</span>
         </div>
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
           Tableau de bord

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { Card, Badge, Spinner, ErrBox, Modal, Btn } from '../../components/ui';
 import { 
   User as UserIcon, 
@@ -16,7 +16,9 @@ import {
   Settings,
   Edit3,
   ChevronRight,
-  Activity
+  Activity,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { db, auth as firebaseAuth } from '../../firebase';
 import { doc, updateDoc, getDocs, query, collection, where, limit, orderBy, onSnapshot } from 'firebase/firestore';
@@ -26,11 +28,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { fmtDate } from '../../lib/utils';
 
 export const Profile: React.FC = () => {
-  const { user, logout, refreshUser } = useAuth();
+  const { user, logout } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
-  const [className, setClassName] = useState(user?.className || '');
+  const [className, setClassName] = useState(user?.class_name || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -39,6 +41,8 @@ export const Profile: React.FC = () => {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isChangingPass, setIsChangingPass] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Delegate Code State
   const [delegateCode, setDelegateCode] = useState('');
@@ -87,12 +91,11 @@ export const Profile: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await updateDoc(doc(db, 'profiles', user.id), {
+      await updateDoc(doc(db, 'users', user.id), {
         name,
-        className,
+        class_name: className,
         updatedAt: new Date().toISOString()
       });
-      await refreshUser();
       setIsEditing(false);
       setSuccess("Profil mis à jour avec succès !");
       setTimeout(() => setSuccess(null), 3000);
@@ -113,12 +116,11 @@ export const Profile: React.FC = () => {
       await reauthenticateWithCredential(firebaseAuth.currentUser, credential);
       await updatePassword(firebaseAuth.currentUser, newPassword);
       
-      await updateDoc(doc(db, 'profiles', user.id), {
-        passwordChanged: true,
+      await updateDoc(doc(db, 'users', user.id), {
+        password_changed: true,
         updatedAt: new Date().toISOString()
       });
       
-      await refreshUser();
       setIsChangingPass(false);
       setOldPassword('');
       setNewPassword('');
@@ -137,15 +139,14 @@ export const Profile: React.FC = () => {
     setIsClaiming(true);
     setError(null);
     try {
-      const q = query(collection(db, 'classes'), where('name', '==', user.className), where('delegateCode', '==', delegateCode));
+      const q = query(collection(db, 'classes'), where('name', '==', user.class_name), where('delegate_code', '==', delegateCode));
       const snap = await getDocs(q);
       
       if (!snap.empty) {
-        await updateDoc(doc(db, 'profiles', user.id), {
+        await updateDoc(doc(db, 'users', user.id), {
           role: UserRole.DELEGATE,
           updatedAt: new Date().toISOString()
         });
-        await refreshUser();
         setSuccess("Félicitations ! Vous êtes maintenant Délégué.");
         setDelegateCode('');
       } else {
@@ -180,11 +181,10 @@ export const Profile: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
-        await updateDoc(doc(db, 'profiles', user.id), {
+        await updateDoc(doc(db, 'users', user.id), {
           avatar: base64String,
           updatedAt: new Date().toISOString()
         });
-        await refreshUser();
         setSuccess("Photo de profil mise à jour !");
         setTimeout(() => setSuccess(null), 3000);
         setIsUploadingAvatar(false);
@@ -226,7 +226,7 @@ export const Profile: React.FC = () => {
               <div className="flex items-center gap-2 mt-1">
                 <Badge type="primary" className="bg-white/20 border-none text-white backdrop-blur-md">{user?.role}</Badge>
                 <span className="text-white/70 text-sm font-medium flex items-center gap-1">
-                  <Calendar size={14} /> Membre depuis {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2024'}
+                  <Calendar size={14} /> Membre depuis {user?.created_at ? new Date(user.created_at).getFullYear() : '2024'}
                 </span>
               </div>
             </div>
@@ -415,7 +415,7 @@ export const Profile: React.FC = () => {
               <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="space-y-1">
                   <p className="font-bold text-slate-800 dark:text-slate-100">Mot de passe</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Dernière modification : {user?.passwordChanged ? 'Récemment' : 'Jamais'}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Dernière modification : {user?.password_changed ? 'Récemment' : 'Jamais'}</p>
                 </div>
                 <button 
                   onClick={() => setIsChangingPass(true)}
@@ -429,23 +429,41 @@ export const Profile: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Ancien mot de passe</label>
-                    <input 
-                      type="password" 
-                      required
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showOldPassword ? "text" : "password"} 
+                        required
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowOldPassword(!showOldPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                      >
+                        {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nouveau mot de passe</label>
-                    <input 
-                      type="password" 
-                      required
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showNewPassword ? "text" : "password"} 
+                        required
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-3">

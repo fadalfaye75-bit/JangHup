@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { usePaginatedTable, deleteRow } from '../../lib/hooks';
 import { Notification } from '../../types';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -70,7 +70,8 @@ export const Notifications: React.FC = () => {
   } = usePaginatedTable<Notification>(
     'notifications',
     [where('userId', '==', user?.id || ''), orderBy('createdAt', 'desc')],
-    20
+    20,
+    !!user?.id
   );
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;

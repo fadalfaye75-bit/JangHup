@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useTable, insertRow, updateRow, deleteRow } from '../../lib/hooks';
 import { Exam, UserRole } from '../../types';
 import { Card, Badge, SecHdr, Spinner, ErrBox, Btn, Modal, ConfirmModal } from '../../components/ui';
@@ -58,7 +58,9 @@ export const Exams: React.FC = () => {
   const { user } = useAuth();
   const { data: exams, loading, error } = useTable<Exam>(
     'exams',
-    [where('className', '==', user?.className || ''), orderBy('date', 'asc')]
+    [where('className', '==', user?.class_name || ''), orderBy('date', 'asc')],
+    50,
+    !!user?.class_name || user?.role === 'ADMIN'
   );
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,7 +99,7 @@ export const Exams: React.FC = () => {
         await insertRow('exams', {
           ...formData,
           userId: user?.id,
-          className: user?.className
+          className: user?.class_name
         });
       }
       setIsModalOpen(false);
@@ -111,10 +113,10 @@ export const Exams: React.FC = () => {
   const handleEdit = (exam: Exam) => {
     setEditingExam(exam);
     setFormData({
-      subject: exam.subject,
-      date: exam.date,
-      duration: exam.duration,
-      room: exam.room,
+      subject: exam.subject || '',
+      date: exam.date || '',
+      duration: exam.duration || '',
+      room: exam.room || '',
       notes: exam.notes || ''
     });
     setIsModalOpen(true);

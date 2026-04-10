@@ -1,23 +1,22 @@
 {
   "entities": {
-    "Profile": {
+    "User": {
       "title": "User Profile",
-      "description": "Extended user information and roles",
+      "description": "User information and roles",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Firebase Auth UID" },
         "name": { "type": "string", "description": "Full name" },
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["ADMIN", "DELEGATE", "STUDENT"] },
-        "className": { "type": "string", "description": "Class name (e.g., GI3)" },
-        "schoolName": { "type": "string", "description": "Institution name" },
+        "class_name": { "type": "string", "description": "Class name (e.g., GI3)" },
+        "is_class_account": { "type": "boolean" },
+        "password_changed": { "type": "boolean" },
         "avatar": { "type": "string", "format": "uri" },
-        "isActive": { "type": "boolean" },
-        "passwordChanged": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "name", "email", "role", "className"]
+      "required": ["id", "name", "email", "role", "class_name"]
     },
     "Announcement": {
       "title": "Announcement",
@@ -41,12 +40,15 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
+        "class_email": { "type": "string", "format": "email" },
+        "password": { "type": "string" },
+        "delegate_code": { "type": "string" },
+        "created_by": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
         "studentCount": { "type": "number" },
-        "color": { "type": "string" },
-        "delegateCode": { "type": "string" }
+        "color": { "type": "string" }
       },
-      "required": ["name", "delegateCode"]
+      "required": ["name", "class_email", "delegate_code"]
     },
     "Post": {
       "title": "Forum Post",
@@ -81,9 +83,9 @@
     }
   },
   "firestore": {
-    "/profiles/{userId}": {
-      "schema": "Profile",
-      "description": "User profile documents"
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User documents"
     },
     "/announcements/{annId}": {
       "schema": "Announcement",

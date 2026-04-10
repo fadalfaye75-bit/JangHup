@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   collection, 
   query, 
@@ -30,7 +30,7 @@ export const StoryPolls: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
     const q = query(
       collection(db, 'polls'), 
-      where('className', '==', user.className),
+      where('className', '==', user.class_name),
       where('isActive', '==', true),
       orderBy('createdAt', 'desc')
     );

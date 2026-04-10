@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { Announcement, UserRole, AnnouncementReadStatus } from '../../types';
 import { Card, Badge, Spinner, ErrBox, Modal, ConfirmModal } from '../../components/ui';
 import { 
@@ -71,7 +71,7 @@ export const Announcements: React.FC = () => {
     // Listen to announcements
     const q = query(
       collection(db, 'announcements'),
-      where('className', '==', user.className),
+      where('className', '==', user.class_name),
       orderBy('createdAt', 'desc')
     );
 
@@ -80,7 +80,7 @@ export const Announcements: React.FC = () => {
       setAnnouncements(data);
       setLoading(false);
     }, (err) => {
-      console.error(err);
+      console.error("🔥 Announcements Snapshot Error:", err);
       setError("Erreur lors du chargement des annonces");
       setLoading(false);
     });
@@ -97,6 +97,8 @@ export const Announcements: React.FC = () => {
         statuses[doc.data().announcementId] = true;
       });
       setReadStatuses(statuses);
+    }, (err) => {
+      console.error("🔥 Announcement Status Snapshot Error:", err);
     });
 
     return () => {
@@ -120,7 +122,7 @@ export const Announcements: React.FC = () => {
           ...formData,
           userId: user.id,
           author: user.name,
-          className: user.className,
+          className: user.class_name,
           color: '#6C63FF',
           createdAt: new Date().toISOString()
         });
@@ -136,9 +138,9 @@ export const Announcements: React.FC = () => {
   const handleEdit = (ann: Announcement) => {
     setEditingAnn(ann);
     setFormData({
-      title: ann.title,
-      content: ann.content,
-      priority: ann.priority,
+      title: ann.title || '',
+      content: ann.content || '',
+      priority: ann.priority || 'normal',
       link: ann.link || '',
       isPinned: ann.isPinned || false
     });
@@ -308,7 +310,7 @@ export const Announcements: React.FC = () => {
                           {ann.isPinned && <Pin size={12} className="text-indigo-500 fill-indigo-500" />}
                           {!isRead && <div className="w-2 h-2 rounded-full bg-indigo-500" />}
                         </div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.className}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.class_name}</p>
                       </div>
                     </div>
                     

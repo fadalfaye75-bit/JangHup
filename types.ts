@@ -9,24 +9,25 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  className: string;
+  class_name: string;
+  is_class_account: boolean;
+  password_changed: boolean;
   avatar?: string;
-  schoolName: string;
-  isActive: boolean;
-  passwordChanged: boolean;
   theme?: 'light' | 'dark';
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SchoolClass {
   id: string;
   name: string;
-  email: string;
+  class_email: string;
+  password?: string;
+  delegate_code: string;
+  created_by: string;
+  created_at: string;
   studentCount: number;
   color: string;
-  delegateCode: string;
-  createdAt: string;
 }
 
 export interface Announcement {

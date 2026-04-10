@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, X, Megaphone, GraduationCap, Video, BarChart3, BookOpen, ArrowRight, Command } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTable } from '../lib/hooks';
-import { useAuth } from '../lib/AuthContext';
+import { useAuth } from '../src/context/AuthContext';
 import { where } from 'firebase/firestore';
 import { Announcement, Exam, MeetLink, Poll, Resource } from '../types';
 
@@ -12,11 +12,11 @@ export const GlobalSearch: React.FC<{ isOpen: boolean; onClose: () => void }> = 
   const navigate = useNavigate();
 
   const { user } = useAuth();
-  const { data: announcements } = useTable<Announcement>('announcements', [where('className', '==', user?.className || '')]);
-  const { data: exams } = useTable<Exam>('exams', [where('className', '==', user?.className || '')]);
-  const { data: meetings } = useTable<MeetLink>('meetings', [where('className', '==', user?.className || '')]);
-  const { data: polls } = useTable<Poll>('polls', [where('className', '==', user?.className || '')]);
-  const { data: resources } = useTable<Resource>('resources', [where('className', '==', user?.className || '')]);
+  const { data: announcements } = useTable<Announcement>('announcements', [where('className', '==', user?.class_name || '')]);
+  const { data: exams } = useTable<Exam>('exams', [where('className', '==', user?.class_name || '')]);
+  const { data: meetings } = useTable<MeetLink>('meetings', [where('className', '==', user?.class_name || '')]);
+  const { data: polls } = useTable<Poll>('polls', [where('className', '==', user?.class_name || '')]);
+  const { data: resources } = useTable<Resource>('resources', [where('className', '==', user?.class_name || '')]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
