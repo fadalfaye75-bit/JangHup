@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Card, Badge, Spinner, ErrBox, Modal, Btn } from '../../components/ui';
+import { Card, Badge, Spinner, ErrBox, Modal, Btn, Toast, ToastType } from '../../components/ui';
 import { 
   User as UserIcon, 
   Mail, 
@@ -21,11 +21,13 @@ import {
   EyeOff
 } from 'lucide-react';
 import { db, auth as firebaseAuth } from '../../firebase';
-import { doc, updateDoc, getDocs, query, collection, where, limit, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, getDocs, query, collection, where, limit, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { UserRole, ActivityLog } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { fmtDate } from '../../lib/utils';
+import { isValidDate, fmtDate } from '../../lib/utils';
+import { authService } from '../services/authService';
+import { notificationService } from '../services/notificationService';
 
 export const Profile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -36,6 +38,7 @@ export const Profile: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<ToastType>('success');
 
   // Password Change State
   const [oldPassword, setOldPassword] = useState('');
@@ -50,6 +53,11 @@ export const Profile: React.FC = () => {
 
   // Avatar Upload State
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  // Notification Permission State
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    'Notification' in window ? Notification.permission : 'denied'
+  );
 
   // Activity Stats
   const [activities, setActivities] = useState<ActivityLog[]>([]);
@@ -91,16 +99,30 @@ export const Profile: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await updateDoc(doc(db, 'users', user.id), {
+      const batch = writeBatch(db);
+      
+      batch.update(doc(db, 'users', user.id), {
         name,
         class_name: className,
         updatedAt: new Date().toISOString()
       });
+
+      // Also update public profile
+      batch.set(doc(db, 'users_public', user.id), {
+        name,
+        class_name: className,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      await batch.commit();
+      
       setIsEditing(false);
       setSuccess("Profil mis à jour avec succès !");
-      setTimeout(() => setSuccess(null), 3000);
+      setToastType('success');
     } catch (err: any) {
       setError(err.message);
+      setSuccess(err.message);
+      setToastType('error');
     } finally {
       setLoading(false);
     }
@@ -125,9 +147,11 @@ export const Profile: React.FC = () => {
       setOldPassword('');
       setNewPassword('');
       setSuccess("Mot de passe modifié ! 🔒 Sécurisé");
-      setTimeout(() => setSuccess(null), 3000);
+      setToastType('success');
     } catch (err: any) {
       setError("Ancien mot de passe incorrect ou erreur système.");
+      setSuccess("Erreur lors de la modification du mot de passe.");
+      setToastType('error');
     } finally {
       setLoading(false);
     }
@@ -135,25 +159,18 @@ export const Profile: React.FC = () => {
 
   const handleClaimDelegate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !user.class_name) return;
     setIsClaiming(true);
     setError(null);
     try {
-      const q = query(collection(db, 'classes'), where('name', '==', user.class_name), where('delegate_code', '==', delegateCode));
-      const snap = await getDocs(q);
-      
-      if (!snap.empty) {
-        await updateDoc(doc(db, 'users', user.id), {
-          role: UserRole.DELEGATE,
-          updatedAt: new Date().toISOString()
-        });
-        setSuccess("Félicitations ! Vous êtes maintenant Délégué.");
-        setDelegateCode('');
-      } else {
-        setError("Code invalide pour cette classe.");
-      }
+      await authService.claimDelegate(user.id, user.class_name, delegateCode);
+      setSuccess("Félicitations ! Vous êtes maintenant Délégué.");
+      setToastType('success');
+      setDelegateCode('');
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Code invalide pour cette classe.");
+      setSuccess("Code invalide pour cette classe.");
+      setToastType('error');
     } finally {
       setIsClaiming(false);
     }
@@ -186,20 +203,35 @@ export const Profile: React.FC = () => {
           updatedAt: new Date().toISOString()
         });
         setSuccess("Photo de profil mise à jour !");
-        setTimeout(() => setSuccess(null), 3000);
+        setToastType('success');
         setIsUploadingAvatar(false);
       };
       reader.readAsDataURL(file);
     } catch (err: any) {
       setError("Erreur lors de la mise à jour de la photo.");
+      setSuccess("Erreur lors de la mise à jour de la photo.");
+      setToastType('error');
       setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleRequestNotifPermission = async () => {
+    const granted = await notificationService.requestPermission();
+    if (granted) {
+      setNotifPermission('granted');
+      setSuccess("Notifications activées ! 🔔");
+      setToastType('success');
+    } else {
+      setError("Permission de notification refusée.");
+      setSuccess("Permission de notification refusée.");
+      setToastType('error');
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-20">
       {/* Header / Banner */}
-      <div className="relative h-48 rounded-3xl bg-gradient-to-r from-indigo-600 to-purple-600 overflow-hidden shadow-lg">
+      <div className="relative h-48 rounded-3xl bg-gradient-to-r from-primary to-purple-600 overflow-hidden shadow-lg">
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
         <div className="absolute bottom-0 left-0 w-full p-8 flex items-end justify-between bg-gradient-to-t from-black/50 to-transparent">
           <div className="flex items-center gap-6">
@@ -210,7 +242,7 @@ export const Profile: React.FC = () => {
                 className="w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-xl"
                 loading="lazy"
               />
-              <label className={`absolute -bottom-2 -right-2 p-2 bg-white dark:bg-slate-800 text-indigo-600 rounded-xl shadow-lg hover:scale-110 transition-transform cursor-pointer ${isUploadingAvatar ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <label className={`absolute -bottom-2 -right-2 p-2 bg-white dark:bg-slate-800 text-primary rounded-xl shadow-lg hover:scale-110 transition-transform cursor-pointer ${isUploadingAvatar ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {isUploadingAvatar ? <Spinner size={16} /> : <Camera size={16} />}
                 <input 
                   type="file" 
@@ -226,7 +258,7 @@ export const Profile: React.FC = () => {
               <div className="flex items-center gap-2 mt-1">
                 <Badge type="primary" className="bg-white/20 border-none text-white backdrop-blur-md">{user?.role}</Badge>
                 <span className="text-white/70 text-sm font-medium flex items-center gap-1">
-                  <Calendar size={14} /> Membre depuis {user?.created_at ? new Date(user.created_at).getFullYear() : '2024'}
+                  <Calendar size={14} /> Membre depuis {user?.created_at && isValidDate(new Date(user.created_at)) ? new Date(user.created_at).getFullYear() : '2024'}
                 </span>
               </div>
             </div>
@@ -250,15 +282,12 @@ export const Profile: React.FC = () => {
         </div>
       </div>
 
-      {success && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl flex items-center gap-3 font-bold text-sm"
-        >
-          <CheckCircle2 size={20} /> {success}
-        </motion.div>
-      )}
+      <Toast 
+        isVisible={!!success} 
+        message={success || ''} 
+        type={toastType}
+        onClose={() => setSuccess(null)} 
+      />
 
       {error && <ErrBox message={error} />}
 
@@ -269,7 +298,7 @@ export const Profile: React.FC = () => {
           <div className="grid grid-cols-1 gap-4">
             <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 rounded-xl flex items-center justify-center">
                   <BarChart3 size={20} />
                 </div>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Activité</span>
@@ -307,13 +336,13 @@ export const Profile: React.FC = () => {
           {/* Recent Activity */}
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Activity size={20} className="text-indigo-500" />
+              <Activity size={20} className="text-primary" />
               Activité récente
             </h2>
             <div className="space-y-3">
               {activities.map((log) => (
-                <div key={log.id} className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center gap-3 group hover:border-indigo-200 dark:hover:border-indigo-900 transition-all">
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-colors">
+                <div key={log.id} className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center gap-3 group hover:border-primary/30 dark:hover:border-primary/20 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
                     <ChevronRight size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -332,9 +361,9 @@ export const Profile: React.FC = () => {
         {/* Right Column: Forms & Settings */}
         <div className="lg:col-span-2 space-y-8">
           {/* General Info */}
-          <Card>
+          <Card className="hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 rounded-xl flex items-center justify-center">
                 <UserIcon size={20} />
               </div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Informations Générales</h2>
@@ -351,7 +380,7 @@ export const Profile: React.FC = () => {
                       disabled={!isEditing}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium disabled:opacity-60"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium disabled:opacity-60"
                     />
                   </div>
                 </div>
@@ -376,7 +405,7 @@ export const Profile: React.FC = () => {
                       disabled={!isEditing}
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium disabled:opacity-60"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium disabled:opacity-60"
                       placeholder="Ex: GI3"
                     />
                   </div>
@@ -403,7 +432,7 @@ export const Profile: React.FC = () => {
           </Card>
 
           {/* Security */}
-          <Card>
+          <Card className="hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl flex items-center justify-center">
                 <Lock size={20} />
@@ -435,12 +464,12 @@ export const Profile: React.FC = () => {
                         required
                         value={oldPassword}
                         onChange={(e) => setOldPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm pr-12"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm pr-12"
                       />
                       <button
                         type="button"
                         onClick={() => setShowOldPassword(!showOldPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
                       >
                         {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -454,12 +483,12 @@ export const Profile: React.FC = () => {
                         required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm pr-12"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm pr-12"
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
                       >
                         {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -480,11 +509,65 @@ export const Profile: React.FC = () => {
             )}
           </Card>
 
+          {/* Notifications Settings */}
+          <Card className="hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 rounded-xl flex items-center justify-center">
+                <Settings size={20} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Préférences de Notification</h2>
+            </div>
+
+            <div className="flex flex-col gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-800 dark:text-slate-100">Notifications Push</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {notifPermission === 'granted' 
+                      ? 'Activées sur cet appareil' 
+                      : notifPermission === 'denied' 
+                        ? 'Bloquées par le navigateur' 
+                        : 'Non configurées'}
+                  </p>
+                </div>
+                {notifPermission !== 'granted' && notifPermission !== 'denied' && (
+                  <button 
+                    onClick={handleRequestNotifPermission}
+                    className="px-4 py-2 bg-[#6C63FF] text-white rounded-xl font-bold text-xs hover:bg-[#5b54d6] transition-all shadow-sm"
+                  >
+                    Activer
+                  </button>
+                )}
+                {notifPermission === 'granted' && (
+                  <div className="flex items-center gap-2 text-emerald-500 font-bold text-xs">
+                    <CheckCircle2 size={16} />
+                    Actif
+                  </div>
+                )}
+              </div>
+              
+              {notifPermission === 'denied' && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-xl"
+                >
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                    <span className="font-bold block mb-1">Comment réactiver :</span>
+                    1. Si vous êtes dans l'aperçu, ouvrez l'application dans un <b>nouvel onglet</b>.<br/>
+                    2. Cliquez sur l'icône de cadenas 🔒 dans la barre d'adresse.<br/>
+                    3. Réinitialisez la permission de notification pour ce site.
+                  </p>
+                </motion.div>
+              )}
+            </div>
+          </Card>
+
           {/* Delegate Access */}
           {user?.role === UserRole.STUDENT && (
-            <Card className="bg-indigo-50 dark:bg-indigo-900/10 border-2 border-dashed border-indigo-200 dark:border-indigo-900/30">
+            <Card className="bg-primary/5 dark:bg-primary/10 border-2 border-dashed border-primary/20 dark:border-primary/10 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+                <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 dark:shadow-none">
                   <Key size={24} />
                 </div>
                 <div>
@@ -500,7 +583,7 @@ export const Profile: React.FC = () => {
                   placeholder="Code secret (ex: GI3-2024)"
                   value={delegateCode}
                   onChange={(e) => setDelegateCode(e.target.value)}
-                  className="flex-1 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-mono"
+                  className="flex-1 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-mono"
                 />
                 <Btn type="submit" loading={isClaiming} className="px-8">Valider le code</Btn>
               </form>

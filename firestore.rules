@@ -19,21 +19,20 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          getUserData().get('role', '') == 'ADMIN') ||
-         (request.auth.token.get('email', '') == "fadalfaye75@gmail.com" && 
-          request.auth.token.get('email_verified', false) == true));
+        ((request.auth.token.email == "fadalfaye75@gmail.com" && request.auth.token.email_verified == true) || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN'));
     }
 
     function isDelegate() {
-      return isAuthenticated() && 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         (getUserData().get('role', '') == 'DELEGATE' || getUserData().get('role', '') == 'ADMIN'));
+      return isAdmin() || (isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'DELEGATE');
     }
 
     function getUserClass() {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
-        getUserData().get('class_name', getUserData().get('className', '')) : '';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.class_name : '';
     }
 
     // ===============================================================
@@ -41,70 +40,93 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isAuthenticated(); 
+      allow read: if isOwner(userId) || isAdmin(); 
       allow create: if (isOwner(userId) && 
-                      request.resource.data.role == 'STUDENT' &&
-                      request.resource.data.is_class_account == true) || 
+                      request.resource.data.role == 'STUDENT') || 
                       (isOwner(userId) && isAdmin());
-      allow update: if isOwner(userId) && 
+      allow update: if isAdmin() || (isOwner(userId) && 
                       (
-                        // Allow student to become delegate if they provide the correct code
-                        // In a real app, this would be a Cloud Function.
-                        // Here we allow role update if not becoming ADMIN.
                         (request.resource.data.role == 'DELEGATE' && resource.data.role == 'STUDENT') ||
-                        (request.resource.data.role == resource.data.role) || 
-                        isAdmin()
-                      );
+                        (request.resource.data.role == resource.data.role)
+                      ));
+      allow delete: if isAdmin();
+    }
+
+    match /users_public/{userId} {
+      allow get, list: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      allow delete: if isAdmin();
     }
 
     match /announcements/{annId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
       allow create: if isDelegate() || isAdmin();
-      allow update: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
-      allow delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
     }
 
     match /classes/{classId} {
       allow read: if isAuthenticated();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /class_secrets/{classId} {
+      allow read, write: if isAdmin() || (isAuthenticated() && getUserClass() == get(/databases/$(database)/documents/classes/$(classId)).data.name && isDelegate());
+    }
+
+    match /registration_codes/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /delegate_codes/{code} {
+      allow get: if isAuthenticated();
+      allow list: if isAdmin();
+      allow write: if isAdmin() || (isDelegate() && request.resource.data.className == getUserClass());
     }
 
     match /exams/{examId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow write: if isDelegate() || isAdmin();
+      allow create: if isDelegate() || isAdmin();
+      allow update, delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
     }
 
     match /meetings/{meetingId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow write: if isDelegate() || isAdmin();
+      allow create: if isDelegate() || isAdmin();
+      allow update, delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
     }
 
     match /polls/{pollId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isDelegate() || isAdmin();
+      allow create: if (isDelegate() || isAdmin()) && 
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.totalVotes == 0 &&
+                      request.resource.data.isActive == true;
       allow update: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid) ||
                       (isAuthenticated() && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalVotes']) &&
-                       math.abs(request.resource.data.totalVotes - resource.data.totalVotes) == 1);
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalVotes', 'updatedAt']) &&
+                       (request.resource.data.totalVotes == resource.data.totalVotes + 1 || request.resource.data.totalVotes == resource.data.totalVotes));
       allow delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
     }
 
     match /resources/{resId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow write: if isDelegate() || isAdmin();
+      allow create: if isDelegate() || isAdmin();
+      allow update, delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
     }
 
     match /posts/{postId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isAuthenticated() && request.resource.data.className == getUserClass();
+      allow create: if isAuthenticated() && (isAdmin() || request.resource.data.className == getUserClass());
       allow update: if isAdmin() || isOwner(resource.data.userId) || 
                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votesScore', 'commentsCount', 'updatedAt']));
       allow delete: if isAdmin() || isOwner(resource.data.userId);
     }
 
     match /comments/{commentId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.get('className', '') == getUserClass() || resource.data.get('postId', '') != '');
       allow create: if isAuthenticated();
       allow update: if isAdmin() || isOwner(resource.data.userId) ||
                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votesScore', 'updatedAt']));
@@ -125,9 +147,15 @@ service cloud.firestore {
     }
 
     match /announcement_read_statuses/{statusId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin() ||
+        (isDelegate() && get(/databases/$(database)/documents/announcements/$(resource.data.announcementId)).data.userId == request.auth.uid)
+      );
       allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin() || 
+                      (isAuthenticated() && resource.data.userId == request.auth.uid) ||
+                      (isDelegate() && get(/databases/$(database)/documents/announcements/$(resource.data.announcementId)).data.userId == request.auth.uid);
     }
 
     match /votes/{voteId} {
@@ -140,14 +168,18 @@ service cloud.firestore {
       allow create: if isDelegate() || isAdmin();
       allow update: if isAuthenticated() && 
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes']) &&
-                      math.abs(request.resource.data.votes - resource.data.votes) == 1;
-      allow delete: if isDelegate() || isAdmin();
+                      (request.resource.data.votes == resource.data.votes + 1 || request.resource.data.votes == resource.data.votes - 1);
+      allow delete: if isAdmin() || 
+                      (isDelegate() && get(/databases/$(database)/documents/polls/$(resource.data.pollId)).data.userId == request.auth.uid);
     }
 
     match /poll_votes/{voteId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin() || 
+                      (isAuthenticated() && resource.data.userId == request.auth.uid) ||
+                      (isDelegate() && get(/databases/$(database)/documents/polls/$(resource.data.pollId)).data.userId == request.auth.uid);
     }
   }
 }

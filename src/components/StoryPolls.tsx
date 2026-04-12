@@ -35,16 +35,33 @@ export const StoryPolls: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribePolls = onSnapshot(q, async (snapshot) => {
-      const pollsData: Poll[] = [];
-      for (const pollDoc of snapshot.docs) {
-        const poll = { id: pollDoc.id, ...pollDoc.data() } as Poll;
-        const optionsSnap = await getDocs(query(collection(db, 'poll_options'), where('pollId', '==', poll.id)));
-        poll.options = optionsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PollOption));
-        pollsData.push(poll);
+    const unsubscribePolls = onSnapshot(q, (snapshot) => {
+      const pollsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
+      
+      if (pollsData.length === 0) {
+        setPolls([]);
+        setLoading(false);
+        return;
       }
-      setPolls(pollsData);
-      setLoading(false);
+
+      const pollIds = pollsData.map(p => p.id);
+      // Firestore 'in' query limited to 30 items
+      const optionsQ = query(
+        collection(db, 'poll_options'), 
+        where('pollId', 'in', pollIds.slice(0, 30))
+      );
+      
+      getDocs(optionsQ).then(optSnap => {
+        const allOptions = optSnap.docs.map(d => ({ id: d.id, ...d.data() } as PollOption));
+        setPolls(pollsData.map(poll => ({
+          ...poll,
+          options: allOptions.filter(o => o.pollId === poll.id)
+        })));
+        setLoading(false);
+      }).catch(err => {
+        console.error("🔥 Story Polls Options Error:", err);
+        setLoading(false);
+      });
     });
 
     const votesQ = query(collection(db, 'poll_votes'), where('userId', '==', user.id));
@@ -75,6 +92,10 @@ export const StoryPolls: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       await batch.commit();
     } catch (error) {
       console.error("Vote error:", error);
+      // Surfacing the error for the agent to see if it's a permission issue
+      if (error instanceof Error && error.message.includes('permission-denied')) {
+        throw error;
+      }
     }
   };
 

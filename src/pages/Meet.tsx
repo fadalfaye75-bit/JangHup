@@ -15,16 +15,23 @@ import {
   Share2,
   Mail
 } from 'lucide-react';
+import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { where, orderBy } from 'firebase/firestore';
 import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { notificationService } from '../services/notificationService';
 
 export const Meet: React.FC = () => {
-  const { user } = useAuth();
+  const { user, classInfo } = useAuth();
+  const meetConstraints = React.useMemo(() => [
+    where('className', '==', user?.class_name || ''), 
+    orderBy('time', 'asc')
+  ], [user?.class_name]);
+
   const { data: meetings, loading, error } = useTable<MeetLink>(
     'meetings',
-    [where('className', '==', user?.class_name || ''), orderBy('time', 'asc')],
+    meetConstraints,
     50,
     !!user?.class_name || user?.role === 'ADMIN'
   );
@@ -65,6 +72,17 @@ export const Meet: React.FC = () => {
           className: user?.class_name,
           createdAt: new Date().toISOString()
         });
+
+        // Notify all students in the class
+        if (user?.class_name) {
+          await notificationService.notifyClass(
+            user.class_name,
+            `Nouvelle réunion: ${formData.title}`,
+            `Une réunion sur ${formData.platform} est prévue le ${new Date(formData.time).toLocaleString()}.`,
+            'info',
+            '/meetings'
+          );
+        }
       }
       setIsModalOpen(false);
       setEditingMeet(null);
@@ -95,6 +113,30 @@ export const Meet: React.FC = () => {
         await deleteRow('meetings', id);
       }
     });
+  };
+
+  const handleShareWhatsApp = (meet: MeetLink) => {
+    const { whatsapp } = generateSmartShare('reunion', {
+      title: meet.title,
+      platform: meet.platform,
+      url: meet.url,
+      date: meet.time,
+      className: meet.className,
+      classEmail: classInfo?.class_email
+    });
+    shareToWhatsApp(whatsapp);
+  };
+
+  const handleShareEmail = (meet: MeetLink) => {
+    const { emailSubject, emailBody, classEmail } = generateSmartShare('reunion', {
+      title: meet.title,
+      platform: meet.platform,
+      url: meet.url,
+      date: meet.time,
+      className: meet.className,
+      classEmail: classInfo?.class_email
+    });
+    shareToEmail(emailSubject, emailBody, classEmail);
   };
 
   const getPlatformIcon = (platform: string) => {
@@ -162,7 +204,7 @@ export const Meet: React.FC = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
               >
-                <Card className="flex flex-col h-full group relative overflow-hidden">
+                <Card className="flex flex-col h-full group relative overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                   <div className="flex justify-between items-start mb-4">
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center p-2.5">
                       {getPlatformIcon(meet.platform) ? (
@@ -172,17 +214,18 @@ export const Meet: React.FC = () => {
                       )}
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => {
-                        const text = `🤝 Réunion JangHup\nTitre: ${meet.title}\nDate: ${meet.time}\nLien: ${meet.url}`;
-                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                      }} className="p-1.5 text-slate-400 hover:text-[#25D366] transition-colors" title="Partager sur WhatsApp">
+                      <button 
+                        onClick={() => handleShareWhatsApp(meet)} 
+                        className="p-1.5 text-slate-400 hover:text-[#25D366] transition-colors" 
+                        title="Partager sur WhatsApp"
+                      >
                         <Share2 size={16} />
                       </button>
-                      <button onClick={() => {
-                        const subject = `Réunion JangHup: ${meet.title}`;
-                        const body = `🤝 Réunion JangHup\nTitre: ${meet.title}\nDate: ${meet.time}\nLien: ${meet.url}`;
-                        window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                      }} className="p-1.5 text-slate-400 hover:text-primary transition-colors" title="Partager par Email">
+                      <button 
+                        onClick={() => handleShareEmail(meet)} 
+                        className="p-1.5 text-slate-400 hover:text-primary transition-colors" 
+                        title="Partager par Email"
+                      >
                         <Mail size={16} />
                       </button>
                       {canManage && (

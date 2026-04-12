@@ -23,8 +23,10 @@ import {
   onSnapshot, 
   doc, 
   updateDoc,
+  getDoc,
   getDocs,
-  limit
+  limit,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -33,6 +35,7 @@ export const Class: React.FC = () => {
   const { user } = useAuth();
   const [members, setMembers] = useState<User[]>([]);
   const [classInfo, setClassInfo] = useState<SchoolClass | null>(null);
+  const [classSecret, setClassSecret] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,7 +51,7 @@ export const Class: React.FC = () => {
 
     // Listen to class members
     const membersQ = query(
-      collection(db, 'users'),
+      collection(db, 'users_public'),
       where('class_name', '==', user.class_name)
     );
 
@@ -83,9 +86,21 @@ export const Class: React.FC = () => {
     };
   }, [user?.class_name]);
 
+  useEffect(() => {
+    if (classInfo?.id && (user?.role === UserRole.ADMIN || user?.role === UserRole.DELEGATE)) {
+      const secretRef = doc(db, 'class_secrets', classInfo.id);
+      getDoc(secretRef).then(snap => {
+        if (snap.exists()) {
+          setClassSecret(snap.data());
+        }
+      });
+    }
+  }, [classInfo?.id, user?.role]);
+
   const handleCopyCode = () => {
-    if (classInfo?.delegate_code) {
-      navigator.clipboard.writeText(classInfo.delegate_code);
+    const code = classSecret?.delegate_code || classInfo?.delegate_code;
+    if (code) {
+      navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -94,11 +109,26 @@ export const Class: React.FC = () => {
   const handleGenerateNewCode = async () => {
     if (!classInfo || (user?.role !== UserRole.ADMIN && user?.role !== UserRole.DELEGATE)) return;
     
-    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const prefix = classInfo.name ? classInfo.name.substring(0, 3).toUpperCase() : 'DEL';
+    const newCode = `${prefix}-${random}`;
+
     try {
-      await updateDoc(doc(db, 'classes', classInfo.id), {
-        delegate_code: newCode
-      });
+      const batch = writeBatch(db);
+      
+      // Update secret
+      const secretRef = doc(db, 'class_secrets', classInfo.id);
+      batch.set(secretRef, {
+        delegate_code: newCode,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      // Update reverse lookup
+      const delCodeRef = doc(db, 'delegate_codes', newCode.toUpperCase().trim());
+      batch.set(delCodeRef, { classId: classInfo.id, className: classInfo.name });
+
+      await batch.commit();
+      setClassSecret({ ...classSecret, delegate_code: newCode });
     } catch (err) {
       console.error(err);
     }
@@ -123,13 +153,13 @@ export const Class: React.FC = () => {
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
   if (!user?.class_name) return (
-    <div className="max-w-2xl mx-auto text-center py-20 space-y-6">
+      <div className="max-w-2xl mx-auto text-center py-20 space-y-6">
       <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400">
         <Users size={40} />
       </div>
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Vous n'avez pas encore de classe</h1>
       <p className="text-slate-500 dark:text-slate-400">Rejoignez une classe depuis votre profil pour voir vos camarades.</p>
-      <Link to="/profile" className="inline-block px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold">Aller au profil</Link>
+      <Link to="/profile" className="inline-block px-6 py-2 bg-primary text-white rounded-xl font-bold">Aller au profil</Link>
     </div>
   );
 
@@ -148,7 +178,7 @@ export const Class: React.FC = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsInviteModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 dark:shadow-none hover:scale-105 transition-transform"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 dark:shadow-none hover:scale-105 transition-transform"
           >
             <UserPlus size={18} />
             Inviter
@@ -184,7 +214,7 @@ export const Class: React.FC = () => {
               placeholder="Rechercher un membre..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm shadow-sm"
+              className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm shadow-sm"
             />
           </div>
 
@@ -244,9 +274,9 @@ export const Class: React.FC = () => {
 
         {/* Right Column: Class Info & Actions */}
         <div className="space-y-6">
-          <Card className="space-y-6">
+          <Card className="space-y-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary/10 dark:bg-primary/20 text-primary rounded-xl flex items-center justify-center">
                 <Key size={20} />
               </div>
               <h2 className="font-bold text-slate-900 dark:text-white">Accès Délégué</h2>
@@ -262,7 +292,7 @@ export const Class: React.FC = () => {
                 {(user.role === UserRole.ADMIN || user.role === UserRole.DELEGATE) && (
                   <button 
                     onClick={handleGenerateNewCode}
-                    className="text-indigo-600 hover:text-indigo-700 transition-colors"
+                    className="text-primary hover:text-primary/80 transition-colors"
                     title="Générer un nouveau code"
                   >
                     <RefreshCw size={14} />
@@ -271,14 +301,18 @@ export const Class: React.FC = () => {
               </div>
               <div className="flex items-center justify-between gap-4">
                 <code className="text-xl font-black text-slate-900 dark:text-white tracking-widest font-mono">
-                  {classInfo?.delegate_code || '------'}
+                  {(user.role === UserRole.ADMIN || user.role === UserRole.DELEGATE) 
+                    ? (classSecret?.delegate_code || classInfo?.delegate_code || '------') 
+                    : '••••••'}
                 </code>
-                <button 
-                  onClick={handleCopyCode}
-                  className={`p-2 rounded-lg transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-white dark:bg-slate-900 text-slate-400 hover:text-indigo-500 shadow-sm'}`}
-                >
-                  {copied ? <Check size={18} /> : <Copy size={18} />}
-                </button>
+                {(user.role === UserRole.ADMIN || user.role === UserRole.DELEGATE) && (
+                  <button 
+                    onClick={handleCopyCode}
+                    className={`p-2 rounded-lg transition-all ${copied ? 'bg-accent text-white' : 'bg-white dark:bg-slate-900 text-slate-400 hover:text-primary shadow-sm'}`}
+                  >
+                    {copied ? <Check size={18} /> : <Copy size={18} />}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -299,10 +333,10 @@ export const Class: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="bg-indigo-600 text-white border-none shadow-xl shadow-indigo-200 dark:shadow-none">
+          <Card className="bg-primary text-white border-none shadow-xl shadow-primary/20 dark:shadow-none hover:-translate-y-1 hover:shadow-2xl transition-all duration-300">
             <div className="space-y-4">
               <h3 className="font-bold text-lg">Besoin d'aide ?</h3>
-              <p className="text-indigo-100 text-sm leading-relaxed">
+              <p className="text-primary-foreground/80 text-sm leading-relaxed">
                 Si vous rencontrez des problèmes avec votre classe ou si vous souhaitez changer de groupe, contactez l'administration.
               </p>
               <button className="w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-colors border border-white/20">
@@ -321,7 +355,7 @@ export const Class: React.FC = () => {
       >
         <div className="space-y-6">
           <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-center space-y-4">
-            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 bg-primary/10 dark:bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto">
               <UserPlus size={32} />
             </div>
             <div className="space-y-1">
@@ -344,7 +378,7 @@ export const Class: React.FC = () => {
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
-                className="px-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors"
+                className="px-4 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors"
               >
                 {copied ? <Check size={20} /> : <Copy size={20} />}
               </button>

@@ -27,7 +27,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="w-full max-w-lg bg-white dark:bg-[#161a22] border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden pointer-events-auto"
+              className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden pointer-events-auto"
             >
               <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-white/5">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">{title}</h2>

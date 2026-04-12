@@ -47,7 +47,7 @@ interface FirestoreErrorInfo {
   }
 }
 
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null, shouldThrow = true) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof FirestoreError ? error.code + ': ' + error.message : String(error),
     authInfo: {
@@ -69,7 +69,10 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   
   const errorString = JSON.stringify(errInfo);
   console.error('🔥 Firestore Security/Operation Error:', errorString);
-  throw new Error(errorString);
+  if (shouldThrow) {
+    throw new Error(errorString);
+  }
+  return errorString;
 }
 
 /**
@@ -102,12 +105,12 @@ export function useTable<T>(collectionName: string, constraints: QueryConstraint
         })) as T[];
         setData(items);
         setLoading(false);
+        setError(null);
       },
       (err) => {
-        setError(err.message);
+        const errorMsg = handleFirestoreError(err, OperationType.LIST, collectionName, false);
+        setError(errorMsg);
         setLoading(false);
-        // Only report if it's not a permission error due to missing data (which we should have caught with 'enabled')
-        handleFirestoreError(err, OperationType.LIST, collectionName);
       }
     );
 

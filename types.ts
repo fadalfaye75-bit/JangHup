@@ -22,8 +22,8 @@ export interface SchoolClass {
   id: string;
   name: string;
   class_email: string;
-  password?: string;
   delegate_code: string;
+  class_code: string;
   created_by: string;
   created_at: string;
   studentCount: number;

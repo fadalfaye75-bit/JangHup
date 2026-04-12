@@ -10,10 +10,10 @@ interface ButtonProps extends HTMLMotionProps<"button"> {
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className = '', variant = 'primary', size = 'md', isLoading, children, ...props }, ref) => {
-    const baseStyles = "relative inline-flex items-center justify-center font-medium rounded-xl transition-colors overflow-hidden outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-[#0f1115]";
+    const baseStyles = "relative inline-flex items-center justify-center font-medium rounded-xl transition-colors overflow-hidden outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-950";
 
     const variants = {
-      primary: "bg-[#6C63FF] text-white hover:bg-[#5b54d6] focus:ring-[#6C63FF] shadow-[0_0_20px_rgba(108,99,255,0.3)] hover:shadow-[0_0_25px_rgba(108,99,255,0.5)]",
+      primary: "bg-primary text-white hover:bg-primary/90 focus:ring-primary shadow-[0_0_20px_rgba(108,99,255,0.3)] hover:shadow-[0_0_25px_rgba(108,99,255,0.5)]",
       secondary: "bg-white/10 dark:bg-white/5 text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 hover:bg-white/20 dark:hover:bg-white/10 focus:ring-slate-400",
       danger: "bg-[#FF4757] text-white hover:bg-[#ff2e43] focus:ring-[#FF4757] shadow-[0_0_20px_rgba(255,71,87,0.3)] hover:shadow-[0_0_25px_rgba(255,71,87,0.5)]",
       ghost: "bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 focus:ring-slate-400"

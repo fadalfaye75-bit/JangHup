@@ -14,8 +14,11 @@ import {
   X,
   MoreHorizontal,
   Eye,
-  EyeOff
+  EyeOff,
+  Share2,
+  Mail
 } from 'lucide-react';
+import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { fmtDate } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -33,9 +36,10 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { notificationService } from '../services/notificationService';
 
 export const Announcements: React.FC = () => {
-  const { user } = useAuth();
+  const { user, classInfo } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [readStatuses, setReadStatuses] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -69,10 +73,14 @@ export const Announcements: React.FC = () => {
     if (!user) return;
 
     // Listen to announcements
+    const constraints: any[] = [orderBy('createdAt', 'desc')];
+    if (user.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user.class_name || ''));
+    }
+    
     const q = query(
       collection(db, 'announcements'),
-      where('className', '==', user.class_name),
-      orderBy('createdAt', 'desc')
+      ...constraints
     );
 
     const unsubscribeAnn = onSnapshot(q, (snapshot) => {
@@ -118,14 +126,23 @@ export const Announcements: React.FC = () => {
           updatedAt: new Date().toISOString()
         });
       } else {
-        await addDoc(collection(db, 'announcements'), {
+        const docRef = await addDoc(collection(db, 'announcements'), {
           ...formData,
           userId: user.id,
           author: user.name,
           className: user.class_name,
-          color: '#6C63FF',
+          color: 'primary',
           createdAt: new Date().toISOString()
         });
+
+        // Notify all students in the class
+        await notificationService.notifyClass(
+          user.class_name,
+          `Nouvelle annonce: ${formData.title}`,
+          formData.content.substring(0, 100) + (formData.content.length > 100 ? '...' : ''),
+          formData.priority === 'urgent' ? 'danger' : 'info',
+          '/announcements'
+        );
       }
       setIsModalOpen(false);
       setEditingAnn(null);
@@ -213,6 +230,30 @@ export const Announcements: React.FC = () => {
     }
   };
 
+  const handleShareWhatsApp = (ann: Announcement) => {
+    const { whatsapp } = generateSmartShare('annonce', {
+      title: ann.title,
+      content: ann.content,
+      priority: ann.priority,
+      className: ann.className,
+      date: ann.createdAt,
+      classEmail: classInfo?.class_email
+    });
+    shareToWhatsApp(whatsapp);
+  };
+
+  const handleShareEmail = (ann: Announcement) => {
+    const { emailSubject, emailBody, classEmail } = generateSmartShare('annonce', {
+      title: ann.title,
+      content: ann.content,
+      priority: ann.priority,
+      className: ann.className,
+      date: ann.createdAt,
+      classEmail: classInfo?.class_email
+    });
+    shareToEmail(emailSubject, emailBody, classEmail);
+  };
+
   const filteredAnnouncements = announcements
     .filter(ann => 
       ann.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -221,7 +262,9 @@ export const Announcements: React.FC = () => {
     .sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
     });
 
   const unreadCount = announcements.filter(ann => !readStatuses[ann.id]).length;
@@ -251,7 +294,7 @@ export const Announcements: React.FC = () => {
           {unreadCount > 0 && (
             <button 
               onClick={handleMarkAllAsRead}
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+              className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
             >
               Tout marquer lu
             </button>
@@ -259,7 +302,7 @@ export const Announcements: React.FC = () => {
           {canManage && (
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200 hover:scale-110 transition-transform"
+              className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-110 transition-transform"
             >
               <Plus size={20} />
             </button>
@@ -276,7 +319,7 @@ export const Announcements: React.FC = () => {
             placeholder="Rechercher..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-slate-100 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+            className="w-full pl-11 pr-4 py-3 bg-slate-100 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
           />
         </div>
       </div>
@@ -295,11 +338,11 @@ export const Announcements: React.FC = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="px-0 md:px-0"
               >
-                <div className="bg-white dark:bg-slate-900 border-y md:border border-slate-100 dark:border-slate-800 md:rounded-2xl overflow-hidden shadow-sm">
+                <Card className="p-0 border-y md:border hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                   {/* Card Header */}
                   <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-[2px]">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent p-[2px]">
                         <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 font-bold text-sm border-2 border-white dark:border-slate-900">
                           {ann.author.charAt(0)}
                         </div>
@@ -307,25 +350,39 @@ export const Announcements: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-sm text-slate-900 dark:text-white">{ann.author}</span>
-                          {ann.isPinned && <Pin size={12} className="text-indigo-500 fill-indigo-500" />}
-                          {!isRead && <div className="w-2 h-2 rounded-full bg-indigo-500" />}
+                          {ann.isPinned && <Pin size={12} className="text-primary fill-primary" />}
+                          {!isRead && <div className="w-2 h-2 rounded-full bg-primary" />}
                         </div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.class_name}</p>
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-1">
+                      <button 
+                        onClick={() => handleShareWhatsApp(ann)}
+                        className="p-2 text-slate-400 hover:text-[#25D366] transition-colors"
+                        title="Partager sur WhatsApp"
+                      >
+                        <Share2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleShareEmail(ann)}
+                        className="p-2 text-slate-400 hover:text-primary transition-colors"
+                        title="Partager par Email"
+                      >
+                        <Mail size={16} />
+                      </button>
                       {canManage && (
                         <div className="flex items-center gap-1">
                           <button 
                             onClick={() => handleTogglePin(ann)}
-                            className={`p-2 transition-colors ${ann.isPinned ? 'text-indigo-500' : 'text-slate-400 hover:text-indigo-500'}`}
+                            className={`p-2 transition-colors ${ann.isPinned ? 'text-primary' : 'text-slate-400 hover:text-primary'}`}
                           >
                             <Pin size={16} />
                           </button>
                           <button 
                             onClick={() => handleEdit(ann)}
-                            className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                            className="p-2 text-slate-400 hover:text-primary transition-colors"
                           >
                             <MoreHorizontal size={16} />
                           </button>
@@ -359,7 +416,7 @@ export const Announcements: React.FC = () => {
                         href={ann.link} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors"
                       >
                         <ExternalLink size={14} />
                         Voir plus
@@ -372,7 +429,7 @@ export const Announcements: React.FC = () => {
                     <div className="flex items-center gap-4">
                       <button 
                         onClick={() => handleMarkAsRead(ann.id)}
-                        className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${isRead ? 'text-slate-400' : 'text-indigo-600'}`}
+                        className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${isRead ? 'text-slate-400' : 'text-primary'}`}
                       >
                         {isRead ? <CheckCircle2 size={16} /> : <Eye size={16} />}
                         {isRead ? 'Lu' : 'Marquer lu'}
@@ -388,7 +445,7 @@ export const Announcements: React.FC = () => {
                       {fmtDate(ann.createdAt)}
                     </span>
                   </div>
-                </div>
+                </Card>
               </motion.div>
             );
           })}
@@ -424,7 +481,7 @@ export const Announcements: React.FC = () => {
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-primary transition-all"
                 placeholder="Ex: Changement de salle pour le cours de Math"
               />
             </div>
@@ -435,7 +492,7 @@ export const Announcements: React.FC = () => {
                 <select 
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-primary transition-all appearance-none"
                 >
                   <option value="normal">Normal</option>
                   <option value="important">Important</option>

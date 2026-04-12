@@ -1,11 +1,11 @@
 export const designTokens = {
   colors: {
     background: {
-      dark: '#0f1115',
+      dark: '#020617',
       light: '#f5f7fb',
     },
     card: {
-      dark: '#161a22',
+      dark: '#0f172a',
       light: '#ffffff',
     },
     primary: '#6C63FF',
@@ -34,7 +34,7 @@ export const designTokens = {
   glass: {
     blur: 'blur(24px)',
     background: {
-      dark: 'rgba(22, 26, 34, 0.6)',
+      dark: 'rgba(15, 23, 42, 0.6)',
       light: 'rgba(255, 255, 255, 0.6)'
     }
   }

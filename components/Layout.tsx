@@ -87,12 +87,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f5f7fb] dark:bg-[#0f1115] transition-colors duration-500">
+    <div className="flex min-h-screen bg-transparent transition-colors duration-500">
       {/* Sidebar - Desktop */}
       <motion.aside 
         initial={{ x: -50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className={`hidden md:flex flex-col bg-white/40 dark:bg-[#161a22]/60 backdrop-blur-3xl border-r border-slate-200 dark:border-white/5 transition-all duration-300 z-50 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
+        className={`hidden md:flex flex-col bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-r border-slate-200 dark:border-white/5 transition-all duration-300 z-50 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
       >
         <div className="p-6 flex items-center justify-between">
           {!isSidebarCollapsed ? (
@@ -130,7 +130,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`relative flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${
+                className={`relative flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group hover:translate-x-1 ${
                   isActive 
                     ? 'text-white' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
@@ -184,7 +184,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         initial={{ x: '-100%' }}
         animate={{ x: isMobileMenuOpen ? 0 : '-100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed inset-y-0 left-0 w-64 bg-white/80 dark:bg-[#161a22]/90 backdrop-blur-3xl z-50 md:hidden flex flex-col border-r border-slate-200 dark:border-white/5"
+        className="fixed inset-y-0 left-0 w-64 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-50 md:hidden flex flex-col border-r border-slate-200 dark:border-white/5"
       >
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -208,7 +208,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 hover:translate-x-1 ${
                   isActive 
                     ? 'bg-[#6C63FF] text-white shadow-[0_0_15px_rgba(108,99,255,0.4)]' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
@@ -243,7 +243,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <motion.header 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="sticky top-4 z-30 mx-4 lg:mx-8 px-6 py-3 bg-white/40 dark:bg-[#161a22]/60 backdrop-blur-2xl border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.2)]"
+          className="sticky top-4 z-30 mx-4 lg:mx-8 px-6 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.2)]"
         >
           <div className="flex items-center gap-4 flex-1">
             <button 

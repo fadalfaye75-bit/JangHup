@@ -34,6 +34,7 @@ import {
   Send,
   Bell
 } from 'lucide-react';
+import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { fmtDate } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -48,7 +49,10 @@ import {
   deleteDoc,
   increment,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
+  getDocs,
+  limit,
+  startAfter
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -65,16 +69,16 @@ const VoteButtons = React.memo<{
     <div className={`flex ${vertical ? 'flex-col items-center' : 'items-center gap-2'} bg-slate-50 dark:bg-white/5 rounded-xl p-1`}>
       <button 
         onClick={(e) => { e.stopPropagation(); onVote('up'); }}
-        className={`p-1.5 rounded-lg transition-all ${userVote === 'up' ? 'text-orange-500 bg-orange-500/10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+        className={`p-1.5 rounded-lg transition-all ${userVote === 'up' ? 'text-warning bg-warning/10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
       >
         <ArrowBigUp size={vertical ? 24 : 20} fill={userVote === 'up' ? 'currentColor' : 'none'} />
       </button>
-      <span className={`font-bold text-sm ${userVote === 'up' ? 'text-orange-500' : userVote === 'down' ? 'text-indigo-500' : 'text-slate-600 dark:text-slate-300'}`}>
+      <span className={`font-bold text-sm ${userVote === 'up' ? 'text-warning' : userVote === 'down' ? 'text-primary' : 'text-slate-600 dark:text-slate-300'}`}>
         {score}
       </span>
       <button 
         onClick={(e) => { e.stopPropagation(); onVote('down'); }}
-        className={`p-1.5 rounded-lg transition-all ${userVote === 'down' ? 'text-indigo-500 bg-indigo-500/10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+        className={`p-1.5 rounded-lg transition-all ${userVote === 'down' ? 'text-primary bg-primary/10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
       >
         <ArrowBigDown size={vertical ? 24 : 20} fill={userVote === 'down' ? 'currentColor' : 'none'} />
       </button>
@@ -267,13 +271,12 @@ const PostItem = React.memo<{
 });
 
 export const Forum: React.FC = () => {
-  const { user } = useAuth();
+  const { user, classInfo } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'top'>('recent');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isNewPostModalOpen, setIsNewPostModalOpen] = useState(false);
-  const [postComments, setPostComments] = useState<Comment[]>([]);
   const [userVotes, setUserVotes] = useState<Record<string, 'up' | 'down'>>({});
   const [replyTarget, setReplyTarget] = useState<{ id: string | null; name: string | null }>({ id: null, name: null });
   const [commentContent, setCommentContent] = useState('');
@@ -293,6 +296,14 @@ export const Forum: React.FC = () => {
   }, [searchTerm]);
 
   // Fetch posts with pagination
+  const postConstraints = useMemo(() => {
+    const constraints: any[] = [orderBy('createdAt', 'desc')];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
+
   const { 
     data: posts, 
     loading: postsLoading, 
@@ -303,7 +314,7 @@ export const Forum: React.FC = () => {
     refetch
   } = usePaginatedTable<Post>(
     'posts',
-    [where('className', '==', user?.class_name || ''), orderBy('createdAt', 'desc')],
+    postConstraints,
     10,
     !!user?.class_name || user?.role === 'ADMIN'
   );
@@ -325,25 +336,24 @@ export const Forum: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // Fetch comments for selected post
-  useEffect(() => {
-    if (!selectedPost) {
-      setPostComments([]);
-      return;
-    }
-    const q = query(
-      collection(db, 'comments'), 
-      where('postId', '==', selectedPost.id),
-      orderBy('createdAt', 'asc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const comments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[];
-      setPostComments(comments);
-    }, (err) => {
-      console.error("🔥 Forum Comments Snapshot Error:", err);
-    });
-    return () => unsubscribe();
-  }, [selectedPost]);
+  // Fetch comments for selected post with pagination
+  const commentConstraints = useMemo(() => [
+    where('postId', '==', selectedPost?.id || ''), 
+    orderBy('createdAt', 'asc')
+  ], [selectedPost?.id]);
+
+  const {
+    data: postComments,
+    loading: commentsLoading,
+    hasMore: hasMoreComments,
+    loadMore: loadMoreComments,
+    loadingMore: loadingMoreComments,
+  } = usePaginatedTable<Comment>(
+    'comments',
+    commentConstraints,
+    10,
+    !!selectedPost
+  );
 
   const filteredPosts = useMemo(() => {
     let result = posts.filter(p => 
@@ -506,8 +516,15 @@ export const Forum: React.FC = () => {
   };
 
   const handleShareWhatsApp = (post: Post) => {
-    const text = `💬 Discussion JangHup\n${post.title}\n\n${post.content}\n\nRejoignez la discussion sur JangHup !`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    const { whatsapp } = generateSmartShare('forum', {
+      title: post.title,
+      content: post.content,
+      author: post.authorName,
+      className: post.className,
+      date: post.createdAt,
+      classEmail: classInfo?.class_email
+    });
+    shareToWhatsApp(whatsapp);
   };
 
   const rowVirtualizer = useVirtualizer({
@@ -518,9 +535,15 @@ export const Forum: React.FC = () => {
   });
 
   const handleShareEmail = (post: Post) => {
-    const subject = `Discussion JangHup: ${post.title}`;
-    const body = `${post.title}\n\n${post.content}\n\nPartagé via JangHup.`;
-    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    const { emailSubject, emailBody, classEmail } = generateSmartShare('forum', {
+      title: post.title,
+      content: post.content,
+      author: post.authorName,
+      className: post.className,
+      date: post.createdAt,
+      classEmail: classInfo?.class_email
+    });
+    shareToEmail(emailSubject, emailBody, classEmail);
   };
 
   if (postsError) return <ErrBox message={postsError} />;
@@ -580,7 +603,7 @@ export const Forum: React.FC = () => {
         {/* Main Feed */}
         <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#161a22] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm">
+          <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-slate-900 p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
@@ -670,7 +693,7 @@ export const Forum: React.FC = () => {
                 )}
               </>
             ) : (
-              <div className="text-center py-20 bg-white dark:bg-[#161a22] rounded-[2rem] border border-dashed border-slate-200 dark:border-white/10">
+              <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-[2rem] border border-dashed border-slate-200 dark:border-white/10">
                 <MessageSquare size={48} className="mx-auto text-slate-200 dark:text-white/5 mb-4" />
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">Aucune discussion</h3>
                 <p className="text-slate-500 max-w-xs mx-auto mt-2">Soyez le premier à lancer une discussion dans votre classe !</p>
@@ -691,7 +714,7 @@ export const Forum: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white dark:bg-[#0f1115] rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-100 dark:border-white/5 flex flex-col"
+              className="bg-white dark:bg-slate-950 rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-100 dark:border-white/5 flex flex-col"
             >
               <div className="p-6 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
                 <div className="flex items-center gap-3">
@@ -755,9 +778,29 @@ export const Forum: React.FC = () => {
                         canDelete={user?.role === UserRole.ADMIN || user?.id === comment.userId}
                       />
                     ))}
-                    {postComments.length === 0 && (
+                    
+                    {hasMoreComments && (
+                      <div className="flex justify-center pt-4">
+                        <Btn 
+                          variant="secondary" 
+                          size="sm" 
+                          onClick={loadMoreComments} 
+                          disabled={loadingMoreComments}
+                        >
+                          {loadingMoreComments ? <Spinner size={16} /> : 'Charger plus de commentaires'}
+                        </Btn>
+                      </div>
+                    )}
+
+                    {postComments.length === 0 && !commentsLoading && (
                       <div className="text-center py-10 text-slate-400">
                         Aucun commentaire pour le moment. Soyez le premier à répondre !
+                      </div>
+                    )}
+
+                    {commentsLoading && (
+                      <div className="flex justify-center py-8">
+                        <Spinner />
                       </div>
                     )}
                   </div>

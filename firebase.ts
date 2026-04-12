@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, doc, getDocFromServer, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
 // Import the Firebase configuration
@@ -17,6 +17,18 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const storage = getStorage(app);
+
+/**
+ * Enable Offline Persistence for Robustness
+ * This allows the app to work offline and caches data for faster loads.
+ */
+enableMultiTabIndexedDbPersistence(db).catch((err) => {
+  if (err.code == 'failed-precondition') {
+    console.warn('Firebase persistence failed: Multiple tabs open');
+  } else if (err.code == 'unimplemented') {
+    console.warn('Firebase persistence not supported by browser');
+  }
+});
 
 /**
  * Development Emulators Support

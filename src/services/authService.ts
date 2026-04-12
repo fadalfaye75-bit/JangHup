@@ -3,7 +3,8 @@ import {
   createUserWithEmailAndPassword,
   signOut, 
   GoogleAuthProvider, 
-  signInWithPopup 
+  signInWithPopup,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   doc, 
@@ -13,72 +14,25 @@ import {
   query, 
   collection, 
   where, 
-  getDocs
+  getDocs,
+  writeBatch
 } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { User, SchoolClass, UserRole } from '../../types';
 
 export const authService = {
-  async loginClass(email: string, password: string) {
+  async loginUser(email: string, password: string) {
     try {
-      let userCredential;
-      try {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      } catch (error: any) {
-        // If user doesn't exist, try to create it (shared class account pattern)
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-          try {
-            userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          } catch (createError: any) {
-            // If email already in use, then the original error was indeed wrong password
-            if (createError.code === 'auth/email-already-in-use') {
-              throw error;
-            }
-            throw createError;
-          }
-        } else {
-          throw error;
-        }
-      }
-
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
-
-      // Check if user profile exists
       const userDocRef = doc(db, 'users', firebaseUser.uid);
       const userDoc = await getDoc(userDocRef);
-
+      
       if (!userDoc.exists()) {
-        // Find class info
-        const classesRef = collection(db, 'classes');
-        const q = query(classesRef, where('class_email', '==', email));
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-          throw new Error("Classe non trouvée dans la base de données.");
-        }
-
-        const classData = querySnapshot.docs[0].data() as SchoolClass;
-        
-        // Create shared student profile
-        const newUser: User = {
-          id: firebaseUser.uid,
-          name: `Étudiant ${classData.name}`,
-          email: email,
-          role: UserRole.STUDENT,
-          class_name: classData.name,
-          is_class_account: true,
-          password_changed: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        await setDoc(userDocRef, newUser);
-        return { user: newUser, classInfo: classData };
+        throw new Error("Profil utilisateur non trouvé.");
       }
 
       const userData = userDoc.data() as User;
-      
-      // Get class info
       const classesRef = collection(db, 'classes');
       const q = query(classesRef, where('name', '==', userData.class_name));
       const querySnapshot = await getDocs(q);
@@ -86,7 +40,57 @@ export const authService = {
 
       return { user: userData, classInfo };
     } catch (error: any) {
-      console.error("Login Class Error:", error);
+      console.error("Login User Error:", error);
+      throw error;
+    }
+  },
+
+  async registerUser(email: string, password: string, name: string, classCode: string) {
+    try {
+      // 1. Validate class code first using the new registration_codes collection
+      const codeDocRef = doc(db, 'registration_codes', classCode.toUpperCase().trim());
+      const codeDoc = await getDoc(codeDocRef);
+      
+      if (!codeDoc.exists()) {
+        throw new Error("Code d'inscription invalide. Veuillez vérifier le code fourni par votre délégué.");
+      }
+
+      const { className, classId } = codeDoc.data() as { className: string, classId: string };
+
+      // Fetch class info for the return value
+      const classDoc = await getDoc(doc(db, 'classes', classId));
+      const classData = classDoc.exists() ? { id: classDoc.id, ...classDoc.data() } as SchoolClass : null;
+
+      // 2. Create auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const publicDocRef = doc(db, 'users_public', firebaseUser.uid);
+      
+      const newUser: User = {
+        id: firebaseUser.uid,
+        name: name,
+        email: email,
+        role: UserRole.STUDENT,
+        class_name: className,
+        is_class_account: false,
+        password_changed: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Create public profile (no email)
+      const { email: _, ...publicUser } = newUser;
+
+      const batch = writeBatch(db);
+      batch.set(userDocRef, newUser);
+      batch.set(publicDocRef, publicUser);
+      await batch.commit();
+
+      return { user: newUser, classInfo: classData };
+    } catch (error: any) {
+      console.error("Register User Error:", error);
       throw error;
     }
   },
@@ -98,6 +102,7 @@ export const authService = {
       const firebaseUser = result.user;
 
       const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const publicDocRef = doc(db, 'users_public', firebaseUser.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
@@ -113,7 +118,13 @@ export const authService = {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
-        await setDoc(userDocRef, newUser);
+        
+        const { email: _, ...publicUser } = newUser;
+        const batch = writeBatch(db);
+        batch.set(userDocRef, newUser);
+        batch.set(publicDocRef, publicUser);
+        await batch.commit();
+        
         return newUser;
       }
 
@@ -128,21 +139,50 @@ export const authService = {
     await signOut(auth);
   },
 
+  async sendPasswordReset(email: string) {
+    await sendPasswordResetEmail(auth, email);
+  },
+
   async claimDelegate(userId: string, className: string, code: string) {
     try {
-      const classesRef = collection(db, 'classes');
-      const q = query(classesRef, where('name', '==', className), where('delegate_code', '==', code));
-      const querySnapshot = await getDocs(q);
+      // Validate delegate code using the new delegate_codes collection
+      const codeDocRef = doc(db, 'delegate_codes', code.toUpperCase().trim());
+      const codeDoc = await getDoc(codeDocRef);
 
-      if (querySnapshot.empty) {
+      if (!codeDoc.exists()) {
         throw new Error("Code délégué invalide.");
       }
 
+      const codeData = codeDoc.data();
+      const matchByName = codeData?.className?.trim().toUpperCase() === className.trim().toUpperCase();
+      
+      // Fallback: check by classId if name doesn't match (handles renames or missing name field)
+      if (!matchByName) {
+        const classesRef = collection(db, 'classes');
+        const q = query(classesRef, where('name', '==', className.trim()));
+        const classSnap = await getDocs(q);
+        
+        if (classSnap.empty || classSnap.docs[0].id !== codeData?.classId) {
+          throw new Error("Code délégué invalide.");
+        }
+      }
+
       const userDocRef = doc(db, 'users', userId);
-      await updateDoc(userDocRef, {
+      const publicDocRef = doc(db, 'users_public', userId);
+      
+      const batch = writeBatch(db);
+      batch.update(userDocRef, {
         role: UserRole.DELEGATE,
         updated_at: new Date().toISOString()
       });
+      
+      // Use set with merge: true for public profile in case it's missing
+      batch.set(publicDocRef, {
+        role: UserRole.DELEGATE,
+        updated_at: new Date().toISOString()
+      }, { merge: true });
+
+      await batch.commit();
 
       return true;
     } catch (error) {

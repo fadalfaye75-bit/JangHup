@@ -6,7 +6,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { where, orderBy, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Card, Badge, SecHdr, Spinner, ErrBox, Btn, ConfirmModal } from '../../components/ui';
-import { Bell, Trash2, CheckCircle2, Clock, Info, AlertTriangle, Share2 } from 'lucide-react';
+import { Bell, Trash2, CheckCircle2, Clock, Info, AlertTriangle, Share2, Mail } from 'lucide-react';
+import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { fmtDate } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -14,8 +15,9 @@ const NotificationItem = React.memo<{
   notif: Notification;
   getIcon: (type: string) => React.ReactNode;
   handleShareWhatsApp: (notif: Notification) => void;
+  handleShareEmail: (notif: Notification) => void;
   handleDelete: (id: string) => void;
-}>(({ notif, getIcon, handleShareWhatsApp, handleDelete }) => {
+}>(({ notif, getIcon, handleShareWhatsApp, handleShareEmail, handleDelete }) => {
   return (
     <motion.div
       layout
@@ -45,6 +47,13 @@ const NotificationItem = React.memo<{
             <Share2 size={18} />
           </button>
           <button 
+            onClick={() => handleShareEmail(notif)}
+            className="p-2 text-slate-300 hover:text-primary transition-colors"
+            title="Partager par Email"
+          >
+            <Mail size={18} />
+          </button>
+          <button 
             onClick={() => handleDelete(notif.id)}
             className="p-2 text-slate-300 hover:text-danger transition-colors"
             title="Supprimer"
@@ -58,7 +67,7 @@ const NotificationItem = React.memo<{
 });
 
 export const Notifications: React.FC = () => {
-  const { user } = useAuth();
+  const { user, classInfo } = useAuth();
   const { 
     data: notifications, 
     loading, 
@@ -129,8 +138,23 @@ export const Notifications: React.FC = () => {
   };
 
   const handleShareWhatsApp = (notif: Notification) => {
-    const text = `🔔 JangHup Notification\n${notif.title}\n${notif.message}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    const { whatsapp } = generateSmartShare('notification', {
+      title: notif.title,
+      content: notif.message,
+      date: notif.createdAt,
+      classEmail: classInfo?.class_email
+    });
+    shareToWhatsApp(whatsapp);
+  };
+
+  const handleShareEmail = (notif: Notification) => {
+    const { emailSubject, emailBody, classEmail } = generateSmartShare('notification', {
+      title: notif.title,
+      content: notif.message,
+      date: notif.createdAt,
+      classEmail: classInfo?.class_email
+    });
+    shareToEmail(emailSubject, emailBody, classEmail);
   };
 
   const getIcon = (type: string) => {
@@ -194,6 +218,7 @@ export const Notifications: React.FC = () => {
                   notif={notif}
                   getIcon={getIcon}
                   handleShareWhatsApp={handleShareWhatsApp}
+                  handleShareEmail={handleShareEmail}
                   handleDelete={handleDelete}
                 />
               </div>

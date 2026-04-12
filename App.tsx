@@ -1,11 +1,14 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './src/context/AuthContext';
 import { Login } from './src/pages/Login';
 import { Layout } from './components/Layout';
 import { UserRole } from './types';
 import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from './src/theme/theme';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { NotificationListener } from './src/components/NotificationListener';
+import { AnimatePresence, motion } from 'motion/react';
 
 // Lazy load components for performance
 const Dashboard = lazy(() => import('./src/pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -20,12 +23,12 @@ const Resources = lazy(() => import('./src/pages/Resources').then(m => ({ defaul
 const Forum = lazy(() => import('./src/pages/Forum').then(m => ({ default: m.Forum })));
 const Notifications = lazy(() => import('./src/pages/Notifications').then(m => ({ default: m.Notifications })));
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode; roles?: UserRole[] }> = ({ children, roles }) => {
+const ProtectedLayout: React.FC = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0f1115]">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="animate-spin text-primary" size={48} />
           <p className="text-slate-500 font-medium">Chargement de JangHup...</p>
@@ -38,11 +41,51 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; roles?: UserRole[] }
     return <Navigate to="/login" replace />;
   }
 
-  if (roles && !roles.includes(user.role)) {
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
+};
+
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  if (user?.role !== UserRole.ADMIN) {
     return <Navigate to="/" replace />;
   }
+  return <>{children}</>;
+};
 
-  return <Layout>{children}</Layout>;
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }}
+        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="h-full"
+      >
+        <Routes location={location}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/announcements" element={<Announcements />} />
+          <Route path="/exams" element={<Exams />} />
+          <Route path="/resources" element={<Resources />} />
+          <Route path="/forum" element={<Forum />} />
+          <Route path="/meetings" element={<Meet />} />
+          <Route path="/polls" element={<Polls />} />
+          <Route path="/class" element={<Class />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
 };
 
 function App() {
@@ -50,46 +93,30 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0f1115]">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <Loader2 className="animate-spin text-primary" size={48} />
       </div>
     );
   }
 
   return (
-    <ThemeProvider>
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0f1115]">
-          <Loader2 className="animate-spin text-primary" size={48} />
-        </div>
-      }>
-        <Routes>
-          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-          
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-          <Route path="/exams" element={<ProtectedRoute><Exams /></ProtectedRoute>} />
-          <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
-          <Route path="/forum" element={<ProtectedRoute><Forum /></ProtectedRoute>} />
-          <Route path="/meetings" element={<ProtectedRoute><Meet /></ProtectedRoute>} />
-          <Route path="/polls" element={<ProtectedRoute><Polls /></ProtectedRoute>} />
-          <Route path="/class" element={<ProtectedRoute><Class /></ProtectedRoute>} />
-          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          
-          <Route 
-            path="/admin" 
-            element={
-              <ProtectedRoute roles={[UserRole.ADMIN]}>
-                <Admin />
-              </ProtectedRoute>
-            } 
-          />
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <NotificationListener />
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center bg-transparent">
+            <Loader2 className="animate-spin text-primary" size={48} />
+          </div>
+        }>
+          <Routes>
+            <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+            <Route element={<ProtectedLayout />}>
+              <Route path="*" element={<AnimatedRoutes />} />
+            </Route>
+          </Routes>
+        </Suspense>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

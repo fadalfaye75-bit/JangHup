@@ -15,8 +15,10 @@ import {
   Share2,
   Mail
 } from 'lucide-react';
+import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { fmtDate, daysLeft } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { notificationService } from '../services/notificationService';
 
 import { where, orderBy } from 'firebase/firestore';
 
@@ -55,10 +57,15 @@ const ShareButtons = ({ onWhatsApp, onEmail }: { onWhatsApp: () => void, onEmail
 };
 
 export const Exams: React.FC = () => {
-  const { user } = useAuth();
+  const { user, classInfo } = useAuth();
+  const examConstraints = React.useMemo(() => [
+    where('className', '==', user?.class_name || ''), 
+    orderBy('date', 'asc')
+  ], [user?.class_name]);
+
   const { data: exams, loading, error } = useTable<Exam>(
     'exams',
-    [where('className', '==', user?.class_name || ''), orderBy('date', 'asc')],
+    examConstraints,
     50,
     !!user?.class_name || user?.role === 'ADMIN'
   );
@@ -88,7 +95,11 @@ export const Exams: React.FC = () => {
 
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.DELEGATE;
 
-  const sortedExams = [...exams].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const sortedExams = [...exams].sort((a, b) => {
+    const timeA = new Date(a.date).getTime();
+    const timeB = new Date(b.date).getTime();
+    return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,6 +112,17 @@ export const Exams: React.FC = () => {
           userId: user?.id,
           className: user?.class_name
         });
+
+        // Notify all students in the class
+        if (user?.class_name) {
+          await notificationService.notifyClass(
+            user.class_name,
+            `Nouvel examen: ${formData.subject}`,
+            `Un examen de ${formData.subject} est prévu le ${new Date(formData.date).toLocaleDateString()}.`,
+            'warning',
+            '/exams'
+          );
+        }
       }
       setIsModalOpen(false);
       setEditingExam(null);
@@ -135,14 +157,29 @@ export const Exams: React.FC = () => {
   };
 
   const handleShareWhatsApp = (exam: Exam) => {
-    const text = `📚 Examen JangHup\nMatière: ${exam.subject}\nDate: ${fmtDate(exam.date)}\nSalle: ${exam.room}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    const { whatsapp } = generateSmartShare('examen', {
+      subject: exam.subject,
+      date: exam.date,
+      room: exam.room,
+      duration: exam.duration,
+      className: exam.className,
+      content: exam.notes,
+      classEmail: classInfo?.class_email
+    });
+    shareToWhatsApp(whatsapp);
   };
 
   const handleShareEmail = (exam: Exam) => {
-    const subject = `Examen JangHup: ${exam.subject}`;
-    const body = `📚 Examen JangHup\nMatière: ${exam.subject}\nDate: ${fmtDate(exam.date)}\nSalle: ${exam.room}`;
-    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    const { emailSubject, emailBody, classEmail } = generateSmartShare('examen', {
+      subject: exam.subject,
+      date: exam.date,
+      room: exam.room,
+      duration: exam.duration,
+      className: exam.className,
+      content: exam.notes,
+      classEmail: classInfo?.class_email
+    });
+    shareToEmail(emailSubject, emailBody, classEmail);
   };
 
   const shareScheduleWhatsApp = () => {
@@ -198,7 +235,7 @@ export const Exams: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
               >
-                <Card className={`relative overflow-hidden h-full flex flex-col ${isPast ? 'opacity-60 grayscale' : ''}`}>
+                <Card className={`relative overflow-hidden h-full flex flex-col hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ${isPast ? 'opacity-60 grayscale' : ''}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
                       isPast ? 'bg-slate-100 text-slate-400' : 

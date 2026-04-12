@@ -14,10 +14,10 @@ export const Sidebar = ({ activeTab, setActiveTab }: { activeTab: string, setAct
     <motion.aside
       initial={{ x: -50, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="fixed left-0 top-0 h-screen w-20 lg:w-64 bg-white/40 dark:bg-[#0f1115]/60 backdrop-blur-3xl border-r border-slate-200 dark:border-white/5 flex flex-col items-center lg:items-start py-8 z-50 transition-all duration-300"
+      className="fixed left-0 top-0 h-screen w-20 lg:w-64 bg-white/40 dark:bg-slate-950/60 backdrop-blur-3xl border-r border-slate-200 dark:border-white/5 flex flex-col items-center lg:items-start py-8 z-50 transition-all duration-300"
     >
       <div className="px-0 lg:px-8 mb-12 flex items-center justify-center lg:justify-start w-full">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6C63FF] to-[#00C896] shadow-[0_0_20px_rgba(108,99,255,0.4)] flex items-center justify-center text-white font-bold text-xl">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent shadow-[0_0_20px_rgba(108,99,255,0.4)] flex items-center justify-center text-white font-bold text-xl">
           J
         </div>
         <span className="hidden lg:block ml-3 font-bold text-xl text-slate-800 dark:text-white tracking-tight">
@@ -40,7 +40,7 @@ export const Sidebar = ({ activeTab, setActiveTab }: { activeTab: string, setAct
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-[#6C63FF] rounded-xl shadow-[0_0_15px_rgba(108,99,255,0.4)]"
+                  className="absolute inset-0 bg-primary rounded-xl shadow-[0_0_15px_rgba(108,99,255,0.4)]"
                   initial={false}
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />

@@ -12,11 +12,13 @@ export const GlobalSearch: React.FC<{ isOpen: boolean; onClose: () => void }> = 
   const navigate = useNavigate();
 
   const { user } = useAuth();
-  const { data: announcements } = useTable<Announcement>('announcements', [where('className', '==', user?.class_name || '')]);
-  const { data: exams } = useTable<Exam>('exams', [where('className', '==', user?.class_name || '')]);
-  const { data: meetings } = useTable<MeetLink>('meetings', [where('className', '==', user?.class_name || '')]);
-  const { data: polls } = useTable<Poll>('polls', [where('className', '==', user?.class_name || '')]);
-  const { data: resources } = useTable<Resource>('resources', [where('className', '==', user?.class_name || '')]);
+  const constraints = React.useMemo(() => [where('className', '==', user?.class_name || '')], [user?.class_name]);
+
+  const { data: announcements } = useTable<Announcement>('announcements', constraints, 50, isOpen);
+  const { data: exams } = useTable<Exam>('exams', constraints, 50, isOpen);
+  const { data: meetings } = useTable<MeetLink>('meetings', constraints, 50, isOpen);
+  const { data: polls } = useTable<Poll>('polls', constraints, 50, isOpen);
+  const { data: resources } = useTable<Resource>('resources', constraints, 50, isOpen);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

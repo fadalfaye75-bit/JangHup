@@ -9,8 +9,8 @@ interface BadgeProps {
 
 export const Badge: React.FC<BadgeProps> = ({ children, variant = 'primary', className = '' }) => {
   const variants = {
-    primary: 'bg-[#6C63FF]/10 text-[#6C63FF] border-[#6C63FF]/20',
-    success: 'bg-[#00C896]/10 text-[#00C896] border-[#00C896]/20',
+    primary: 'bg-primary/10 text-primary border-primary/20',
+    success: 'bg-accent/10 text-accent border-accent/20',
     danger: 'bg-[#FF4757]/10 text-[#FF4757] border-[#FF4757]/20',
     info: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
   };

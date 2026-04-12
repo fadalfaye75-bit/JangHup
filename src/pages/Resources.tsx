@@ -34,12 +34,14 @@ import {
   X,
   DownloadCloud
 } from 'lucide-react';
+import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { fmtDate } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { where, orderBy } from 'firebase/firestore';
+import { notificationService } from '../services/notificationService';
 
 export const Resources: React.FC = () => {
-  const { user } = useAuth();
+  const { user, classInfo } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<Resource['type'] | 'all'>('all');
   const [filterSubject, setFilterSubject] = useState('all');
@@ -68,9 +70,17 @@ export const Resources: React.FC = () => {
     subject: ''
   });
 
+  const resourceConstraints = React.useMemo(() => {
+    const constraints: any[] = [orderBy('createdAt', 'desc')];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
+
   const { data: resources, loading, error } = useTable<Resource>(
     'resources',
-    [where('className', '==', user?.class_name || ''), orderBy('createdAt', 'desc')],
+    resourceConstraints,
     50,
     !!user?.class_name || user?.role === 'ADMIN'
   );
@@ -107,6 +117,17 @@ export const Resources: React.FC = () => {
           author: user?.name,
           className: user?.class_name
         });
+
+        // Notify all students in the class
+        if (user?.class_name) {
+          await notificationService.notifyClass(
+            user.class_name,
+            `Nouvelle ressource: ${formData.title}`,
+            `Une nouvelle ressource en ${formData.subject} a été ajoutée par ${user.name}.`,
+            'info',
+            '/resources'
+          );
+        }
       }
       setIsModalOpen(false);
       setEditingResource(null);
@@ -141,21 +162,34 @@ export const Resources: React.FC = () => {
   };
 
   const handleShareWhatsApp = (res: Resource) => {
-    const text = `📂 Ressource JangHup\nTitre: ${res.title}\nLien: ${res.url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    const { whatsapp } = generateSmartShare('ressource', {
+      title: res.title,
+      description: res.description,
+      subject: res.subject,
+      className: res.className,
+      date: res.createdAt,
+      classEmail: classInfo?.class_email
+    });
+    shareToWhatsApp(whatsapp);
   };
 
   const handleShareEmail = (res: Resource) => {
-    const subject = `Ressource JangHup: ${res.title}`;
-    const body = `${res.title}\n\nLien: ${res.url}\n\nPartagé via JangHup.`;
-    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    const { emailSubject, emailBody, classEmail } = generateSmartShare('ressource', {
+      title: res.title,
+      description: res.description,
+      subject: res.subject,
+      className: res.className,
+      date: res.createdAt,
+      classEmail: classInfo?.class_email
+    });
+    shareToEmail(emailSubject, emailBody, classEmail);
   };
 
   const getTypeIcon = (type: Resource['type']) => {
     switch (type) {
       case 'pdf': return <FileText className="text-rose-500" size={24} />;
       case 'image': return <ImageIcon className="text-emerald-500" size={24} />;
-      case 'link': return <LinkIcon className="text-indigo-500" size={24} />;
+      case 'link': return <LinkIcon className="text-primary" size={24} />;
       case 'video': return <Video className="text-amber-500" size={24} />;
       case 'doc': return <FileEdit className="text-blue-500" size={24} />;
       default: return <BookOpen className="text-slate-500" size={24} />;
@@ -190,7 +224,7 @@ export const Resources: React.FC = () => {
       </div>
 
       {/* Filters & Search */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white dark:bg-[#161a22] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white dark:bg-slate-900 p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm">
         <div className="md:col-span-5 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input 
@@ -268,7 +302,7 @@ export const Resources: React.FC = () => {
                 whileHover={{ y: -5, scale: 1.02 }}
                 className="group"
               >
-                <Card className="h-full flex flex-col p-0 overflow-hidden border-white/5 hover:border-primary/30 transition-colors">
+                <Card className="h-full flex flex-col p-0 overflow-hidden border-white/5 hover:border-primary/30 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                   {/* Card Header with Icon & Actions */}
                   <div className="p-5 flex items-start justify-between">
                     <div className="flex items-center gap-4">
