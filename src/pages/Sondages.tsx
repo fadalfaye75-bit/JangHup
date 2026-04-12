@@ -386,15 +386,18 @@ export const Sondages: React.FC = () => {
       ) : (
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {pollsWithOptions.map((poll) => {
-              const hasVoted = !!myVotes[poll.id];
-              return (
-                <motion.div 
-                  key={poll.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <Card className="h-full flex flex-col p-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+            <AnimatePresence mode="popLayout">
+              {pollsWithOptions.map((poll) => {
+                const hasVoted = !!myVotes[poll.id];
+                return (
+                  <motion.div 
+                    key={poll.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                  >
+                    <Card className="h-full flex flex-col p-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex flex-wrap gap-2">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -560,6 +563,7 @@ export const Sondages: React.FC = () => {
                 </motion.div>
               );
             })}
+            </AnimatePresence>
           </div>
 
           {hasMore && (
