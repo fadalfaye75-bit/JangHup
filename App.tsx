@@ -30,7 +30,7 @@ const ProtectedLayout: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F0F1A]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)]">
         <FuturisticBackground />
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
@@ -104,7 +104,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F0F1A]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)]">
         <FuturisticBackground />
         <Loader2 className="animate-spin text-primary" size={48} />
       </div>

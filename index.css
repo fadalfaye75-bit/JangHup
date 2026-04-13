@@ -7,7 +7,8 @@
   --color-warning: #FFA502;
   --color-danger: #FF4757;
   --color-success: #10B981;
-  --color-dark-bg: #0F0F1A;
+  --color-dark-bg: #121826;
+  --color-dark-bg-secondary: #1A2233;
   --color-light-bg: #F4F6FB;
   
   --radius-xl: 16px;
@@ -21,10 +22,11 @@
 @layer base {
   :root {
     --bg-main: var(--color-light-bg);
+    --bg-secondary: #F1F5FF;
     --bg-card: #FFFFFF;
     --text-main: #1A1A2E;
     --text-secondary: #4B5563;
-    --text-muted: #6B7280;
+    --text-muted: #8A94A6;
     --border-main: #E5E7EB;
     --ring-color: rgba(108, 99, 255, 0.15);
     --glass-bg: rgba(255, 255, 255, 0.7);
@@ -33,18 +35,19 @@
 
   .dark {
     --bg-main: var(--color-dark-bg);
-    --bg-card: rgba(255, 255, 255, 0.05);
-    --text-main: #FFFFFF;
-    --text-secondary: rgba(255, 255, 255, 0.7);
-    --text-muted: rgba(255, 255, 255, 0.5);
-    --border-main: rgba(255, 255, 255, 0.08);
-    --ring-color: rgba(108, 99, 255, 0.4);
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.08);
+    --bg-secondary: #1A2233;
+    --bg-card: rgba(255, 255, 255, 0.06);
+    --text-main: #E8EEF9;
+    --text-secondary: rgba(232, 238, 249, 0.75);
+    --text-muted: rgba(232, 238, 249, 0.55);
+    --border-main: rgba(255, 255, 255, 0.06);
+    --ring-color: rgba(108, 99, 255, 0.25);
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.06);
   }
 
   body {
-    @apply text-[var(--text-main)] antialiased transition-colors duration-500 min-h-screen overflow-x-hidden;
+    @apply text-[var(--text-main)] antialiased transition-colors duration-500 min-h-screen overflow-x-hidden leading-relaxed;
     font-family: var(--font-sans);
     background-color: var(--bg-main);
   }
@@ -61,15 +64,15 @@
 @layer components {
   /* Futuristic Glassmorphism Ultra */
   .glass-ultra {
-    @apply backdrop-blur-[12px] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[0_8px_30px_rgba(0,0,0,0.15)];
+    @apply backdrop-blur-[14px] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[0_8px_30px_rgba(0,0,0,0.08)];
   }
 
   .glass-card {
-    @apply backdrop-blur-[12px] bg-[var(--bg-card)] border border-[var(--glass-border)] shadow-[0_8px_30px_rgba(0,0,0,0.15)] rounded-[16px] transition-all duration-200 overflow-hidden;
+    @apply backdrop-blur-[14px] bg-[var(--bg-card)] border border-[var(--glass-border)] shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-[16px] transition-all duration-300 overflow-hidden;
   }
   
   .card-futuristic {
-    @apply backdrop-blur-[12px] bg-[var(--bg-card)] border border-[var(--glass-border)] shadow-[0_8px_30px_rgba(0,0,0,0.15)] rounded-[16px] transition-all duration-200 overflow-hidden hover:shadow-[0_12px_40px_rgba(108,99,255,0.2)] hover:-translate-y-1 cursor-pointer active:scale-[0.98] hover:border-primary/40;
+    @apply backdrop-blur-[14px] bg-[var(--bg-card)] border border-[var(--glass-border)] shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-[16px] transition-all duration-300 overflow-hidden hover:shadow-[0_12px_40px_rgba(108,99,255,0.12)] hover:-translate-y-1 hover:scale-[1.02] cursor-pointer active:scale-[0.98] hover:border-primary/30;
   }
 
   /* Typography */
@@ -83,11 +86,11 @@
 
   /* Buttons */
   .btn-futuristic {
-    @apply relative inline-flex items-center justify-center px-8 py-3 rounded-2xl font-bold text-sm transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none gap-2 overflow-hidden;
+    @apply relative inline-flex items-center justify-center px-8 py-3 rounded-2xl font-bold text-sm transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none gap-2 overflow-hidden;
   }
   
   .btn-futuristic-primary {
-    @apply bg-primary text-white shadow-[0_0_20px_rgba(108,99,255,0.3)] hover:shadow-[0_0_30px_rgba(108,99,255,0.5)] hover:bg-[#827BFF];
+    @apply bg-primary text-white shadow-[0_0_20px_rgba(108,99,255,0.2)] hover:shadow-[0_0_30px_rgba(108,99,255,0.35)] hover:bg-[#827BFF] hover:scale-[1.02];
   }
 
   .btn-futuristic-secondary {
@@ -131,7 +134,7 @@
     width: 100%;
     height: 100%;
     z-index: -1;
-    background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
+    background: radial-gradient(circle at 50% 50%, var(--bg-main) 0%, var(--bg-main) 100%);
     overflow: hidden;
   }
 
@@ -142,10 +145,10 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle at 50% 50%, rgba(108, 99, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(59, 139, 235, 0.08) 0%, transparent 40%),
-                radial-gradient(circle at 20% 80%, rgba(0, 200, 150, 0.08) 0%, transparent 40%);
-    animation: rotate 30s linear infinite;
+    background: radial-gradient(circle at 50% 50%, rgba(108, 99, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(59, 139, 235, 0.04) 0%, transparent 40%),
+                radial-gradient(circle at 20% 80%, rgba(0, 200, 150, 0.04) 0%, transparent 40%);
+    animation: rotate 40s linear infinite;
   }
 
   @keyframes rotate {

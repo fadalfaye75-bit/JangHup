@@ -96,7 +96,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <motion.aside 
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className={`hidden md:flex flex-col glass-ultra m-6 mr-0 rounded-[32px] transition-all duration-500 z-50 border-white/10 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
+        className={`hidden md:flex flex-col glass-ultra m-6 mr-0 rounded-[32px] transition-all duration-500 z-50 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
       >
         <div className="p-8 flex items-center justify-between">
           {!isSidebarCollapsed ? (
@@ -183,7 +183,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <motion.header 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="mx-6 lg:mx-10 mt-6 px-8 py-4 glass-ultra rounded-[24px] flex items-center justify-between z-40 border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.2)]"
+          className="mx-6 lg:mx-10 mt-6 px-8 py-4 glass-ultra rounded-[24px] flex items-center justify-between z-40"
         >
           <div className="flex items-center gap-6 flex-1">
             <button 

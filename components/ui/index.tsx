@@ -18,14 +18,14 @@ export const Card: React.FC<{ children: React.ReactNode; className?: string; sty
 
 export const Badge: React.FC<{ children: React.ReactNode; type?: 'info' | 'success' | 'warning' | 'danger' | 'primary'; className?: string }> = ({ children, type = 'info', className }) => {
   const styles = {
-    info: 'bg-neon-blue/10 text-neon-blue border-neon-blue/20',
-    success: 'bg-accent/10 text-accent border-accent/20',
-    warning: 'bg-warning/10 text-warning border-warning/20',
-    danger: 'bg-danger/10 text-danger border-danger/20',
+    info: 'badge-info',
+    success: 'badge-normal',
+    warning: 'badge-important',
+    danger: 'badge-urgent',
     primary: 'bg-primary/10 text-primary border-primary/20',
   };
   return (
-    <span className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center border backdrop-blur-md", styles[type], className)}>
+    <span className={cn("badge-futuristic", styles[type], className)}>
       {children}
     </span>
   );
@@ -41,9 +41,9 @@ export const Btn: React.FC<any> = ({
 }) => {
   const variants: Record<string, string> = {
     primary: 'btn-futuristic-primary',
-    secondary: 'glass-ultra text-slate-700 dark:text-slate-200 hover:bg-white/10',
-    ghost: 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-white/5',
-    danger: 'bg-danger text-white shadow-[0_0_20px_rgba(255,75,110,0.3)] hover:shadow-[0_0_30px_rgba(255,75,110,0.5)]',
+    secondary: 'btn-futuristic-secondary',
+    ghost: 'btn-futuristic-ghost',
+    danger: 'btn-futuristic-danger',
   };
   const sizes: Record<string, string> = {
     sm: 'px-4 py-2 text-xs rounded-xl',
@@ -52,14 +52,13 @@ export const Btn: React.FC<any> = ({
   };
   return (
     <motion.button 
-      whileHover={{ scale: 1.05, filter: 'brightness(1.1)' }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       className={cn("btn-futuristic", variants[variant] || variants.primary, sizes[size] || sizes.md, className)} 
       disabled={loading || props.disabled} 
       {...props}
     >
       {loading ? <Loader2 className="animate-spin" size={18} /> : children}
-      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full hover:translate-x-full transition-transform duration-1000" />
     </motion.button>
   );
 };
@@ -76,7 +75,7 @@ export const ErrBox: React.FC<{ message: string }> = ({ message }) => (
   <motion.div 
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
-    className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-500 flex items-center gap-3 text-sm font-medium backdrop-blur-md"
+    className="p-4 bg-danger/10 border border-danger/20 rounded-2xl text-danger flex items-center gap-3 text-sm font-medium backdrop-blur-md"
   >
     <AlertCircle size={20} />
     {message}
@@ -87,7 +86,7 @@ export const SecHdr: React.FC<{ title: string; subtitle?: string; action?: React
   <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
     <div className="space-y-2">
       <h2 className="heading-futuristic">{title}</h2>
-      {subtitle && <p className="text-slate-500 dark:text-slate-400 font-medium text-lg">{subtitle}</p>}
+      {subtitle && <p className="text-[var(--text-secondary)] font-medium text-lg">{subtitle}</p>}
     </div>
     {action && <div className="flex shrink-0">{action}</div>}
   </div>
@@ -109,7 +108,7 @@ export const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: stri
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="glass rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden relative z-10"
+            className="glass-card rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden relative z-10"
           >
             <div className="px-8 py-6 border-b border-[var(--border-main)] flex items-center justify-between">
               <h3 className="text-xl font-bold">{title}</h3>
@@ -149,16 +148,16 @@ export const ConfirmModal: React.FC<{
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="space-y-8">
-        <div className="flex items-center gap-5 p-5 glass rounded-2xl">
+        <div className="flex items-center gap-5 p-5 glass-card rounded-2xl">
           <div className={cn(
             "p-3.5 rounded-xl shrink-0",
-            type === 'danger' ? 'bg-rose-500/10 text-rose-500' : 
-            type === 'warning' ? 'bg-amber-500/10 text-amber-500' : 
-            'bg-indigo-500/10 text-indigo-500'
+            type === 'danger' ? 'bg-danger/10 text-danger' : 
+            type === 'warning' ? 'bg-warning/10 text-warning' : 
+            'bg-info/10 text-info'
           )}>
             <AlertCircle size={28} />
           </div>
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p className="text-sm font-medium text-[var(--text-secondary)] leading-relaxed">
             {message}
           </p>
         </div>
@@ -204,15 +203,15 @@ export const Toast: React.FC<{
   }, [isVisible, duration, onClose]);
 
   const icons = {
-    success: <CheckCircle2 size={20} className="text-emerald-500" />,
-    error: <AlertCircle size={20} className="text-rose-500" />,
-    info: <Info size={20} className="text-blue-500" />
+    success: <CheckCircle2 size={20} className="text-success" />,
+    error: <AlertCircle size={20} className="text-danger" />,
+    info: <Info size={20} className="text-info" />
   };
 
   const styles = {
-    success: 'border-emerald-500/20',
-    error: 'border-rose-500/20',
-    info: 'border-blue-500/20'
+    success: 'border-success/20',
+    error: 'border-danger/20',
+    info: 'border-info/20'
   };
 
   return (
@@ -225,7 +224,7 @@ export const Toast: React.FC<{
           className="fixed bottom-6 right-6 z-[200]"
         >
           <div className={cn(
-            "glass flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl",
+            "glass-card flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl",
             styles[type]
           )}>
             {icons[type]}
