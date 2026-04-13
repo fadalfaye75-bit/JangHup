@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './src/context/AuthContext';
 import { Login } from './src/pages/Login';
@@ -10,18 +10,18 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { NotificationListener } from './src/components/NotificationListener';
 import { AnimatePresence, motion } from 'motion/react';
 
-// Lazy load components for performance
-const Dashboard = lazy(() => import('./src/pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const Announcements = lazy(() => import('./src/pages/Announcements').then(m => ({ default: m.Announcements })));
-const Exams = lazy(() => import('./src/pages/Exams').then(m => ({ default: m.Exams })));
-const Meet = lazy(() => import('./src/pages/Meet').then(m => ({ default: m.Meet })));
-const Class = lazy(() => import('./src/pages/Class').then(m => ({ default: m.Class })));
-const Profile = lazy(() => import('./src/pages/Profile').then(m => ({ default: m.Profile })));
-const Admin = lazy(() => import('./src/pages/Admin').then(m => ({ default: m.Admin })));
-const Polls = lazy(() => import('./src/pages/Sondages').then(m => ({ default: m.Sondages })));
-const Resources = lazy(() => import('./src/pages/Resources').then(m => ({ default: m.Resources })));
-const Forum = lazy(() => import('./src/pages/Forum').then(m => ({ default: m.Forum })));
-const Notifications = lazy(() => import('./src/pages/Notifications').then(m => ({ default: m.Notifications })));
+// Standard imports for instant tab switching (no network delay)
+import { Dashboard } from './src/pages/Dashboard';
+import { Announcements } from './src/pages/Announcements';
+import { Exams } from './src/pages/Exams';
+import { Meet } from './src/pages/Meet';
+import { Class } from './src/pages/Class';
+import { Profile } from './src/pages/Profile';
+import { Admin } from './src/pages/Admin';
+import { Sondages as Polls } from './src/pages/Sondages';
+import { Resources } from './src/pages/Resources';
+import { Forum } from './src/pages/Forum';
+import { Notifications } from './src/pages/Notifications';
 
 const ProtectedLayout: React.FC = () => {
   const { user, loading } = useAuth();
@@ -63,10 +63,10 @@ const AnimatedRoutes = () => {
     <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
-        initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }}
-        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
         className="h-full"
       >
         <Routes location={location}>
@@ -103,18 +103,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <NotificationListener />
-        <Suspense fallback={
-          <div className="min-h-screen flex items-center justify-center bg-transparent">
-            <Loader2 className="animate-spin text-primary" size={48} />
-          </div>
-        }>
-          <Routes>
-            <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-            <Route element={<ProtectedLayout />}>
-              <Route path="*" element={<AnimatedRoutes />} />
-            </Route>
-          </Routes>
-        </Suspense>
+        <Routes>
+          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+          <Route element={<ProtectedLayout />}>
+            <Route path="*" element={<AnimatedRoutes />} />
+          </Route>
+        </Routes>
       </ThemeProvider>
     </ErrorBoundary>
   );
