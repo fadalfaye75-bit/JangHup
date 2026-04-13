@@ -1,8 +1,9 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTable } from '../../lib/hooks';
-import { Announcement, Exam, MeetLink, Poll, Resource, ActivityLog, User } from '../../types';
+import { Announcement, Exam, MeetLink, Poll, Resource, ActivityLog, User, UserRole } from '../../types';
 import { Card, Badge, Skeleton } from '../../components/ui';
+import { GlassCard } from '../components/ui/GlassCard';
 import { 
   Megaphone, 
   Calendar,
@@ -15,7 +16,9 @@ import {
   Video,
   ExternalLink,
   Activity,
-  ChevronRight
+  ChevronRight,
+  Shield,
+  Mail
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fmtDate, daysLeft } from '../../lib/utils';
@@ -52,25 +55,37 @@ export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   
   // Memoized constraints to prevent unnecessary re-renders
-  const classConstraints = React.useMemo(() => [
-    where('className', '==', user?.class_name || ''),
-    orderBy('createdAt', 'desc')
-  ], [user?.class_name]);
+  const classConstraints = React.useMemo(() => {
+    const constraints: any[] = [orderBy('createdAt', 'desc')];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
 
-  const examConstraints = React.useMemo(() => [
-    where('className', '==', user?.class_name || ''),
-    orderBy('date', 'asc')
-  ], [user?.class_name]);
+  const examConstraints = React.useMemo(() => {
+    const constraints: any[] = [orderBy('date', 'asc')];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
 
-  const meetConstraints = React.useMemo(() => [
-    where('className', '==', user?.class_name || ''),
-    orderBy('time', 'asc')
-  ], [user?.class_name]);
+  const meetConstraints = React.useMemo(() => {
+    const constraints: any[] = [orderBy('time', 'asc')];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
 
-  const pollConstraints = React.useMemo(() => [
-    where('className', '==', user?.class_name || ''),
-    where('isActive', '==', true)
-  ], [user?.class_name]);
+  const pollConstraints = React.useMemo(() => {
+    const constraints: any[] = [where('isActive', '==', true)];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
 
   const activityConstraints = React.useMemo(() => [
     where('userId', '==', user?.id || ''),
@@ -141,25 +156,25 @@ export const Dashboard: React.FC = () => {
 
   const isLoading = annLoading || examLoading || meetLoading || pollLoading || activityLoading;
 
+  const nextMeeting = React.useMemo(() => meetings.find(m => new Date(m.time) > new Date()), [meetings]);
+  const activePollsCount = React.useMemo(() => polls.length, [polls]);
+
   if (isLoading) return <DashboardSkeleton />;
 
-  const nextMeeting = meetings.find(m => new Date(m.time) > new Date());
-  const activePollsCount = polls.length;
-  const recentAnn = announcements[0];
-
-  const containerVariants = {
+  const containerVariants: any = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
+        staggerChildren: 0.1,
+        delayChildren: 0.3
       }
     }
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  const itemVariants: any = {
+    hidden: { opacity: 0, y: 30, filter: 'blur(10px)' },
+    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: "spring", stiffness: 200, damping: 25 } }
   };
 
   return (
@@ -167,197 +182,161 @@ export const Dashboard: React.FC = () => {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="max-w-6xl mx-auto space-y-10 pb-20"
+      className="max-w-7xl mx-auto space-y-16 pb-20 px-4"
     >
       
-      {/* Header - Notion Style */}
-      <motion.header variants={itemVariants} className="space-y-2">
-        <div className="flex items-center gap-3 text-slate-400 mb-2">
-          <span className="text-sm font-medium">Workspace</span>
-          <ChevronRight size={14} />
-          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{user?.class_name || 'Ma Classe'}</span>
+      {/* Header - Immersive Style */}
+      <motion.header variants={itemVariants} className="space-y-6 relative">
+        <div className="absolute -top-20 -left-20 w-64 h-64 bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
+        <div className="flex items-center gap-4 text-slate-400 mb-2">
+          <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-black uppercase tracking-widest text-primary shadow-[0_0_15px_rgba(108,99,255,0.2)]">
+            JàngHub v3.0
+          </div>
+          <ChevronRight size={14} className="text-slate-700" />
+          <span className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase">{user?.class_name || 'Ma Classe'}</span>
         </div>
-        <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+        <h1 className="heading-futuristic">
           Tableau de bord
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 text-lg">
-          Bienvenue, {user?.name}. Voici un résumé de votre activité universitaire.
+        <p className="text-slate-400 text-xl max-w-3xl font-medium leading-relaxed">
+          Bienvenue dans votre espace immersif, <span className="text-white font-black">{user?.name}</span>. Votre parcours académique est synchronisé en temps réel.
         </p>
       </motion.header>
 
-      {/* Stats Grid - 4 Cards */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 dark:bg-primary/20 text-primary flex items-center justify-center">
-              <BarChart3 size={20} />
-            </div>
-            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Sondages</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900 dark:text-white">{activePollsCount}</span>
-            <span className="text-sm text-slate-400">actifs</span>
-          </div>
-        </Card>
+        {/* Stats Grid - 4 Futuristic Cards */}
+        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {[
+            { icon: BarChart3, label: 'Sondages', value: activePollsCount, unit: 'actifs', color: 'primary' },
+            { icon: Megaphone, label: 'Annonces', value: announcements.length, unit: 'récentes', color: 'accent' },
+            { icon: Clock, label: 'Prochain Cours', value: nextMeeting ? nextMeeting.title : 'Aucun', unit: nextMeeting ? fmtDate(nextMeeting.time) : 'Planifié', color: 'warning' },
+            { icon: Users, label: 'Ma Classe', value: studentCount, unit: 'étudiants', color: 'neon-blue' }
+          ].map((stat, i) => (
+            <GlassCard key={i} className="p-8 relative group overflow-hidden border-white/5 hover:border-white/20 transition-all duration-500" tilt={true}>
+              <div className={`absolute -top-10 -right-10 w-32 h-32 bg-${stat.color}/10 blur-[60px] rounded-full group-hover:bg-${stat.color}/20 transition-colors duration-700`} />
+              <div className="flex items-center gap-5 mb-8 relative z-10">
+                <div className={`w-14 h-14 rounded-2xl bg-${stat.color}/10 text-${stat.color} flex items-center justify-center shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border border-${stat.color}/20 group-hover:scale-110 transition-transform duration-500`}>
+                  <stat.icon size={28} />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">{stat.label}</span>
+              </div>
+              <div className="flex flex-col gap-1 relative z-10">
+                <span className="text-4xl font-black tracking-tighter text-white truncate group-hover:text-primary transition-colors duration-500">{stat.value}</span>
+                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{stat.unit}</span>
+              </div>
+            </GlassCard>
+          ))}
+        </motion.div>
 
-        <Card className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-accent/10 dark:bg-accent/20 text-accent flex items-center justify-center">
-              <Megaphone size={20} />
-            </div>
-            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Annonces</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900 dark:text-white">{announcements.length}</span>
-            <span className="text-sm text-slate-400">récentes</span>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-warning/10 dark:bg-warning/20 text-warning flex items-center justify-center">
-              <Clock size={20} />
-            </div>
-            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Prochain Cours</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold text-slate-900 dark:text-white truncate">
-              {nextMeeting ? nextMeeting.title : 'Aucun cours'}
-            </span>
-            <span className="text-sm text-slate-400">
-              {nextMeeting ? fmtDate(nextMeeting.time) : 'Planifié'}
-            </span>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-danger/10 dark:bg-danger/20 text-danger flex items-center justify-center">
-              <Users size={20} />
-            </div>
-            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Ma Classe</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900 dark:text-white">{studentCount}</span>
-            <span className="text-sm text-slate-400">étudiants</span>
-          </div>
-        </Card>
-      </motion.div>
-
-      {/* Quick Actions - Notion Style Buttons */}
-      <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Link to="/polls" className="group">
-          <Card className="flex items-center gap-3 p-4 hover:border-primary/30 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md">
-            <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20 text-primary group-hover:scale-110 transition-transform">
-              <BarChart3 size={18} />
-            </div>
-            <span className="font-semibold text-slate-700 dark:text-slate-200">Voir sondages</span>
-          </Card>
-        </Link>
-        <Link to="/exams" className="group">
-          <Card className="flex items-center gap-3 p-4 hover:border-warning/30 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md">
-            <div className="p-2 rounded-lg bg-warning/10 dark:bg-warning/20 text-warning group-hover:scale-110 transition-transform">
-              <Calendar size={18} />
-            </div>
-            <span className="font-semibold text-slate-700 dark:text-slate-200">Voir emploi du temps</span>
-          </Card>
-        </Link>
-        <Link to="/announcements" className="group">
-          <Card className="flex items-center gap-3 p-4 hover:border-accent/30 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md">
-            <div className="p-2 rounded-lg bg-accent/10 dark:bg-accent/20 text-accent group-hover:scale-110 transition-transform">
-              <Megaphone size={18} />
-            </div>
-            <span className="font-semibold text-slate-700 dark:text-slate-200">Lire annonces</span>
-          </Card>
-        </Link>
-        <Link to="/profile" className="group">
-          <Card className="flex items-center gap-3 p-4 hover:border-danger/30 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md">
-            <div className="p-2 rounded-lg bg-danger/10 dark:bg-danger/20 text-danger group-hover:scale-110 transition-transform">
-              <Plus size={18} />
-            </div>
-            <span className="font-semibold text-slate-700 dark:text-slate-200">Rejoindre classe</span>
-          </Card>
-        </Link>
-      </motion.div>
+        {/* Quick Actions - Floating Buttons */}
+        <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {[
+            { to: '/polls', icon: BarChart3, label: 'Sondages', color: 'primary' },
+            { to: '/exams', icon: Calendar, label: 'Emploi du temps', color: 'warning' },
+            { to: '/announcements', icon: Megaphone, label: 'Annonces', color: 'accent' },
+            { to: '/profile', icon: Plus, label: 'Rejoindre classe', color: 'danger' }
+          ].map((action, i) => (
+            <Link key={i} to={action.to} className="group">
+              <GlassCard className="flex items-center gap-4 p-6 border-white/5 hover:border-primary/30 hover:-translate-y-2 transition-all duration-500 shadow-2xl" tilt={true}>
+                <div className={`p-3 rounded-xl bg-${action.color}/10 text-${action.color} group-hover:scale-110 group-hover:rotate-6 transition-transform shadow-lg border border-${action.color}/20 relative z-10`}>
+                  <action.icon size={20} />
+                </div>
+                <span className="font-black text-xs uppercase tracking-widest text-slate-400 group-hover:text-white transition-colors relative z-10">{action.label}</span>
+              </GlassCard>
+            </Link>
+          ))}
+        </motion.div>
 
       {/* Main Content Grid */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         
         {/* Left Column - Announcements & Exams */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-12">
           
           {/* Recent Announcements */}
-          <section className="space-y-4">
+          <section className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Megaphone size={20} className="text-primary" />
+              <h2 className="text-2xl font-black text-white flex items-center gap-4">
+                <div className="w-2 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(108,99,255,0.5)]" />
                 Annonces récentes
               </h2>
-              <Link to="/announcements" className="text-sm font-semibold text-primary hover:underline">Voir tout</Link>
+              <Link to="/announcements" className="text-[10px] font-black uppercase tracking-[0.2em] text-primary hover:text-white transition-colors">Voir tout</Link>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-6">
               {announcements.map(ann => {
                 const isRead = readStatuses[ann.id];
                 return (
-                  <Card key={ann.id} className={`p-5 group relative ${!isRead ? 'border-primary/50' : ''}`}>
+                  <GlassCard key={ann.id} className={`p-8 group relative border-white/5 hover:border-primary/30 transition-all duration-500 ${!isRead ? 'shadow-[0_0_40px_rgba(108,99,255,0.05)]' : ''}`} tilt={false}>
                     {!isRead && (
-                      <div className="absolute top-4 left-[-4px] w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(108,99,255,0.5)]" />
+                      <div className="absolute top-8 left-[-6px] w-3 h-3 rounded-full bg-primary shadow-[0_0_15px_rgba(108,99,255,0.8)] z-20" />
                     )}
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors">{ann.title}</h3>
-                      <Badge type={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'primary'}>
+                    <div className="flex justify-between items-start mb-6 relative z-10">
+                      <h3 className="text-xl font-black text-white group-hover:text-primary transition-colors tracking-tight leading-tight max-w-[80%]">{ann.title}</h3>
+                      <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                        ann.priority === 'urgent' ? 'bg-danger/10 text-danger border-danger/20' : 
+                        ann.priority === 'important' ? 'bg-warning/10 text-warning border-warning/20' : 
+                        'bg-primary/10 text-primary border-primary/20'
+                      }`}>
                         {ann.priority}
-                      </Badge>
+                      </div>
                     </div>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-4 leading-relaxed">
+                    <p className="text-slate-400 text-sm line-clamp-2 mb-8 leading-relaxed font-medium relative z-10">
                       {ann.content}
                     </p>
-                    <div className="flex items-center justify-between text-xs font-medium text-slate-400">
-                      <span className="flex items-center gap-1.5"><Users size={12} /> {ann.author}</span>
+                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 relative z-10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-primary border border-white/10">
+                          <Users size={14} />
+                        </div>
+                        {ann.author}
+                      </div>
                       <span>{fmtDate(ann.createdAt)}</span>
                     </div>
-                  </Card>
+                  </GlassCard>
                 );
               })}
               {announcements.length === 0 && (
-                <div className="p-10 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
-                  <p className="text-slate-400 font-medium">Aucune annonce pour le moment.</p>
+                <div className="p-20 text-center glass-ultra rounded-[40px] border-2 border-dashed border-white/5">
+                  <p className="text-slate-600 font-black uppercase tracking-[0.3em] text-xs">Aucune annonce détectée.</p>
                 </div>
               )}
             </div>
           </section>
 
           {/* Upcoming Exams */}
-          <section className="space-y-4">
+          <section className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Calendar size={20} className="text-warning" />
+              <h2 className="text-2xl font-black text-white flex items-center gap-4">
+                <div className="w-2 h-8 bg-warning rounded-full shadow-[0_0_15px_rgba(255,184,0,0.5)]" />
                 Examens à venir
               </h2>
-              <Link to="/exams" className="text-sm font-semibold text-warning hover:underline">Voir tout</Link>
+              <Link to="/exams" className="text-[10px] font-black uppercase tracking-[0.2em] text-warning hover:text-white transition-colors">Voir tout</Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {exams.map(exam => {
                 const left = daysLeft(exam.date);
                 return (
-                  <Card key={exam.id} className="p-5 hover:border-warning/30 transition-all">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="w-10 h-10 rounded-xl bg-warning/10 dark:bg-warning/20 text-warning flex items-center justify-center">
-                        <BookOpen size={20} />
+                  <GlassCard key={exam.id} className="p-8 border-white/5 hover:border-warning/40 transition-all duration-500 group" tilt={true}>
+                    <div className="flex justify-between items-start mb-8 relative z-10">
+                      <div className="w-14 h-14 rounded-2xl bg-warning/10 text-warning flex items-center justify-center group-hover:scale-110 transition-transform duration-500 border border-warning/20">
+                        <BookOpen size={28} />
                       </div>
-                      <Badge type={left <= 2 ? 'danger' : 'warning'}>J-{left}</Badge>
+                      <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                        left <= 2 ? 'bg-danger/10 text-danger border-danger/20' : 'bg-warning/10 text-warning border-warning/20'
+                      }`}>
+                        J-{left}
+                      </div>
                     </div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">{exam.subject}</h3>
-                    <div className="flex flex-col gap-1 text-xs text-slate-400 font-medium">
-                      <span className="flex items-center gap-1.5"><Calendar size={12} /> {fmtDate(exam.date)}</span>
-                      <span className="flex items-center gap-1.5"><Clock size={12} /> {exam.duration}</span>
+                    <h3 className="text-xl font-black text-white mb-4 tracking-tight group-hover:text-warning transition-colors duration-500 relative z-10">{exam.subject}</h3>
+                    <div className="flex flex-col gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 relative z-10">
+                      <span className="flex items-center gap-3"><Calendar size={16} className="text-warning" /> {fmtDate(exam.date)}</span>
+                      <span className="flex items-center gap-3"><Clock size={16} className="text-warning" /> {exam.duration}</span>
                     </div>
-                  </Card>
+                  </GlassCard>
                 );
               })}
               {exams.length === 0 && (
-                <div className="col-span-full p-10 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
-                  <p className="text-slate-400 font-medium">Aucun examen prévu.</p>
+                <div className="col-span-full p-20 text-center glass-ultra rounded-[40px] border-2 border-dashed border-white/5">
+                  <p className="text-slate-600 font-black uppercase tracking-[0.3em] text-xs">Aucun examen en vue.</p>
                 </div>
               )}
             </div>
@@ -365,58 +344,64 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Right Column - Recent Activity */}
-        <div className="space-y-8">
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Activity size={20} className="text-danger" />
-              Activité récente
+        <div className="space-y-12">
+          <section className="space-y-8">
+            <h2 className="text-2xl font-black text-white flex items-center gap-4">
+              <div className="w-2 h-8 bg-danger rounded-full shadow-[0_0_15px_rgba(255,71,87,0.5)]" />
+              Activité
             </h2>
-            <Card className="p-6 space-y-6">
+            <GlassCard className="p-10 space-y-10 relative overflow-hidden border-white/5 shadow-2xl" tilt={false}>
+              <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-primary via-neon-blue to-accent animate-pulse z-20" />
               {activities.map((activity, idx) => (
-                <div key={activity.id} className="flex gap-4 relative">
+                <div key={activity.id} className="flex gap-6 relative group z-10">
                   {idx !== activities.length - 1 && (
-                    <div className="absolute left-[15px] top-8 bottom-[-24px] w-px bg-slate-100 dark:bg-slate-800" />
+                    <div className="absolute left-[23px] top-12 bottom-[-40px] w-[2px] bg-white/5 group-hover:bg-primary/20 transition-colors duration-500" />
                   )}
-                  <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center z-10 shrink-0">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
+                  <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center z-10 shrink-0 group-hover:border-primary/40 transition-all duration-500">
+                    <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_15px_rgba(108,99,255,0.8)] group-hover:scale-125 transition-transform" />
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                  <div className="space-y-2 pt-1">
+                    <p className="text-sm font-black text-white leading-tight tracking-tight group-hover:text-primary transition-colors duration-500">
                       {activity.action}
                     </p>
-                    <p className="text-xs text-slate-400 font-medium">
+                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">
                       {fmtDate(activity.createdAt)}
                     </p>
                   </div>
                 </div>
               ))}
               {activities.length === 0 && (
-                <div className="text-center py-10">
-                  <p className="text-sm text-slate-400 font-medium">Aucune activité récente.</p>
+                <div className="text-center py-16 relative z-10">
+                  <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.3em]">Silence radio...</p>
                 </div>
               )}
-            </Card>
+            </GlassCard>
           </section>
 
           {/* Quick Links / Resources */}
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <BookOpen size={20} className="text-accent" />
-              Ressources utiles
+          <section className="space-y-8">
+            <h2 className="text-2xl font-black text-white flex items-center gap-4">
+              <div className="w-2 h-8 bg-accent rounded-full shadow-[0_0_15px_rgba(0,200,150,0.5)]" />
+              Ressources
             </h2>
-            <div className="space-y-2">
-              <a href="#" className="flex items-center justify-between p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
-                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Guide de l'étudiant</span>
-                <ExternalLink size={14} className="text-slate-300 group-hover:text-primary transition-colors" />
-              </a>
-              <a href="#" className="flex items-center justify-between p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
-                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Règlement intérieur</span>
-                <ExternalLink size={14} className="text-slate-300 group-hover:text-primary transition-colors" />
-              </a>
-              <a href="#" className="flex items-center justify-between p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
-                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Contact Administration</span>
-                <ExternalLink size={14} className="text-slate-300 group-hover:text-primary transition-colors" />
-              </a>
+            <div className="space-y-4">
+              {[
+                { label: "Guide de l'étudiant", icon: BookOpen },
+                { label: "Règlement intérieur", icon: Shield },
+                { label: "Contact Administration", icon: Mail }
+              ].map((res, i) => (
+                <a key={i} href="#" className="block group">
+                  <GlassCard className="flex items-center justify-between p-6 rounded-[24px] hover:bg-white/5 hover:-translate-x-3 transition-all duration-500 border-white/5 shadow-xl" tilt={true}>
+                    <div className="flex items-center gap-5 relative z-10">
+                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-accent transition-colors duration-500 border border-white/5">
+                        <res.icon size={20} />
+                      </div>
+                      <span className="text-sm font-black text-slate-400 group-hover:text-white transition-colors duration-500 uppercase tracking-widest">{res.label}</span>
+                    </div>
+                    <ExternalLink size={18} className="text-slate-700 group-hover:text-accent transition-colors duration-500 relative z-10" />
+                  </GlassCard>
+                </a>
+              ))}
             </div>
           </section>
         </div>

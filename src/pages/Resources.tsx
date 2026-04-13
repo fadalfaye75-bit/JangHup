@@ -40,6 +40,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { where, orderBy } from 'firebase/firestore';
 import { notificationService } from '../services/notificationService';
 
+import { GlassCard } from '../components/ui/GlassCard';
+
 export const Resources: React.FC = () => {
   const { user, classInfo } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -199,7 +201,7 @@ export const Resources: React.FC = () => {
   if (error) return <div className="max-w-7xl mx-auto px-4 py-12"><ErrBox message={error} /></div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pb-20 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 pb-20 space-y-12">
       <ConfirmModal 
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
@@ -209,86 +211,93 @@ export const Resources: React.FC = () => {
         type={confirmConfig.type}
       />
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <SecHdr 
-          title="Bibliothèque de Ressources" 
-          subtitle={`Accédez aux supports de cours de la classe ${user?.class_name}`}
-        />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div className="space-y-1">
+          <h1 className="heading-futuristic">Base de Données</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            Archives numériques de la classe {user?.class_name}
+          </p>
+        </div>
         
         {canManage && (
-          <Btn onClick={() => setIsModalOpen(true)} className="lg:mb-8">
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="btn-futuristic-primary px-10 py-4 flex items-center gap-3 self-start lg:self-center"
+          >
             <Plus size={20} />
-            Ajouter une ressource
-          </Btn>
+            <span className="font-black uppercase tracking-widest text-xs">Nouvelle Ressource</span>
+          </button>
         )}
       </div>
 
       {/* Filters & Search */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white dark:bg-slate-900 p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm">
-        <div className="md:col-span-5 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Rechercher par titre ou matière..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-sm"
-          />
-        </div>
-        
-        <div className="md:col-span-3">
-          <div className="relative">
-            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <select 
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-sm appearance-none"
-            >
-              <option value="all">Tous les types</option>
-              <option value="pdf">📄 PDF / Docs</option>
-              <option value="link">🔗 Liens</option>
-              <option value="video">🎥 Vidéos</option>
-              <option value="image">🖼️ Images</option>
-              <option value="doc">📝 Travaux</option>
-            </select>
+      <GlassCard className="p-6 rounded-[32px] border-white/5 shadow-2xl" tilt={false}>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center relative z-10">
+          <div className="md:col-span-5 relative group">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
+            <input 
+              type="text" 
+              placeholder="Rechercher dans les archives..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-white placeholder:text-slate-700"
+            />
           </div>
-        </div>
+          
+          <div className="md:col-span-3">
+            <div className="relative group">
+              <Filter className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={18} />
+              <select 
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-black uppercase tracking-widest text-white appearance-none cursor-pointer"
+              >
+                <option value="all" className="bg-[#0F0F1A]">Tous les types</option>
+                <option value="pdf" className="bg-[#0F0F1A]">📄 PDF / Docs</option>
+                <option value="link" className="bg-[#0F0F1A]">🔗 Liens</option>
+                <option value="video" className="bg-[#0F0F1A]">🎥 Vidéos</option>
+                <option value="image" className="bg-[#0F0F1A]">🖼️ Images</option>
+                <option value="doc" className="bg-[#0F0F1A]">📝 Travaux</option>
+              </select>
+            </div>
+          </div>
 
-        <div className="md:col-span-4">
-          <div className="relative">
-            <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <select 
-              value={filterSubject}
-              onChange={(e) => setFilterSubject(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-sm appearance-none"
-            >
-              <option value="all">Toutes les matières</option>
-              {subjects.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+          <div className="md:col-span-4">
+            <div className="relative group">
+              <BookOpen className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={18} />
+              <select 
+                value={filterSubject}
+                onChange={(e) => setFilterSubject(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-black uppercase tracking-widest text-white appearance-none cursor-pointer"
+              >
+                <option value="all" className="bg-[#0F0F1A]">Toutes les matières</option>
+                {subjects.map(s => (
+                  <option key={s} value={s} className="bg-[#0F0F1A]">{s}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      </GlassCard>
 
       {/* Resources Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-10">
         {loading ? (
           Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="space-y-4">
+            <GlassCard key={i} className="space-y-6 p-8">
               <div className="flex items-center gap-4">
-                <Skeleton className="w-12 h-12 rounded-2xl" />
+                <Skeleton className="w-16 h-16 rounded-2xl" />
                 <div className="space-y-2 flex-1">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
                 </div>
               </div>
-              <Skeleton className="h-20 w-full" />
-              <div className="flex gap-2">
-                <Skeleton className="h-10 flex-1" />
-                <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <div className="flex gap-4">
+                <Skeleton className="h-12 flex-1 rounded-xl" />
+                <Skeleton className="h-12 w-12 rounded-xl" />
               </div>
-            </Card>
+            </GlassCard>
           ))
         ) : filteredResources.length > 0 ? (
           <AnimatePresence mode="popLayout">
@@ -296,78 +305,80 @@ export const Resources: React.FC = () => {
               <motion.div
                 key={res.id}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                whileHover={{ y: -5, scale: 1.02 }}
+                initial={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+                transition={{ type: "spring", stiffness: 200, damping: 25 }}
                 className="group"
               >
-                <Card className="h-full flex flex-col p-0 overflow-hidden border-white/5 hover:border-primary/30 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                <GlassCard className="h-full flex flex-col p-0 overflow-hidden border-white/5 hover:border-primary/30 transition-all duration-500" tilt={true}>
                   {/* Card Header with Icon & Actions */}
-                  <div className="p-5 flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center shadow-inner">
+                  <div className="p-8 flex items-start justify-between border-b border-white/5 relative z-10">
+                    <div className="flex items-center gap-5">
+                      <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 shadow-inner group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(108,99,255,0.2)] transition-all duration-500">
                         {getTypeIcon(res.type)}
                       </div>
                       <div className="min-w-0">
-                        <Badge type="primary" className="mb-1">{res.subject}</Badge>
-                        <h3 className="font-bold text-slate-900 dark:text-white truncate pr-2" title={res.title}>
+                        <div className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[9px] font-black uppercase tracking-widest inline-block mb-2 border border-primary/20">
+                          {res.subject}
+                        </div>
+                        <h3 className="font-black text-white truncate pr-2 tracking-tight text-lg leading-tight" title={res.title}>
                           {res.title}
                         </h3>
                       </div>
                     </div>
                     
                     {canManage && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleEdit(res); }}
-                          className="p-2 text-slate-400 hover:text-primary transition-colors"
+                          className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-primary rounded-xl transition-all"
                         >
-                          <Edit3 size={16} />
+                          <Edit3 size={18} />
                         </button>
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleDelete(res.id); }}
-                          className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                          className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-danger rounded-xl transition-all"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     )}
                   </div>
 
                   {/* Description */}
-                  <div className="px-5 pb-5 flex-1">
-                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                  <div className="p-8 flex-1 relative z-10">
+                    <p className="text-sm text-slate-400 line-clamp-3 leading-relaxed font-medium group-hover:text-slate-300 transition-colors duration-500">
                       {res.description || "Aucune description fournie pour cette ressource."}
                     </p>
                   </div>
 
                   {/* Footer Stats & Actions */}
-                  <div className="px-5 py-4 bg-slate-50/50 dark:bg-white/[0.02] border-t border-slate-100 dark:border-white/5 flex items-center justify-between mt-auto">
-                    <div className="flex items-center gap-3">
+                  <div className="px-8 py-6 bg-white/5 border-t border-white/5 flex items-center justify-between mt-auto relative z-10">
+                    <div className="flex items-center gap-2">
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleShareWhatsApp(res); }}
-                        className="p-2 text-slate-400 hover:text-[#25D366] transition-colors"
+                        className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-[#25D366] rounded-xl transition-all"
                         title="Partager WhatsApp"
                       >
-                        <Share2 size={18} />
+                        <Share2 size={20} />
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleShareEmail(res); }}
-                        className="p-2 text-slate-400 hover:text-primary transition-colors"
+                        className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-primary rounded-xl transition-all"
                         title="Partager Email"
                       >
-                        <Mail size={18} />
+                        <Mail size={20} />
                       </button>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       {res.type === 'image' ? (
                         <button 
                           onClick={(e) => { e.stopPropagation(); setPreviewImage(res.url); }}
-                          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 transition-all"
+                          className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/10 transition-all"
                         >
-                          <Eye size={14} />
+                          <Eye size={16} />
                           Aperçu
                         </button>
                       ) : (
@@ -375,39 +386,47 @@ export const Resources: React.FC = () => {
                           href={res.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 transition-all"
+                          className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/10 transition-all"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <ExternalLink size={14} />
-                          Ouvrir
+                          <ExternalLink size={16} />
+                          Accès
                         </a>
                       )}
                       <a 
                         href={res.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-110 transition-transform flex items-center justify-center"
+                        className="w-12 h-12 bg-primary text-white rounded-xl shadow-[0_0_20px_rgba(108,99,255,0.3)] hover:scale-110 transition-transform flex items-center justify-center group/dl relative overflow-hidden"
                         title="Télécharger / Ouvrir"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <DownloadCloud size={18} />
+                        <DownloadCloud size={22} className="relative z-10" />
+                        <motion.div 
+                          animate={{ y: ['-100%', '100%'] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                          className="absolute inset-0 bg-gradient-to-b from-transparent via-white/20 to-transparent pointer-events-none"
+                        />
                       </a>
                     </div>
                   </div>
-                </Card>
+                </GlassCard>
               </motion.div>
             ))}
           </AnimatePresence>
         ) : (
-          <div className="col-span-full text-center py-20 space-y-4">
-            <div className="w-24 h-24 bg-slate-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto">
-              <BookOpen size={48} className="text-slate-200 dark:text-white/10" />
+          <div className="col-span-full text-center py-32 glass-ultra rounded-[48px] border-2 border-dashed border-white/5">
+            <div className="w-28 h-28 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10 shadow-inner">
+              <BookOpen size={56} className="text-slate-800" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Aucune ressource trouvée</h3>
-            <p className="text-slate-500 max-w-xs mx-auto">Essayez de modifier vos filtres ou effectuez une nouvelle recherche.</p>
-            <Btn variant="ghost" onClick={() => { setSearchTerm(''); setFilterType('all'); setFilterSubject('all'); }}>
-              Réinitialiser les filtres
-            </Btn>
+            <h3 className="text-2xl font-black text-white tracking-tight">Aucune ressource trouvée</h3>
+            <p className="text-slate-500 font-medium mt-3 max-w-xs mx-auto">Le système n'a trouvé aucune archive correspondant à vos critères de recherche.</p>
+            <button 
+              onClick={() => { setSearchTerm(''); setFilterType('all'); setFilterSubject('all'); }}
+              className="mt-10 px-8 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] text-primary hover:text-white hover:bg-white/10 transition-all"
+            >
+              Réinitialiser les protocoles
+            </button>
           </div>
         )}
       </div>
@@ -420,83 +439,82 @@ export const Resources: React.FC = () => {
           setEditingResource(null);
           setFormData({ title: '', description: '', type: 'pdf', url: '', subject: '' });
         }} 
-        title={editingResource ? "Modifier la ressource" : "Ajouter une ressource"}
+        title={editingResource ? "Modifier la ressource" : "Nouvelle ressource"}
       >
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Titre</label>
+        <form onSubmit={handleSubmit} className="space-y-8 p-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Titre</label>
               <input 
                 type="text" 
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="input"
+                className="w-full p-5 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white font-medium placeholder:text-slate-600"
                 placeholder="Ex: Cours de Mathématiques"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Matière</label>
+            <div className="space-y-3">
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Matière</label>
               <input 
                 type="text" 
                 required
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                className="input"
+                className="w-full p-5 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white font-medium placeholder:text-slate-600"
                 placeholder="Ex: Algèbre"
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Type de ressource</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div className="space-y-3">
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Type de ressource</label>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-4">
               {(['pdf', 'link', 'video', 'image', 'doc'] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setFormData({ ...formData, type: t })}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-500 ${
                     formData.type === t 
-                      ? 'border-primary bg-primary/5 text-primary' 
-                      : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 text-slate-400'
+                      ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(108,99,255,0.2)]' 
+                      : 'border-white/5 bg-white/5 text-slate-500 hover:border-white/10'
                   }`}
                 >
-                  {getTypeIcon(t)}
-                  <span className="text-[10px] font-bold uppercase mt-2">{t}</span>
+                  <div className="mb-2">{getTypeIcon(t)}</div>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{t}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Lien URL</label>
+          <div className="space-y-3">
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Lien URL</label>
             <input 
               type="url" 
               required
               value={formData.url}
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              className="input"
-              placeholder="https://google.drive.com/..."
+              className="w-full p-5 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white font-medium placeholder:text-slate-600"
+              placeholder="https://..."
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Description</label>
+          <div className="space-y-3">
+            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Description</label>
             <textarea 
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="input resize-none"
-              placeholder="Décrivez brièvement le contenu de cette ressource..."
+              className="w-full p-5 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white font-medium placeholder:text-slate-600 resize-none"
+              placeholder="Décrivez brièvement le contenu..."
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <Btn 
+          <div className="flex gap-4 pt-4">
+            <button 
               type="button" 
-              variant="secondary" 
-              className="flex-1" 
+              className="flex-1 py-5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors"
               onClick={() => {
                 setIsModalOpen(false);
                 setEditingResource(null);
@@ -504,10 +522,12 @@ export const Resources: React.FC = () => {
               }}
             >
               Annuler
-            </Btn>
-            <Btn type="submit" className="flex-1">
-              {editingResource ? "Mettre à jour" : "Ajouter"}
-            </Btn>
+            </button>
+            <button type="submit" className="btn-futuristic-primary flex-1 py-5">
+              <span className="font-black uppercase tracking-widest text-xs">
+                {editingResource ? "Mettre à jour" : "Archiver la ressource"}
+              </span>
+            </button>
           </div>
         </form>
       </Modal>
@@ -515,23 +535,23 @@ export const Resources: React.FC = () => {
       {/* Image Preview Modal */}
       <AnimatePresence>
         {previewImage && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#0F0F1A]/95 backdrop-blur-xl">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative max-w-5xl w-full max-h-[90vh] flex items-center justify-center"
+              initial={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
+              className="relative max-w-6xl w-full max-h-[85vh] flex items-center justify-center"
             >
               <button 
                 onClick={() => setPreviewImage(null)}
-                className="absolute -top-12 right-0 p-2 text-white hover:text-primary transition-colors"
+                className="absolute -top-16 right-0 p-3 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-full border border-white/10"
               >
-                <X size={32} />
+                <X size={24} />
               </button>
               <img 
                 src={previewImage} 
                 alt="Preview" 
-                className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
+                className="max-w-full max-h-full rounded-[32px] shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 object-contain"
                 referrerPolicy="no-referrer"
                 loading="lazy"
               />

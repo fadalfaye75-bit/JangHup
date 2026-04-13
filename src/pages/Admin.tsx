@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useTable, deleteRow, updateRow, insertRow } from '../../lib/hooks';
+import { useTable, usePaginatedTable, deleteRow, updateRow, insertRow } from '../../lib/hooks';
 import { User, SchoolClass, Poll, Announcement, ActivityLog, UserRole } from '../../types';
 import { Card, Badge, Spinner, ErrBox, Btn, Modal, ConfirmModal } from '../../components/ui';
+import { GlassCard } from '../components/ui/GlassCard';
 import { 
   Users, 
   Shield, 
@@ -46,7 +47,7 @@ import {
   Area
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
-import { fmtDate } from '../../lib/utils';
+import { fmtDate, cn } from '../../lib/utils';
 import { 
   collection, 
   query, 
@@ -67,38 +68,65 @@ export const Admin: React.FC = () => {
   
   // Data fetching
   const userConstraints = React.useMemo(() => [orderBy('created_at', 'desc')], []);
-  const { data: users, loading: usersLoading } = useTable<User>('users', userConstraints);
+  const { 
+    data: users, 
+    error: usersError,
+    loading: usersLoading, 
+    loadMore: loadMoreUsers, 
+    hasMore: hasMoreUsers,
+    loadingMore: loadingMoreUsers
+  } = usePaginatedTable<User>('users', userConstraints, 20, user?.role === UserRole.ADMIN && (activeTab === 'users' || activeTab === 'overview'));
+
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [classSecrets, setClassSecrets] = useState<Record<string, any>>({});
   const [loadingClasses, setLoadingClasses] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    if (activeTab === 'classes') {
+    if (user?.role === UserRole.ADMIN && (activeTab === 'classes' || activeTab === 'overview')) {
       setLoadingClasses(true);
+      
       const q = query(collection(db, 'classes'), orderBy('name', 'asc'));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unsubscribeClasses = onSnapshot(q, (snapshot) => {
         const classesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolClass));
         setClasses(classesData);
-        
-        // Fetch secrets for these classes
-        getDocs(collection(db, 'class_secrets')).then(secretsSnap => {
-          const secrets: Record<string, any> = {};
-          secretsSnap.docs.forEach(doc => {
-            secrets[doc.id] = doc.data();
-          });
-          setClassSecrets(secrets);
-          setLoadingClasses(false);
-        }).catch(err => {
-          console.error("🔥 Error fetching class secrets:", err);
-          setLoadingClasses(false);
-        });
+        setLoadingClasses(false);
+      }, (err) => {
+        console.error("🔥 Error fetching classes:", err);
+        setError("Erreur lors du chargement des classes.");
+        setLoadingClasses(false);
       });
-      return () => unsubscribe();
+
+      const unsubscribeSecrets = onSnapshot(collection(db, 'class_secrets'), (snapshot) => {
+        const secrets: Record<string, any> = {};
+        snapshot.docs.forEach(doc => {
+          secrets[doc.id] = doc.data();
+        });
+        setClassSecrets(secrets);
+      }, (err) => {
+        console.error("🔥 Error fetching class secrets:", err);
+      });
+
+      return () => {
+        unsubscribeClasses();
+        unsubscribeSecrets();
+      };
     }
-  }, [activeTab]);
-  const { data: polls } = useTable<Poll>('polls');
-  const { data: announcements } = useTable<Announcement>('announcements');
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  }, [activeTab, user?.role]);
+  const { data: polls, error: pollsError } = useTable<Poll>('polls', [], 10, user?.role === UserRole.ADMIN && (activeTab === 'content' || activeTab === 'overview'));
+  const { data: announcements, error: announcementsError } = useTable<Announcement>('announcements', [], 10, user?.role === UserRole.ADMIN && (activeTab === 'content' || activeTab === 'overview'));
+  
+  const logConstraints = React.useMemo(() => [orderBy('createdAt', 'desc')], []);
+  const { 
+    data: logs, 
+    error: logsError,
+    loading: logsLoading, 
+    loadMore: loadMoreLogs, 
+    hasMore: hasMoreLogs,
+    loadingMore: loadingMoreLogs
+  } = usePaginatedTable<ActivityLog>('activity_logs', logConstraints, 50, user?.role === UserRole.ADMIN && (activeTab === 'logs' || activeTab === 'overview'));
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<SchoolClass | null>(null);
@@ -136,20 +164,16 @@ export const Admin: React.FC = () => {
   });
 
   useEffect(() => {
-    const logsQ = query(collection(db, 'activity_logs'), orderBy('createdAt', 'desc'), limit(50));
-    const unsubscribe = onSnapshot(logsQ, (snapshot) => {
-      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog)));
-    });
-    return () => unsubscribe();
-  }, []);
+    // Overview tab might need a small subset of logs, which we already get from usePaginatedTable
+  }, [activeTab]);
 
   // Stats calculation
-  const stats = [
+  const stats = React.useMemo(() => [
     { label: 'Utilisateurs', value: users.length, icon: Users, color: 'primary' },
     { label: 'Classes', value: classes.length, icon: Shield, color: 'amber' },
     { label: 'Sondages', value: polls.length, icon: Vote, color: 'emerald' },
     { label: 'Annonces', value: announcements.length, icon: Megaphone, color: 'rose' },
-  ];
+  ], [users.length, classes.length, polls.length, announcements.length]);
 
   // Activity chart data (aggregated from logs)
   const chartData = React.useMemo(() => {
@@ -288,62 +312,61 @@ export const Admin: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 pb-20">
-      {/* Admin Sidebar */}
-      <aside className="lg:w-64 space-y-2">
-        <div className="p-4 mb-4">
-          <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Shield className="text-primary" size={24} />
-            Admin Panel
-          </h1>
-        </div>
-        
-        <button 
-          onClick={() => setActiveTab('overview')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'overview' ? 'bg-primary text-white shadow-lg shadow-primary/20 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        >
-          <LayoutDashboard size={18} />
-          Vue d'ensemble
-        </button>
-        <button 
-          onClick={() => setActiveTab('users')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'users' ? 'bg-primary text-white shadow-lg shadow-primary/20 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        >
-          <Users size={18} />
-          Utilisateurs
-        </button>
-        <button 
-          onClick={() => setActiveTab('classes')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'classes' ? 'bg-primary text-white shadow-lg shadow-primary/20 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        >
-          <GraduationCap size={18} />
-          Classes
-        </button>
-        <button 
-          onClick={() => setActiveTab('content')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'content' ? 'bg-primary text-white shadow-lg shadow-primary/20 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        >
-          <Megaphone size={18} />
-          Contenu
-        </button>
-        <button 
-          onClick={() => setActiveTab('logs')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'logs' ? 'bg-primary text-white shadow-lg shadow-primary/20 dark:shadow-none' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        >
-          <Clock size={18} />
-          Logs d'activité
-        </button>
-        
-        <div className="pt-8 mt-8 border-t border-slate-100 dark:border-slate-800">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-            <Settings size={18} />
-            Paramètres
-          </button>
-        </div>
-      </aside>
+    <div className="max-w-7xl mx-auto px-4 pb-20">
+      <div className="flex flex-col lg:flex-row gap-10">
+        {/* Sidebar Navigation */}
+        <aside className="lg:w-72 flex-shrink-0">
+          <GlassCard className="p-4 sticky top-24 border-white/5" tilt={false}>
+            <div className="space-y-2 relative z-10">
+              <div className="px-4 py-3 mb-4">
+                <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Centre de Contrôle</h2>
+              </div>
+              {[
+                { id: 'overview', label: 'Analytiques', icon: LayoutDashboard },
+                { id: 'users', label: 'Unités', icon: Users },
+                { id: 'classes', label: 'Nexus', icon: GraduationCap },
+                { id: 'content', label: 'Transmissions', icon: Megaphone },
+                { id: 'logs', label: 'Logs d\'activité', icon: Clock },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+                    activeTab === item.id 
+                      ? 'text-white' 
+                      : 'text-slate-500 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {activeTab === item.id && (
+                    <motion.div 
+                      layoutId="adminSidebarTab"
+                      className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 border-l-4 border-primary"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                  <item.icon size={20} className={`relative z-10 transition-transform duration-500 ${activeTab === item.id ? 'scale-110 text-primary' : 'group-hover:scale-110'}`} />
+                  <span className="relative z-10 font-black text-[10px] uppercase tracking-widest">{item.label}</span>
+                </button>
+              ))}
+              
+              <div className="pt-6 mt-6 border-t border-white/5">
+                <button className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-500 hover:text-white hover:bg-white/5 transition-all group">
+                  <Settings size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+                  <span className="font-black text-[10px] uppercase tracking-widest">Système</span>
+                </button>
+              </div>
+            </div>
+          </GlassCard>
+        </aside>
 
       {/* Main Content Area */}
       <main className="flex-1 space-y-8">
+        {error && <ErrBox message={error} />}
+        {usersError && <ErrBox message={`Erreur Utilisateurs: ${usersError}`} />}
+        {pollsError && <ErrBox message={`Erreur Sondages: ${pollsError}`} />}
+        {announcementsError && <ErrBox message={`Erreur Annonces: ${announcementsError}`} />}
+        {logsError && <ErrBox message={`Erreur Logs: ${logsError}`} />}
+        
         <ConfirmModal 
           isOpen={confirmConfig.isOpen}
           onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
@@ -352,7 +375,7 @@ export const Admin: React.FC = () => {
           message={confirmConfig.message}
           type={confirmConfig.type}
         />
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {activeTab === 'overview' && (
             <motion.div 
               key="overview"
@@ -364,45 +387,34 @@ export const Admin: React.FC = () => {
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                 {stats.map((stat) => (
-                  <Card 
-                    key={stat.label} 
-                    className="relative overflow-hidden group cursor-pointer hover:border-primary/50 transition-all border-2 border-transparent"
-                    onClick={() => {
-                      if (stat.label === 'Utilisateurs') setActiveTab('users');
-                      if (stat.label === 'Classes') setActiveTab('classes');
-                      if (stat.label === 'Sondages' || stat.label === 'Annonces') setActiveTab('content');
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`p-3 rounded-2xl bg-${stat.color}-50 dark:bg-${stat.color}-900/20 text-${stat.color}-600 dark:text-${stat.color}-400 group-hover:scale-110 transition-transform`}>
+                  <GlassCard key={stat.label} className="p-6 border-white/5 hover:border-primary/30 transition-all duration-500 group" tilt={true}>
+                    <div className="flex items-center justify-between relative z-10">
+                      <div className={`w-12 h-12 bg-${stat.color}/10 text-${stat.color} rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform duration-500`}>
                         <stat.icon size={24} />
                       </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">{stat.label}</p>
+                        <p className="text-3xl font-black text-white tracking-tight">{stat.value}</p>
+                      </div>
                     </div>
-                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stat.value}</h3>
-                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">{stat.label}</p>
-                    
-                    {/* Visual indicator for clickability */}
-                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ChevronRight size={16} className="text-primary" />
-                    </div>
-                  </Card>
+                  </GlassCard>
                 ))}
               </div>
 
               {/* Charts Section */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <Card className="h-[400px] flex flex-col">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <BarChart3 size={18} className="text-primary" />
-                      Activité de la plateforme
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                <GlassCard className="h-[450px] flex flex-col border-white/5" tilt={false}>
+                  <div className="flex items-center justify-between mb-8 relative z-10">
+                    <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-3">
+                      <BarChart3 size={20} className="text-primary" />
+                      Flux d'Engagement
                     </h3>
-                    <select className="text-xs font-bold bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-1 px-2 outline-none">
+                    <select className="text-[10px] font-black uppercase tracking-widest bg-white/5 border border-white/10 rounded-xl p-2 px-4 outline-none text-slate-400">
                       <option>7 derniers jours</option>
                       <option>30 derniers jours</option>
                     </select>
                   </div>
-                  <div className="flex-1 w-full">
+                  <div className="flex-1 w-full relative z-10">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData}>
                         <defs>
@@ -411,39 +423,40 @@ export const Admin: React.FC = () => {
                             <stop offset="95%" stopColor="#6C63FF" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff05" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#64748b', fontWeight: '900'}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#64748b', fontWeight: '900'}} />
                         <Tooltip 
-                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          contentStyle={{ backgroundColor: '#0F0F1A', border: '1px solid #ffffff10', borderRadius: '16px', fontSize: '10px', fontWeight: '900' }}
+                          itemStyle={{ color: '#6C63FF' }}
                         />
-                        <Area type="monotone" dataKey="activity" stroke="#6C63FF" strokeWidth={3} fillOpacity={1} fill="url(#colorActivity)" />
+                        <Area type="monotone" dataKey="activity" stroke="#6C63FF" strokeWidth={4} fillOpacity={1} fill="url(#colorActivity)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                </Card>
+                </GlassCard>
 
-                <Card className="space-y-6">
-                  <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Clock size={18} className="text-amber-500" />
-                    Actions récentes
+                <GlassCard className="p-8 space-y-6 border-white/5" tilt={false}>
+                  <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-3 relative z-10">
+                    <Clock size={20} className="text-warning" />
+                    Dernières Transmissions
                   </h3>
-                  <div className="space-y-4">
+                  <div className="space-y-4 relative z-10">
                     {logs.slice(0, 6).map((log) => (
-                      <div key={log.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                          <Users size={14} />
+                      <div key={log.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/20 hover:bg-white/10 transition-all group">
+                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-primary transition-colors">
+                          <Users size={18} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">
+                          <p className="text-sm font-black text-white tracking-tight truncate">
                             <span className="text-primary">{log.actor}</span> {log.action}
                           </p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">{fmtDate(log.createdAt)}</p>
+                          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mt-1">{fmtDate(log.createdAt)}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-                </Card>
+                </GlassCard>
               </div>
             </motion.div>
           )}
@@ -451,175 +464,201 @@ export const Admin: React.FC = () => {
           {activeTab === 'users' && (
             <motion.div 
               key="users"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
+              initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
+              className="space-y-8"
             >
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Gestion des Utilisateurs</h2>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <h2 className="text-2xl font-black text-white tracking-tight">Gestion des Unités</h2>
+                <div className="relative group w-full md:w-80">
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
                   <input 
                     type="text" 
-                    placeholder="Rechercher..." 
+                    placeholder="Rechercher une unité..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm text-white placeholder:text-slate-700 font-medium"
                   />
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/50">
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Utilisateur</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Classe</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Rôle</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Inscription</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                    {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase())).map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img src={u.avatar || `https://ui-avatars.com/api/?name=${u.name}`} className="w-8 h-8 rounded-full" alt="" loading="lazy" />
-                            <div>
-                              <p className="text-sm font-bold text-slate-900 dark:text-white">{u.name}</p>
-                              <p className="text-xs text-slate-500">{u.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge type="primary">{u.class_name || 'N/A'}</Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge type={u.role === UserRole.ADMIN ? 'danger' : u.role === UserRole.DELEGATE ? 'warning' : 'primary'}>
-                            {u.role}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-xs font-bold text-slate-500">
-                          {fmtDate(u.created_at)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button 
-                              onClick={() => handleToggleUserRole(u)}
-                              className={`p-2 rounded-lg transition-colors ${u.role === UserRole.ADMIN ? 'text-rose-500 bg-rose-50' : 'text-primary bg-primary/10'}`}
-                              title={u.role === UserRole.ADMIN ? "Rétrograder" : "Promouvoir Admin"}
-                            >
-                              {u.role === UserRole.ADMIN ? <UserX size={16} /> : <UserCheck size={16} />}
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteUser(u)}
-                              className="p-2 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-100 transition-colors"
-                              title="Supprimer l'utilisateur"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                            <button className="p-2 text-slate-400 hover:text-slate-600">
-                              <MoreVertical size={16} />
-                            </button>
-                          </div>
-                        </td>
+              <GlassCard className="overflow-hidden border-white/5" tilt={false}>
+                <div className="overflow-x-auto relative z-10">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white/5">
+                        <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Unité</th>
+                        <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Nexus</th>
+                        <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Rôle</th>
+                        <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Initialisation</th>
+                        <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase())).map((u) => (
+                        <tr key={u.id} className="hover:bg-white/5 transition-colors group">
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/10 group-hover:border-primary/50 transition-all duration-500">
+                                <img src={u.avatar || `https://ui-avatars.com/api/?name=${u.name}`} className="w-full h-full object-cover" alt="" loading="lazy" referrerPolicy="no-referrer" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-white tracking-tight">{u.name}</p>
+                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{u.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="px-3 py-1 bg-white/5 rounded-full text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] border border-white/10 inline-block">
+                              {u.class_name || 'NON-AFFILIÉ'}
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+                              u.role === UserRole.ADMIN ? 'bg-danger/10 text-danger border-danger/20' : u.role === UserRole.DELEGATE ? 'bg-warning/10 text-warning border-warning/20' : 'bg-primary/10 text-primary border-primary/20'
+                            }`}>
+                              {u.role}
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                            {fmtDate(u.created_at)}
+                          </td>
+                          <td className="px-8 py-6 text-right">
+                            <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <button 
+                                onClick={() => handleToggleUserRole(u)}
+                                className={`p-3 rounded-xl transition-all ${u.role === UserRole.ADMIN ? 'text-danger bg-danger/10 hover:bg-danger/20' : 'text-primary bg-primary/10 hover:bg-primary/20'}`}
+                                title={u.role === UserRole.ADMIN ? "Rétrograder" : "Promouvoir Admin"}
+                              >
+                                {u.role === UserRole.ADMIN ? <UserX size={18} /> : <UserCheck size={18} />}
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteUser(u)}
+                                className="p-3 text-danger bg-danger/10 rounded-xl hover:bg-danger/20 transition-all"
+                                title="Supprimer l'unité"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                              <button className="p-3 text-slate-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all">
+                                <MoreVertical size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {hasMoreUsers && (
+                  <div className="p-8 border-t border-white/5 text-center relative z-10">
+                    <button 
+                      onClick={loadMoreUsers} 
+                      disabled={loadingMoreUsers}
+                      className="px-10 py-4 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] transition-all border border-white/10 disabled:opacity-50"
+                    >
+                      {loadingMoreUsers ? <Spinner /> : "Charger plus d'unités"}
+                    </button>
+                  </div>
+                )}
+              </GlassCard>
             </motion.div>
           )}
 
           {activeTab === 'classes' && (
             <motion.div 
               key="classes"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
+              initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
+              className="space-y-10"
             >
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Gestion des Classes</h2>
-                <div className="flex gap-3">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <h2 className="text-2xl font-black text-white tracking-tight">Nexus de Formation</h2>
+                <div className="flex gap-4 w-full md:w-auto">
                   <button 
                     onClick={handleSendTestNotification}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                    className="p-4 bg-white/5 text-slate-500 hover:text-white rounded-2xl border border-white/10 transition-all flex items-center gap-3"
                   >
-                    <Bell size={18} />
-                    Tester les Notifications
+                    <Bell size={20} />
+                    <span className="font-black text-[10px] uppercase tracking-widest">Test Notifs</span>
                   </button>
-                  <Btn onClick={() => setIsClassModalOpen(true)}>
-                    Ajouter une classe
-                  </Btn>
+                  <button 
+                    onClick={() => setIsClassModalOpen(true)}
+                    className="btn-futuristic-primary px-8 py-4 flex items-center gap-3 flex-1 md:flex-none"
+                  >
+                    <Plus size={20} />
+                    <span className="font-black text-[10px] uppercase tracking-widest">Nouveau Nexus</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 {classes.map((cls) => (
-                  <Card key={cls.id} className="relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: cls.color }} />
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl" style={{ backgroundColor: cls.color }}>
+                  <GlassCard key={cls.id} className="p-8 border-white/5 hover:border-primary/30 transition-all duration-500 group" tilt={true}>
+                    <div className="absolute top-0 left-0 w-full h-1 opacity-50" style={{ backgroundColor: cls.color }} />
+                    <div className="flex items-start justify-between mb-8 relative z-10">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-2xl group-hover:scale-110 transition-transform duration-500" style={{ backgroundColor: cls.color }}>
                         {cls.name.substring(0, 2).toUpperCase()}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <button 
                           onClick={() => handleEditClass(cls)}
-                          className="p-2 text-slate-300 hover:text-primary transition-colors"
+                          className="p-2.5 bg-white/5 hover:bg-white/10 text-primary rounded-xl transition-all"
                         >
                           <Edit2 size={18} />
                         </button>
                         <button 
                           onClick={() => handleDeleteContent('classes', cls.id)}
-                          className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                          className="p-2.5 bg-white/5 hover:bg-white/10 text-danger rounded-xl transition-all"
                         >
                           <Trash2 size={18} />
                         </button>
                       </div>
                     </div>
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white">{cls.name}</h3>
-                    <div className="mt-4 space-y-2">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-slate-400 uppercase">Email</span>
-                        <span className="text-slate-700 dark:text-slate-300">{cls.class_email}</span>
-                      </div>
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-slate-400 uppercase">Code Délégué</span>
-                        <div className="flex items-center gap-2">
-                          <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">
+                    
+                    <h3 className="text-2xl font-black text-white tracking-tight group-hover:text-primary transition-colors duration-500">{cls.name}</h3>
+                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] mt-1">Nexus ID: {cls.id.slice(0, 8)}</p>
+
+                    <div className="mt-8 space-y-4 relative z-10">
+                      <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Code Délégué</span>
+                        <div className="flex items-center gap-3">
+                          <code className="text-xs font-black text-primary tracking-widest font-mono">
                             {classSecrets[cls.id]?.delegate_code || '------'}
                           </code>
                           <button 
                             onClick={() => handleCopyCode(classSecrets[cls.id]?.delegate_code)}
-                            className="text-slate-400 hover:text-primary transition-colors"
-                            title="Copier le code délégué"
+                            className="text-slate-500 hover:text-primary transition-colors"
                           >
-                            {copiedCode === classSecrets[cls.id]?.delegate_code ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                            {copiedCode === classSecrets[cls.id]?.delegate_code ? <CheckCircle2 size={16} className="text-success" /> : <Copy size={16} />}
                           </button>
                         </div>
                       </div>
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-slate-400 uppercase">Code Inscription</span>
-                        <div className="flex items-center gap-2">
-                          <code className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">{cls.class_code}</code>
+                      <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Code Inscription</span>
+                        <div className="flex items-center gap-3">
+                          <code className="text-xs font-black text-success tracking-widest font-mono">
+                            {classSecrets[cls.id]?.class_code || '------'}
+                          </code>
                           <button 
-                            onClick={() => handleCopyCode(cls.class_code)}
-                            className="text-slate-400 hover:text-emerald-600 transition-colors"
-                            title="Copier le code d'inscription"
+                            onClick={() => handleCopyCode(classSecrets[cls.id]?.class_code)}
+                            className="text-slate-500 hover:text-success transition-colors"
                           >
-                            {copiedCode === cls.class_code ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                            {copiedCode === classSecrets[cls.id]?.class_code ? <CheckCircle2 size={16} className="text-success" /> : <Copy size={16} />}
                           </button>
                         </div>
-                      </div>
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-slate-400 uppercase">Étudiants</span>
-                        <span className="text-slate-700 dark:text-slate-300">{cls.studentCount || 0}</span>
                       </div>
                     </div>
-                  </Card>
+
+                    <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between relative z-10">
+                      <div className="flex items-center gap-2">
+                        <Users size={14} className="text-slate-600" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{cls.studentCount || 0} Unités Connectées</span>
+                      </div>
+                      <div className="w-2 h-2 rounded-full bg-success shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                    </div>
+                  </GlassCard>
                 ))}
               </div>
 
@@ -660,6 +699,17 @@ export const Admin: React.FC = () => {
                     if (classId) {
                       const batch = writeBatch(db);
                       
+                      // If editing, check if codes changed and delete old ones
+                      if (editingClass && classSecrets[classId]) {
+                        const oldSecrets = classSecrets[classId];
+                        if (oldSecrets.class_code && oldSecrets.class_code !== trimmedClassCode) {
+                          batch.delete(doc(db, 'registration_codes', oldSecrets.class_code));
+                        }
+                        if (oldSecrets.delegate_code && oldSecrets.delegate_code !== trimmedDelegateCode) {
+                          batch.delete(doc(db, 'delegate_codes', oldSecrets.delegate_code));
+                        }
+                      }
+
                       // Registration code
                       if (trimmedClassCode) {
                         const regCodeRef = doc(db, 'registration_codes', trimmedClassCode);
@@ -685,8 +735,10 @@ export const Admin: React.FC = () => {
                     setIsClassModalOpen(false);
                     setEditingClass(null);
                     setNewClassData({ name: '', delegate_code: '', class_code: '', color: '#6C63FF', class_email: '', studentCount: 0 });
-                  } catch (err) {
+                    setSuccess(editingClass ? "Classe modifiée avec succès" : "Classe ajoutée avec succès");
+                  } catch (err: any) {
                     console.error(err);
+                    setError(err.message || "Erreur lors de l'enregistrement de la classe");
                   }
                 }} className="space-y-4">
                   <div className="space-y-1">
@@ -790,65 +842,65 @@ export const Admin: React.FC = () => {
           {activeTab === 'content' && (
             <motion.div 
               key="content"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-8"
+              initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
+              className="space-y-10"
             >
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
                 {/* Polls Management */}
-                <Card className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Vote size={18} className="text-emerald-500" />
-                      Derniers Sondages
+                <GlassCard className="p-8 space-y-8 border-white/5" tilt={false}>
+                  <div className="flex items-center justify-between relative z-10">
+                    <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-3">
+                      <Vote size={22} className="text-success" />
+                      Sondages Actifs
                     </h3>
-                    <Link to="/polls" className="text-xs font-bold text-primary hover:underline">Gérer tout</Link>
+                    <Link to="/polls" className="text-[10px] font-black text-primary uppercase tracking-widest hover:tracking-[0.2em] transition-all">Gérer tout</Link>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-4 relative z-10">
                     {polls.slice(0, 5).map((poll) => (
-                      <div key={poll.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between group">
+                      <div key={poll.id} className="p-5 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-white/10 transition-all">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{poll.question}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">{poll.className} • {poll.totalVotes} votes</p>
+                          <p className="text-sm font-black text-white tracking-tight truncate">{poll.question}</p>
+                          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mt-1">{poll.className} • {poll.totalVotes} votes</p>
                         </div>
                         <button 
                           onClick={() => handleDeleteContent('polls', poll.id)}
-                          className="p-2 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                          className="p-3 text-slate-500 hover:text-danger opacity-0 group-hover:opacity-100 transition-all bg-white/5 rounded-xl"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     ))}
                   </div>
-                </Card>
+                </GlassCard>
 
                 {/* Announcements Management */}
-                <Card className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Megaphone size={18} className="text-rose-500" />
-                      Dernières Annonces
+                <GlassCard className="p-8 space-y-8 border-white/5" tilt={false}>
+                  <div className="flex items-center justify-between relative z-10">
+                    <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-3">
+                      <Megaphone size={22} className="text-danger" />
+                      Annonces Globales
                     </h3>
-                    <Link to="/announcements" className="text-xs font-bold text-primary hover:underline">Gérer tout</Link>
+                    <Link to="/announcements" className="text-[10px] font-black text-primary uppercase tracking-widest hover:tracking-[0.2em] transition-all">Gérer tout</Link>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-4 relative z-10">
                     {announcements.slice(0, 5).map((ann) => (
-                      <div key={ann.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between group">
+                      <div key={ann.id} className="p-5 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-white/10 transition-all">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{ann.title}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">{ann.author} • {ann.priority}</p>
+                          <p className="text-sm font-black text-white tracking-tight truncate">{ann.title}</p>
+                          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mt-1">{ann.author} • {ann.priority}</p>
                         </div>
                         <button 
                           onClick={() => handleDeleteContent('announcements', ann.id)}
-                          className="p-2 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                          className="p-3 text-slate-500 hover:text-danger opacity-0 group-hover:opacity-100 transition-all bg-white/5 rounded-xl"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     ))}
                   </div>
-                </Card>
+                </GlassCard>
               </div>
             </motion.div>
           )}
@@ -856,36 +908,48 @@ export const Admin: React.FC = () => {
           {activeTab === 'logs' && (
             <motion.div 
               key="logs"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
+              initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
+              className="space-y-10"
             >
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Logs d'activité système</h2>
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                <div className="divide-y divide-slate-50 dark:divide-slate-800">
+              <h2 className="text-2xl font-black text-white tracking-tight">Flux de Données Système</h2>
+              <GlassCard className="overflow-hidden border-white/5" tilt={false}>
+                <div className="divide-y divide-white/5 relative z-10">
                   {logs.map((log) => (
-                    <div key={log.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                        <Clock size={18} />
+                    <div key={log.id} className="p-6 flex items-center gap-6 hover:bg-white/5 transition-all group">
+                      <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-600 group-hover:text-primary transition-colors">
+                        <Clock size={20} />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                            <span className="text-indigo-600">{log.actor}</span> {log.action}
+                          <p className="text-sm font-black text-white tracking-tight">
+                            <span className="text-primary">{log.actor}</span> {log.action}
                           </p>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">{fmtDate(log.createdAt)}</span>
+                          <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{fmtDate(log.createdAt)}</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">ID Utilisateur: {log.userId}</p>
+                        <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest mt-1">ID Séquence: {log.userId}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+                {hasMoreLogs && (
+                  <div className="p-8 border-t border-white/5 text-center relative z-10">
+                    <button 
+                      onClick={loadMoreLogs} 
+                      disabled={loadingMoreLogs}
+                      className="px-10 py-4 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] transition-all border border-white/10 disabled:opacity-50"
+                    >
+                      {loadingMoreLogs ? <Spinner /> : "Charger plus de données"}
+                    </button>
+                  </div>
+                )}
+              </GlassCard>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
     </div>
-  );
+  </div>
+);
 };

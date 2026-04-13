@@ -20,15 +20,20 @@ export const notificationService = {
       
       querySnapshot.docs.forEach(userDoc => {
         const notifRef = doc(collection(db, 'notifications'));
-        batch.set(notifRef, {
+        const notificationData: any = {
           userId: userDoc.id,
           title,
           message,
           type,
           isRead: false,
-          link,
           createdAt: new Date().toISOString()
-        });
+        };
+        
+        if (link !== undefined) {
+          notificationData.link = link;
+        }
+        
+        batch.set(notifRef, notificationData);
       });
 
       await batch.commit();
@@ -43,15 +48,20 @@ export const notificationService = {
   async notifyUser(userId: string, title: string, message: string, type: AppNotification['type'] = 'info', link?: string) {
     try {
       const notifRef = doc(collection(db, 'notifications'));
-      await writeBatch(db).set(notifRef, {
+      const notificationData: any = {
         userId,
         title,
         message,
         type,
         isRead: false,
-        link,
         createdAt: new Date().toISOString()
-      }).commit();
+      };
+      
+      if (link !== undefined) {
+        notificationData.link = link;
+      }
+      
+      await writeBatch(db).set(notifRef, notificationData).commit();
     } catch (err) {
       console.error("🔥 Error sending user notification:", err);
     }

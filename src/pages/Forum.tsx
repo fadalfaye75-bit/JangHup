@@ -32,8 +32,10 @@ import {
   Filter,
   X,
   Send,
-  Bell
+  Bell,
+  Zap
 } from 'lucide-react';
+import { GlassCard } from '../components/ui/GlassCard';
 import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { fmtDate } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -66,21 +68,21 @@ const VoteButtons = React.memo<{
   vertical?: boolean;
 }>(({ targetId, score, userVote, onVote, vertical = true }) => {
   return (
-    <div className={`flex ${vertical ? 'flex-col items-center' : 'items-center gap-2'} bg-slate-50 dark:bg-white/5 rounded-xl p-1`}>
+    <div className={`flex ${vertical ? 'flex-col items-center' : 'items-center gap-2'} bg-white/5 rounded-2xl p-2 border border-white/10 shadow-inner backdrop-blur-md`}>
       <button 
         onClick={(e) => { e.stopPropagation(); onVote('up'); }}
-        className={`p-1.5 rounded-lg transition-all ${userVote === 'up' ? 'text-warning bg-warning/10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+        className={`p-2.5 rounded-xl transition-all duration-500 ${userVote === 'up' ? 'text-warning bg-warning/20 shadow-[0_0_20px_rgba(255,184,0,0.3)] scale-110' : 'text-slate-500 hover:text-white hover:bg-white/10'}`}
       >
-        <ArrowBigUp size={vertical ? 24 : 20} fill={userVote === 'up' ? 'currentColor' : 'none'} />
+        <ArrowBigUp size={vertical ? 26 : 22} fill={userVote === 'up' ? 'currentColor' : 'none'} />
       </button>
-      <span className={`font-bold text-sm ${userVote === 'up' ? 'text-warning' : userVote === 'down' ? 'text-primary' : 'text-slate-600 dark:text-slate-300'}`}>
+      <span className={`font-black text-sm tracking-tighter my-1 ${userVote === 'up' ? 'text-warning' : userVote === 'down' ? 'text-primary' : 'text-slate-400'}`}>
         {score}
       </span>
       <button 
         onClick={(e) => { e.stopPropagation(); onVote('down'); }}
-        className={`p-1.5 rounded-lg transition-all ${userVote === 'down' ? 'text-primary bg-primary/10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+        className={`p-2.5 rounded-xl transition-all duration-500 ${userVote === 'down' ? 'text-primary bg-primary/20 shadow-[0_0_20px_rgba(108,99,255,0.3)] scale-110' : 'text-slate-500 hover:text-white hover:bg-white/10'}`}
       >
-        <ArrowBigDown size={vertical ? 24 : 20} fill={userVote === 'down' ? 'currentColor' : 'none'} />
+        <ArrowBigDown size={vertical ? 26 : 22} fill={userVote === 'down' ? 'currentColor' : 'none'} />
       </button>
     </div>
   );
@@ -196,18 +198,19 @@ const PostItem = React.memo<{
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ y: -4 }}
-      className="group mb-4"
+      initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+      transition={{ type: "spring", stiffness: 200, damping: 25 }}
+      className="group mb-8"
     >
-      <Card 
-        className="flex gap-4 p-0 overflow-hidden cursor-pointer hover:border-primary/30 transition-all"
+      <GlassCard 
+        className="flex gap-0 p-0 overflow-hidden cursor-pointer border-white/5 hover:border-primary/30 transition-all duration-500"
         onClick={() => setSelectedPost(post)}
+        tilt={true}
       >
         {/* Vote Sidebar */}
-        <div className="w-14 bg-slate-50/50 dark:bg-white/[0.02] flex flex-col items-center py-4 border-r border-slate-100 dark:border-white/5">
+        <div className="w-20 bg-white/[0.02] flex flex-col items-center py-8 border-r border-white/5 relative z-10">
           <VoteButtons 
             targetId={post.id} 
             score={post.votesScore} 
@@ -217,55 +220,63 @@ const PostItem = React.memo<{
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <UserIcon size={12} />
+        <div className="flex-1 p-8 relative z-10">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                <UserIcon size={16} />
               </div>
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{post.authorName}</span>
-              <span className="text-xs text-slate-400">• {fmtDate(post.createdAt)}</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none mb-1">{post.authorName}</span>
+                <span className="text-[9px] text-slate-500 font-black uppercase tracking-tighter">{fmtDate(post.createdAt)}</span>
+              </div>
               {new Date(post.createdAt).getTime() > Date.now() - 86400000 && (
-                <Badge type="success" className="text-[8px] px-1.5 py-0.5">Nouveau</Badge>
+                <div className="px-2.5 py-0.5 bg-success/10 text-success rounded-full text-[8px] font-black uppercase tracking-widest border border-success/20 ml-2 animate-pulse">
+                  Nouveau
+                </div>
               )}
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <button 
                 onClick={(e) => { e.stopPropagation(); handleShareWhatsApp(post); }}
-                className="p-2 text-slate-400 hover:text-[#25D366] transition-colors"
+                className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-[#25D366] rounded-xl transition-all"
               >
-                <Share2 size={16} />
+                <Share2 size={18} />
               </button>
               {(user?.role === UserRole.ADMIN || user?.id === post.userId) && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: post.id, type: 'post' }); }}
-                  className="p-2 text-slate-400 hover:text-danger transition-colors"
+                  className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-danger rounded-xl transition-all"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               )}
             </div>
           </div>
 
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-primary transition-colors">
+          <h3 className="text-2xl font-black text-white mb-4 tracking-tight group-hover:text-primary transition-colors duration-500 leading-tight">
             {post.title}
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed">
+          <p className="text-sm text-slate-400 line-clamp-2 mb-8 leading-relaxed font-medium group-hover:text-slate-300 transition-colors duration-500">
             {post.content}
           </p>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
-              <MessageSquare size={16} />
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+                <MessageSquare size={14} className="text-primary" />
+              </div>
               {post.commentsCount} commentaires
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
-              <Filter size={14} />
+            <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+                <Filter size={14} className="text-primary" />
+              </div>
               {post.className}
             </div>
           </div>
         </div>
-      </Card>
+      </GlassCard>
     </motion.div>
   );
 });
@@ -549,7 +560,7 @@ export const Forum: React.FC = () => {
   if (postsError) return <ErrBox message={postsError} />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pb-20 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 pb-20 space-y-10">
       <ConfirmModal 
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
@@ -558,88 +569,106 @@ export const Forum: React.FC = () => {
         message="Cette action est irréversible. Êtes-vous sûr ?"
       />
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <SecHdr 
-          title="Forum Communautaire" 
-          subtitle={`Échangez avec vos camarades de la classe ${user?.class_name}`}
-        />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div className="space-y-1">
+          <h1 className="heading-futuristic">Agora Digitale</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            Espace de discussion libre pour la classe {user?.class_name}
+          </p>
+        </div>
         
-        <Btn onClick={() => setIsNewPostModalOpen(true)} className="lg:mb-8">
+        <button 
+          onClick={() => setIsNewPostModalOpen(true)} 
+          className="btn-futuristic-primary px-10 py-4 flex items-center gap-3 self-start lg:self-center"
+        >
           <Plus size={20} />
-          Nouvelle discussion
-        </Btn>
+          <span className="font-black uppercase tracking-widest text-xs">Nouvelle Discussion</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Sidebar - Trending & Stats */}
-        <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
-          <Card className="p-5">
-            <div className="flex items-center gap-2 mb-4 text-primary font-bold">
-              <TrendingUp size={20} />
-              <span>Tendances</span>
+        <div className="lg:col-span-3 space-y-8 order-2 lg:order-1">
+          <GlassCard className="p-8 border-white/5 shadow-2xl" tilt={false}>
+            <div className="flex items-center gap-3 mb-8 text-primary relative z-10">
+              <TrendingUp size={24} />
+              <span className="font-black uppercase tracking-widest text-xs">Tendances</span>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-8 relative z-10">
               {posts.slice(0, 3).map((p, i) => (
                 <div key={p.id} className="group cursor-pointer" onClick={() => setSelectedPost(p)}>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">#{i + 1} • {p.className}</div>
-                  <div className="text-sm font-bold text-slate-800 dark:text-white group-hover:text-primary transition-colors line-clamp-1">{p.title}</div>
-                  <div className="text-xs text-slate-500 mt-1">{p.votesScore} votes • {p.commentsCount} comm.</div>
+                  <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3">
+                    <span className="text-primary mr-2">0{i + 1}</span>
+                    {p.className}
+                  </div>
+                  <div className="text-sm font-black text-white group-hover:text-primary transition-colors line-clamp-2 tracking-tight leading-tight">
+                    {p.title}
+                  </div>
+                  <div className="flex items-center gap-4 mt-4">
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                      {p.votesScore} votes
+                    </div>
+                    <div className="w-1 h-1 rounded-full bg-slate-800" />
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                      {p.commentsCount} comm.
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-          </Card>
+          </GlassCard>
 
-          <Card className="p-5 bg-primary/5 border-primary/10">
-            <div className="flex items-center gap-2 mb-2 text-primary font-bold">
-              <Bell size={20} />
-              <span>Notifications</span>
+          <GlassCard className="p-8 bg-primary/5 border-primary/20 shadow-[0_0_30px_rgba(108,99,255,0.1)]" tilt={true}>
+            <div className="flex items-center gap-3 mb-4 text-primary relative z-10">
+              <Zap size={24} className="animate-pulse" />
+              <span className="font-black uppercase tracking-widest text-xs">Flux d'Activité</span>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Restez informé des réponses à vos messages et des mentions.
+            <p className="text-[11px] text-slate-400 leading-relaxed font-medium relative z-10">
+              Restez connecté aux dernières interactions. Le système vous notifiera en temps réel des réponses et mentions.
             </p>
-          </Card>
+          </GlassCard>
         </div>
 
         {/* Main Feed */}
-        <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
+        <div className="lg:col-span-9 space-y-8 order-1 lg:order-2">
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-slate-900 p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <GlassCard className="flex flex-col md:flex-row gap-6 p-6 rounded-[32px] border-white/5 shadow-2xl" tilt={false}>
+            <div className="relative flex-1 group z-10">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
               <input 
                 type="text" 
-                placeholder="Rechercher une discussion..." 
+                placeholder="Rechercher dans l'Agora..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-sm"
+                className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-white placeholder:text-slate-700"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3 z-10">
               <button 
                 onClick={() => setSortBy('recent')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${sortBy === 'recent' ? 'bg-primary text-white' : 'bg-slate-50 dark:bg-white/5 text-slate-500'}`}
+                className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${sortBy === 'recent' ? 'bg-primary text-white shadow-[0_0_20px_rgba(108,99,255,0.3)]' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
               >
                 Récents
               </button>
               <button 
                 onClick={() => setSortBy('top')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${sortBy === 'top' ? 'bg-primary text-white' : 'bg-slate-50 dark:bg-white/5 text-slate-500'}`}
+                className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${sortBy === 'top' ? 'bg-primary text-white shadow-[0_0_20px_rgba(108,99,255,0.3)]' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
               >
                 Populaires
               </button>
             </div>
-          </div>
+          </GlassCard>
 
           {/* Posts List */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             {postsLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <Card key={i} className="flex gap-4 p-4">
-                  <Skeleton className="w-12 h-16 rounded-xl" />
-                  <div className="flex-1 space-y-3">
-                    <Skeleton className="h-4 w-1/4" />
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-12 w-full" />
+                <Card key={i} className="flex gap-6 p-6">
+                  <Skeleton className="w-16 h-24 rounded-2xl" />
+                  <div className="flex-1 space-y-4">
+                    <Skeleton className="h-5 w-1/4 rounded-lg" />
+                    <Skeleton className="h-8 w-3/4 rounded-lg" />
+                    <Skeleton className="h-16 w-full rounded-xl" />
                   </div>
                 </Card>
               ))
@@ -681,25 +710,28 @@ export const Forum: React.FC = () => {
                 </div>
                 
                 {hasMore && !debouncedSearch && (
-                  <div className="flex justify-center pt-4">
-                    <Btn 
-                      variant="secondary" 
+                  <div className="flex justify-center pt-8">
+                    <button 
                       onClick={loadMore} 
                       disabled={loadingMore}
+                      className="px-10 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/10 transition-all disabled:opacity-50"
                     >
-                      {loadingMore ? <Spinner size={18} /> : 'Charger plus'}
-                    </Btn>
+                      {loadingMore ? <Spinner size={18} /> : 'Charger plus de données'}
+                    </button>
                   </div>
                 )}
               </>
             ) : (
-              <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-[2rem] border border-dashed border-slate-200 dark:border-white/10">
-                <MessageSquare size={48} className="mx-auto text-slate-200 dark:text-white/5 mb-4" />
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Aucune discussion</h3>
-                <p className="text-slate-500 max-w-xs mx-auto mt-2">Soyez le premier à lancer une discussion dans votre classe !</p>
-                <Btn variant="secondary" className="mt-6" onClick={() => setIsNewPostModalOpen(true)}>
+              <div className="text-center py-24 glass-ultra rounded-[40px] border-2 border-dashed border-white/5">
+                <MessageSquare size={64} className="mx-auto text-slate-700 mb-6" />
+                <h3 className="text-xl font-black text-white tracking-tight">Aucune discussion</h3>
+                <p className="text-slate-500 font-medium mt-2 max-w-xs mx-auto">Soyez le premier à initialiser un flux de discussion dans votre classe !</p>
+                <button 
+                  onClick={() => setIsNewPostModalOpen(true)}
+                  className="mt-8 text-[10px] font-black uppercase tracking-widest text-primary hover:text-white transition-colors"
+                >
                   Lancer un sujet
-                </Btn>
+                </button>
               </div>
             )}
           </div>

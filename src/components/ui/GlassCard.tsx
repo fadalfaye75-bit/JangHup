@@ -5,9 +5,10 @@ interface GlassCardProps {
   children: React.ReactNode;
   className?: string;
   tilt?: boolean;
+  onClick?: () => void;
 }
 
-export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', tilt = true }) => {
+export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', tilt = true, onClick }) => {
   const ref = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -41,6 +42,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', 
       ref={ref}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onClick={onClick}
       style={{
         rotateX: tilt ? rotateX : 0,
         rotateY: tilt ? rotateY : 0,

@@ -19,20 +19,25 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        ((request.auth.token.email == "fadalfaye75@gmail.com" && request.auth.token.email_verified == true) || 
+        (request.auth.token.email == "fadalfaye75@gmail.com" || 
          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN'));
+          getUserData().get('role', '') == 'ADMIN'));
     }
 
     function isDelegate() {
-      return isAdmin() || (isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'DELEGATE');
+      return isAuthenticated() && 
+        (isAdmin() || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          getUserData().get('role', '') == 'DELEGATE'));
+    }
+
+    function isValidString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
     }
 
     function getUserClass() {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.class_name : '';
+        getUserData().get('class_name', '') : '';
     }
 
     // ===============================================================
@@ -66,7 +71,8 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow read: if isAuthenticated();
+      allow get: if true;
+      allow list: if isAuthenticated();
       allow write: if isAdmin();
     }
 
@@ -119,7 +125,10 @@ service cloud.firestore {
 
     match /posts/{postId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isAuthenticated() && (isAdmin() || request.resource.data.className == getUserClass());
+      allow create: if isAuthenticated() && 
+                      (isAdmin() || request.resource.data.className == getUserClass()) &&
+                      isValidString(request.resource.data.content, 5000) &&
+                      isValidString(request.resource.data.title, 200);
       allow update: if isAdmin() || isOwner(resource.data.userId) || 
                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votesScore', 'commentsCount', 'updatedAt']));
       allow delete: if isAdmin() || isOwner(resource.data.userId);
@@ -127,7 +136,7 @@ service cloud.firestore {
 
     match /comments/{commentId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.get('className', '') == getUserClass() || resource.data.get('postId', '') != '');
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidString(request.resource.data.content, 1000);
       allow update: if isAdmin() || isOwner(resource.data.userId) ||
                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votesScore', 'updatedAt']));
       allow delete: if isAdmin() || isOwner(resource.data.userId);

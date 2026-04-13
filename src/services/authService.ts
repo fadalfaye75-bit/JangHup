@@ -19,6 +19,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { User, SchoolClass, UserRole } from '../../types';
+import { handleFirestoreError, OperationType } from '../../lib/hooks';
 
 export const authService = {
   async loginUser(email: string, password: string) {
@@ -49,21 +50,35 @@ export const authService = {
     try {
       // 1. Validate class code first using the new registration_codes collection
       const codeDocRef = doc(db, 'registration_codes', classCode.toUpperCase().trim());
-      const codeDoc = await getDoc(codeDocRef);
+      let codeDoc;
+      try {
+        codeDoc = await getDoc(codeDocRef);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `registration_codes/${classCode}`);
+      }
       
-      if (!codeDoc.exists()) {
+      if (!codeDoc?.exists()) {
         throw new Error("Code d'inscription invalide. Veuillez vérifier le code fourni par votre délégué.");
       }
 
       const { className, classId } = codeDoc.data() as { className: string, classId: string };
 
-      // Fetch class info for the return value
-      const classDoc = await getDoc(doc(db, 'classes', classId));
-      const classData = classDoc.exists() ? { id: classDoc.id, ...classDoc.data() } as SchoolClass : null;
+      if (!className || !classId) {
+        throw new Error("Données du code d'inscription corrompues. Veuillez contacter un administrateur.");
+      }
 
       // 2. Create auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
+
+      // Fetch class info for the return value (now authenticated)
+      let classData: SchoolClass | null = null;
+      try {
+        const classDoc = await getDoc(doc(db, 'classes', classId));
+        classData = classDoc.exists() ? { id: classDoc.id, ...classDoc.data() } as SchoolClass : null;
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `classes/${classId}`);
+      }
 
       const userDocRef = doc(db, 'users', firebaseUser.uid);
       const publicDocRef = doc(db, 'users_public', firebaseUser.uid);
@@ -86,7 +101,12 @@ export const authService = {
       const batch = writeBatch(db);
       batch.set(userDocRef, newUser);
       batch.set(publicDocRef, publicUser);
-      await batch.commit();
+      
+      try {
+        await batch.commit();
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, 'registration_batch');
+      }
 
       return { user: newUser, classInfo: classData };
     } catch (error: any) {
@@ -103,9 +123,14 @@ export const authService = {
 
       const userDocRef = doc(db, 'users', firebaseUser.uid);
       const publicDocRef = doc(db, 'users_public', firebaseUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      let userDoc;
+      try {
+        userDoc = await getDoc(userDocRef);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
+      }
 
-      if (!userDoc.exists()) {
+      if (!userDoc?.exists()) {
         // First time admin login
         const newUser: User = {
           id: firebaseUser.uid,
@@ -123,7 +148,12 @@ export const authService = {
         const batch = writeBatch(db);
         batch.set(userDocRef, newUser);
         batch.set(publicDocRef, publicUser);
-        await batch.commit();
+        
+        try {
+          await batch.commit();
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, 'admin_init_batch');
+        }
         
         return newUser;
       }

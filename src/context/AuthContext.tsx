@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { User, SchoolClass, UserRole } from '../../types';
 import { authService } from '../services/authService';
@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (userData.class_name !== lastClassName) {
                 lastClassName = userData.class_name;
                 const classesRef = collection(db, 'classes');
-                const q = query(classesRef, where('name', '==', userData.class_name));
+                const q = query(classesRef, where('name', '==', userData.class_name), limit(1));
                 const querySnapshot = await getDocs(q);
                 if (!querySnapshot.empty) {
                   setClassInfo(querySnapshot.docs[0].data() as SchoolClass);
@@ -67,7 +67,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setClassInfo(null);
         lastClassName = null;
         setLoading(false);
-        if (unsubProfile) unsubProfile();
+        if (unsubProfile) {
+          unsubProfile();
+          unsubProfile = null;
+        }
       }
     });
 

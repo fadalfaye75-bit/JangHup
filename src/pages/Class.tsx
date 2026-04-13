@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { User, UserRole, SchoolClass } from '../../types';
 import { Card, Badge, Spinner, ErrBox, Modal, Btn, ConfirmModal } from '../../components/ui';
+import { GlassCard } from '../components/ui/GlassCard';
 import { 
   Users, 
   UserPlus, 
@@ -164,31 +165,30 @@ export const Class: React.FC = () => {
   );
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-20">
+    <div className="max-w-7xl mx-auto px-4 pb-20 space-y-12">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
         <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Ma Classe : {user.class_name}</h1>
-            <Badge type="primary" className="text-sm px-3 py-1">{members.length} membres</Badge>
-          </div>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Gérez votre environnement de classe et collaborez avec vos camarades.</p>
+          <h1 className="heading-futuristic">Nexus de Classe</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            {user.class_name} • {members.length} Unités Connectées
+          </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex gap-4 w-full lg:w-auto">
           <button 
             onClick={() => setIsInviteModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 dark:shadow-none hover:scale-105 transition-transform"
+            className="btn-futuristic-primary px-10 py-4 flex items-center justify-center gap-3 flex-1 lg:flex-none"
           >
-            <UserPlus size={18} />
-            Inviter
+            <UserPlus size={20} />
+            <span className="font-black uppercase tracking-widest text-xs">Inviter</span>
           </button>
           {user.role === UserRole.STUDENT && (
             <button 
               onClick={() => setIsConfirmLeaveOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 text-rose-500 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-sm hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+              className="px-10 py-4 bg-danger/10 text-danger border border-danger/20 rounded-[24px] font-black uppercase tracking-widest text-xs hover:bg-danger/20 transition-all flex items-center justify-center gap-3 flex-1 lg:flex-none"
             >
-              <LogOut size={18} />
+              <LogOut size={20} />
               Quitter
             </button>
           )}
@@ -199,108 +199,120 @@ export const Class: React.FC = () => {
         isOpen={isConfirmLeaveOpen}
         onClose={() => setIsConfirmLeaveOpen(false)}
         onConfirm={handleLeaveClass}
-        title="Quitter la classe"
-        message="Êtes-vous sûr de vouloir quitter cette classe ? Vous ne pourrez plus voir les annonces et les ressources de ce groupe."
+        title="Rupture de Connexion"
+        message="Êtes-vous sûr de vouloir quitter cette classe ? Vous perdrez l'accès aux transmissions et ressources de ce nexus."
         type="danger"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Left Column: Members List */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+        <div className="lg:col-span-2 space-y-8">
+          <div className="relative group">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
             <input 
               type="text" 
-              placeholder="Rechercher un membre..." 
+              placeholder="Rechercher un membre du nexus..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm shadow-sm"
+              className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-[24px] outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white placeholder:text-slate-700 font-medium"
             />
           </div>
 
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-            <div className="divide-y divide-slate-50 dark:divide-slate-800">
-              <AnimatePresence mode="popLayout">
-                {filteredMembers.map((member) => (
-                  <motion.div 
-                    key={member.id}
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <img 
-                          src={member.avatar || `https://ui-avatars.com/api/?name=${member.name}&background=random`} 
-                          alt={member.name} 
-                          className="w-12 h-12 rounded-full object-cover border-2 border-white dark:border-slate-800 shadow-sm"
-                          loading="lazy"
-                        />
-                        {member.role === UserRole.ADMIN && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
-                            <Shield size={10} />
+          <div className="space-y-4">
+            <AnimatePresence mode="popLayout">
+              {filteredMembers.map((member) => (
+                <motion.div 
+                  key={member.id}
+                  layout
+                  initial={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+                  transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                >
+                  <GlassCard className="p-5 border-white/5 hover:border-primary/30 transition-all duration-500 group" tilt={false}>
+                    <div className="flex items-center justify-between relative z-10">
+                      <div className="flex items-center gap-5">
+                        <div className="relative">
+                          <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl group-hover:border-primary/50 transition-all duration-500">
+                            <img 
+                              src={member.avatar || `https://ui-avatars.com/api/?name=${member.name}&background=random`} 
+                              alt={member.name} 
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
                           </div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-slate-900 dark:text-white">{member.name} {member.id === user.id && "(Vous)"}</h3>
-                          <Badge type={member.role === UserRole.ADMIN ? 'danger' : member.role === UserRole.DELEGATE ? 'warning' : 'primary'}>
-                            {member.role}
-                          </Badge>
+                          {member.role === UserRole.ADMIN && (
+                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center border-2 border-[#0F0F1A] shadow-lg">
+                              <Shield size={12} />
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          <Mail size={12} />
-                          {member.email}
-                        </p>
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-black text-white tracking-tight group-hover:text-primary transition-colors">{member.name} {member.id === user.id && "(Moi)"}</h3>
+                            <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+                              member.role === UserRole.ADMIN 
+                                ? 'bg-danger/10 text-danger border-danger/20' 
+                                : member.role === UserRole.DELEGATE 
+                                  ? 'bg-warning/10 text-warning border-warning/20' 
+                                  : 'bg-primary/10 text-primary border-primary/20'
+                            }`}>
+                              {member.role}
+                            </div>
+                          </div>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 mt-1">
+                            <Mail size={12} className="text-primary opacity-50" />
+                            {member.email}
+                          </p>
+                        </div>
                       </div>
+                      <button className="p-3 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-white rounded-xl transition-all opacity-0 group-hover:opacity-100">
+                        <MoreVertical size={20} />
+                      </button>
                     </div>
-                    <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors opacity-0 group-hover:opacity-100">
-                      <MoreVertical size={18} />
-                    </button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+                  </GlassCard>
+                </motion.div>
+              ))}
+            </AnimatePresence>
             {filteredMembers.length === 0 && (
-              <div className="p-12 text-center">
-                <p className="text-slate-400 font-medium">Aucun membre trouvé.</p>
+              <div className="text-center py-20 glass-ultra rounded-[40px] border-2 border-dashed border-white/5">
+                <Users size={64} className="mx-auto text-slate-800 mb-6" />
+                <p className="text-slate-500 font-black uppercase tracking-widest text-xs">Aucun membre détecté dans ce secteur.</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Right Column: Class Info & Actions */}
-        <div className="space-y-6">
-          <Card className="space-y-6 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 dark:bg-primary/20 text-primary rounded-xl flex items-center justify-center">
-                <Key size={20} />
+        <div className="space-y-10">
+          <GlassCard className="p-8 space-y-8 border-white/5 hover:border-primary/30 transition-all duration-500" tilt={true}>
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center border border-primary/20">
+                <Key size={24} />
               </div>
-              <h2 className="font-bold text-slate-900 dark:text-white">Accès Délégué</h2>
+              <h2 className="text-xl font-black text-white tracking-tight">Accès Délégué</h2>
             </div>
             
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              Le code délégué permet à un étudiant de devenir délégué de cette classe et d'accéder aux outils de gestion.
+            <p className="text-xs text-slate-500 font-medium leading-relaxed relative z-10">
+              Le protocole délégué autorise l'accès aux outils de gestion stratégique du nexus.
             </p>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3">
+            <div className="p-6 bg-white/5 rounded-[32px] border border-white/5 space-y-4 relative z-10">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Code Actuel</span>
+                <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Code de Liaison</span>
                 {(user.role === UserRole.ADMIN || user.role === UserRole.DELEGATE) && (
                   <button 
                     onClick={handleGenerateNewCode}
-                    className="text-primary hover:text-primary/80 transition-colors"
-                    title="Générer un nouveau code"
+                    className="p-2 bg-white/5 hover:bg-white/10 text-primary rounded-xl transition-all"
+                    title="Régénérer"
                   >
                     <RefreshCw size={14} />
                   </button>
                 )}
               </div>
               <div className="flex items-center justify-between gap-4">
-                <code className="text-xl font-black text-slate-900 dark:text-white tracking-widest font-mono">
+                <code className="text-3xl font-black text-white tracking-[0.2em] font-mono">
                   {(user.role === UserRole.ADMIN || user.role === UserRole.DELEGATE) 
                     ? (classSecret?.delegate_code || classInfo?.delegate_code || '------') 
                     : '••••••'}
@@ -308,42 +320,43 @@ export const Class: React.FC = () => {
                 {(user.role === UserRole.ADMIN || user.role === UserRole.DELEGATE) && (
                   <button 
                     onClick={handleCopyCode}
-                    className={`p-2 rounded-lg transition-all ${copied ? 'bg-accent text-white' : 'bg-white dark:bg-slate-900 text-slate-400 hover:text-primary shadow-sm'}`}
+                    className={`p-4 rounded-2xl transition-all shadow-2xl ${copied ? 'bg-success text-white' : 'bg-primary text-white hover:scale-110'}`}
                   >
-                    {copied ? <Check size={18} /> : <Copy size={18} />}
+                    {copied ? <Check size={20} /> : <Copy size={20} />}
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-                <span>Statistiques</span>
+            <div className="pt-8 border-t border-white/5 relative z-10">
+              <div className="flex items-center justify-between text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] mb-6">
+                <span>Métriques du Nexus</span>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Étudiants</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{members.filter(m => m.role === UserRole.STUDENT).length}</p>
+                <div className="p-5 bg-white/5 rounded-[24px] border border-white/5">
+                  <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Étudiants</p>
+                  <p className="text-2xl font-black text-white tracking-tight">{members.filter(m => m.role === UserRole.STUDENT).length}</p>
                 </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Délégués</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{members.filter(m => m.role === UserRole.DELEGATE).length}</p>
+                <div className="p-5 bg-white/5 rounded-[24px] border border-white/5">
+                  <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Délégués</p>
+                  <p className="text-2xl font-black text-white tracking-tight">{members.filter(m => m.role === UserRole.DELEGATE).length}</p>
                 </div>
               </div>
             </div>
-          </Card>
+          </GlassCard>
 
-          <Card className="bg-primary text-white border-none shadow-xl shadow-primary/20 dark:shadow-none hover:-translate-y-1 hover:shadow-2xl transition-all duration-300">
-            <div className="space-y-4">
-              <h3 className="font-bold text-lg">Besoin d'aide ?</h3>
-              <p className="text-primary-foreground/80 text-sm leading-relaxed">
-                Si vous rencontrez des problèmes avec votre classe ou si vous souhaitez changer de groupe, contactez l'administration.
+          <GlassCard className="p-8 bg-gradient-to-br from-primary to-accent text-white border-none shadow-[0_0_50px_rgba(108,99,255,0.3)] group overflow-hidden" tilt={true}>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none" />
+            <div className="space-y-6 relative z-10">
+              <h3 className="text-2xl font-black tracking-tight">Assistance Nexus</h3>
+              <p className="text-white/70 text-sm font-medium leading-relaxed">
+                En cas de désynchronisation ou de besoin de transfert de nexus, contactez le centre de contrôle.
               </p>
-              <button className="w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-colors border border-white/20">
-                Contacter le support
+              <button className="w-full py-5 bg-white/10 hover:bg-white/20 rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] transition-all border border-white/20 backdrop-blur-md">
+                Ouvrir un Canal de Support
               </button>
             </div>
-          </Card>
+          </GlassCard>
         </div>
       </div>
 
@@ -351,25 +364,25 @@ export const Class: React.FC = () => {
       <Modal 
         isOpen={isInviteModalOpen} 
         onClose={() => setIsInviteModalOpen(false)}
-        title="Inviter des camarades"
+        title="Synchronisation du Nexus"
       >
-        <div className="space-y-6">
-          <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-center space-y-4">
-            <div className="w-16 h-16 bg-primary/10 dark:bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto">
-              <UserPlus size={32} />
+        <div className="space-y-8 p-2">
+          <div className="p-8 bg-white/5 rounded-[32px] border border-white/10 text-center space-y-6">
+            <div className="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto border border-primary/20">
+              <UserPlus size={40} />
             </div>
-            <div className="space-y-1">
-              <h3 className="font-bold text-slate-900 dark:text-white">Partager l'accès</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Les étudiants peuvent rejoindre cette classe en la sélectionnant lors de leur inscription ou depuis leur profil.
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-white tracking-tight">Inviter des Unités</h3>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                Les étudiants peuvent rejoindre ce nexus en utilisant le code d'identification lors de leur phase d'initialisation.
               </p>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nom de la classe à partager</label>
-            <div className="flex gap-2">
-              <div className="flex-1 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl font-mono font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">Identifiant du Nexus</label>
+            <div className="flex gap-3">
+              <div className="flex-1 p-5 bg-white/5 rounded-[24px] font-mono font-black text-white border border-white/10 tracking-widest">
                 {user.class_name}
               </div>
               <button 
@@ -378,14 +391,14 @@ export const Class: React.FC = () => {
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
-                className="px-4 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors"
+                className={`px-6 rounded-[24px] font-black transition-all shadow-2xl ${copied ? 'bg-success text-white' : 'bg-primary text-white hover:scale-105'}`}
               >
-                {copied ? <Check size={20} /> : <Copy size={20} />}
+                {copied ? <Check size={24} /> : <Copy size={24} />}
               </button>
             </div>
           </div>
 
-          <Btn onClick={() => setIsInviteModalOpen(false)} className="w-full">Fermer</Btn>
+          <button onClick={() => setIsInviteModalOpen(false)} className="w-full py-5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-white rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] transition-all border border-white/10">Fermer le Canal</button>
         </div>
       </Modal>
     </div>

@@ -23,16 +23,26 @@ import { Resources } from './src/pages/Resources';
 import { Forum } from './src/pages/Forum';
 import { Notifications } from './src/pages/Notifications';
 
+import { FuturisticBackground } from './src/components/FuturisticBackground';
+
 const ProtectedLayout: React.FC = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-transparent">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin text-primary" size={48} />
-          <p className="text-slate-500 font-medium">Chargement de JangHup...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0F0F1A]">
+        <FuturisticBackground />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-6"
+        >
+          <div className="relative">
+            <Loader2 className="animate-spin text-primary" size={64} />
+            <div className="absolute inset-0 blur-xl bg-primary/20 animate-pulse" />
+          </div>
+          <p className="text-primary font-black tracking-widest uppercase text-sm">Initialisation de JangHup...</p>
+        </motion.div>
       </div>
     );
   }
@@ -43,6 +53,7 @@ const ProtectedLayout: React.FC = () => {
 
   return (
     <Layout>
+      <FuturisticBackground />
       <Outlet />
     </Layout>
   );
@@ -63,10 +74,10 @@ const AnimatedRoutes = () => {
     <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.15, ease: 'easeOut' }}
+        initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
+        animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+        exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         className="h-full"
       >
         <Routes location={location}>
@@ -93,7 +104,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-transparent">
+      <div className="min-h-screen flex items-center justify-center bg-[#0F0F1A]">
+        <FuturisticBackground />
         <Loader2 className="animate-spin text-primary" size={48} />
       </div>
     );
@@ -103,6 +115,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <NotificationListener />
+        <FuturisticBackground />
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
           <Route element={<ProtectedLayout />}>

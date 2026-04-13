@@ -18,6 +18,9 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { SchoolClass } from '../../types';
 
+import { GlassCard } from '../components/ui/GlassCard';
+import { Button } from '../components/ui/Button';
+
 export const Register: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const { registerUser } = useAuth();
   const [name, setName] = useState('');
@@ -27,10 +30,6 @@ export const Register: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    // No longer needed to fetch classes
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,116 +61,117 @@ export const Register: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="space-y-6"
+    >
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm mb-4"
+        className="flex items-center gap-2 text-slate-500 hover:text-primary transition-all font-black text-[9px] uppercase tracking-[0.3em] mb-4 group"
       >
-        <ArrowLeft size={18} /> Retour à la connexion
+        <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> 
+        Retour
       </button>
 
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Créer un compte</h2>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Rejoignez votre classe sur JangHup</p>
+        <h2 className="text-2xl font-black text-white tracking-tighter">Nouveau Profil</h2>
+        <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[9px] mt-1">Initialisation de l'identité</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <AnimatePresence mode="wait">
           {error && (
             <motion.div 
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-2xl text-xs font-bold flex items-center gap-3"
+              initial={{ opacity: 0, height: 0, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, height: 'auto', filter: 'blur(0px)' }}
+              exit={{ opacity: 0, height: 0, filter: 'blur(10px)' }}
+              className="p-4 bg-danger/10 text-danger border border-danger/20 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg overflow-hidden"
             >
-              <AlertCircle size={18} className="shrink-0" /> 
-              <span className="break-words">{error}</span>
+              <AlertCircle size={16} className="shrink-0" /> 
+              <span className="leading-relaxed">{error}</span>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Nom Complet</label>
-          <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type="text" 
-              required
-              placeholder="Prénom Nom" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-slate-900 dark:text-white"
-            />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-1">Nom Complet</label>
+            <div className="relative group">
+              <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors duration-300" size={18} />
+              <input 
+                type="text" 
+                required
+                placeholder="Prénom Nom" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-white text-sm font-medium placeholder:text-slate-600"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-1">Email</label>
+            <div className="relative group">
+              <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors duration-300" size={18} />
+              <input 
+                type="email" 
+                required
+                placeholder="votre@email.com" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-white text-sm font-medium placeholder:text-slate-600"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-1">Code d'Inscription</label>
+            <div className="relative group">
+              <KeyRound className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors duration-300" size={18} />
+              <input 
+                type="text" 
+                required
+                placeholder="Code fourni par votre délégué" 
+                value={classCode}
+                onChange={(e) => setClassCode(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-white text-sm font-medium placeholder:text-slate-600"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-1">Mot de passe</label>
+            <div className="relative group">
+              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors duration-300" size={18} />
+              <input 
+                type={showPassword ? "text" : "password"}
+                required
+                placeholder="••••••••" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-14 pr-14 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-white text-sm font-medium placeholder:text-slate-600"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-primary transition-colors duration-300"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Email</label>
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type="email" 
-              required
-              placeholder="votre@email.com" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-slate-900 dark:text-white"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Code d'Inscription</label>
-          <div className="relative">
-            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type="text" 
-              required
-              placeholder="Code fourni par votre délégué" 
-              value={classCode}
-              onChange={(e) => setClassCode(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-slate-900 dark:text-white"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Mot de passe</label>
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type={showPassword ? "text" : "password"}
-              required
-              placeholder="••••••••" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-slate-900 dark:text-white"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
-            >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-          </div>
-        </div>
-
-        <button
+        <Button
           type="submit"
-          disabled={loading}
-          className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 group mt-4"
+          isLoading={loading}
+          className="w-full py-4 flex items-center justify-center gap-3 group mt-4"
         >
-          {loading ? (
-            <Loader2 className="animate-spin" size={20} />
-          ) : (
-            <>
-              S'inscrire
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            </>
-          )}
-        </button>
+          <span className="font-black uppercase tracking-[0.2em] text-[11px]">Finaliser l'inscription</span>
+          {!loading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
+        </Button>
       </form>
-    </div>
+    </motion.div>
   );
 };

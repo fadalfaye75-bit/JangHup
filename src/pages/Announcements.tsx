@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Announcement, UserRole, AnnouncementReadStatus } from '../../types';
 import { Card, Badge, Spinner, ErrBox, Modal, ConfirmModal } from '../../components/ui';
+import { GlassCard } from '../components/ui/GlassCard';
 import { 
   Plus, 
   Search, 
@@ -273,7 +274,7 @@ export const Announcements: React.FC = () => {
   if (error) return <ErrBox message={error} />;
 
   return (
-    <div className="max-w-xl mx-auto space-y-8 pb-20">
+    <div className="max-w-2xl mx-auto space-y-10 pb-20 px-4">
       <ConfirmModal 
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
@@ -282,19 +283,20 @@ export const Announcements: React.FC = () => {
         message={confirmConfig.message}
         type={confirmConfig.type}
       />
+      
       {/* Header */}
-      <div className="flex items-center justify-between px-4 md:px-0">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Annonces</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-            {unreadCount > 0 ? `${unreadCount} nouvelles annonces` : 'Tout est à jour'}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="heading-futuristic">Annonces</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            {unreadCount > 0 ? `${unreadCount} nouvelles transmissions` : 'Système à jour'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {unreadCount > 0 && (
             <button 
               onClick={handleMarkAllAsRead}
-              className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+              className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-white transition-colors"
             >
               Tout marquer lu
             </button>
@@ -302,30 +304,28 @@ export const Announcements: React.FC = () => {
           {canManage && (
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-110 transition-transform"
+              className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-[0_0_20px_rgba(108,99,255,0.4)] hover:scale-110 transition-transform border border-white/10"
             >
-              <Plus size={20} />
+              <Plus size={24} />
             </button>
           )}
         </div>
       </div>
 
       {/* Search */}
-      <div className="px-4 md:px-0">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Rechercher..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-slate-100 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-          />
-        </div>
+      <div className="relative group">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
+        <input 
+          type="text" 
+          placeholder="Rechercher dans les archives..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-white placeholder:text-slate-600"
+        />
       </div>
 
       {/* Feed */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         <AnimatePresence mode="popLayout">
           {filteredAnnouncements.map((ann) => {
             const isRead = readStatuses[ann.id];
@@ -333,80 +333,77 @@ export const Announcements: React.FC = () => {
               <motion.div
                 key={ann.id}
                 layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="px-0 md:px-0"
+                initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+                transition={{ type: "spring", stiffness: 200, damping: 25 }}
               >
-                <Card className="p-0 border-y md:border hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                <GlassCard className={`p-0 overflow-hidden border-white/5 hover:border-primary/30 transition-all duration-500 group ${!isRead ? 'shadow-[0_0_30px_rgba(108,99,255,0.05)]' : ''}`} tilt={true}>
                   {/* Card Header */}
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent p-[2px]">
-                        <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 font-bold text-sm border-2 border-white dark:border-slate-900">
+                  <div className="p-6 flex items-center justify-between border-b border-white/5 relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary to-accent p-[1px]">
+                        <div className="w-full h-full rounded-2xl bg-[#0F0F1A] flex items-center justify-center text-white font-black text-lg">
                           {ann.author.charAt(0)}
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-slate-900 dark:text-white">{ann.author}</span>
-                          {ann.isPinned && <Pin size={12} className="text-primary fill-primary" />}
-                          {!isRead && <div className="w-2 h-2 rounded-full bg-primary" />}
+                          <span className="font-black text-sm text-white tracking-tight">{ann.author}</span>
+                          {ann.isPinned && <Pin size={14} className="text-primary fill-primary" />}
+                          {!isRead && <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(108,99,255,0.8)]" />}
                         </div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.class_name}</p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{ann.className}</p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <button 
                         onClick={() => handleShareWhatsApp(ann)}
-                        className="p-2 text-slate-400 hover:text-[#25D366] transition-colors"
+                        className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-[#25D366] rounded-xl transition-all"
                         title="Partager sur WhatsApp"
                       >
-                        <Share2 size={16} />
+                        <Share2 size={18} />
                       </button>
                       <button 
                         onClick={() => handleShareEmail(ann)}
-                        className="p-2 text-slate-400 hover:text-primary transition-colors"
+                        className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-primary rounded-xl transition-all"
                         title="Partager par Email"
                       >
-                        <Mail size={16} />
+                        <Mail size={18} />
                       </button>
                       {canManage && (
-                        <div className="flex items-center gap-1">
+                        <>
                           <button 
                             onClick={() => handleTogglePin(ann)}
-                            className={`p-2 transition-colors ${ann.isPinned ? 'text-primary' : 'text-slate-400 hover:text-primary'}`}
+                            className={`p-2.5 bg-white/5 hover:bg-white/10 transition-all rounded-xl ${ann.isPinned ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
                           >
-                            <Pin size={16} />
+                            <Pin size={18} />
                           </button>
                           <button 
                             onClick={() => handleEdit(ann)}
-                            className="p-2 text-slate-400 hover:text-primary transition-colors"
+                            className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-primary rounded-xl transition-all"
                           >
-                            <MoreHorizontal size={16} />
+                            <MoreHorizontal size={18} />
                           </button>
                           <button 
                             onClick={() => handleDelete(ann.id)}
-                            className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                            className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-danger rounded-xl transition-all"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={18} />
                           </button>
-                        </div>
+                        </>
                       )}
-                      <button className="p-2 text-slate-400">
-                        <MoreHorizontal size={18} />
-                      </button>
                     </div>
                   </div>
 
                   {/* Card Content */}
-                  <div className="px-4 pb-4 space-y-3">
-                    <div className="space-y-1">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
+                  <div className="p-6 space-y-4 relative z-10">
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-black text-white leading-tight tracking-tight group-hover:text-primary transition-colors duration-500">
                         {ann.title}
                       </h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
+                      <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-wrap font-medium group-hover:text-slate-300 transition-colors">
                         {ann.content}
                       </p>
                     </div>
@@ -416,48 +413,48 @@ export const Announcements: React.FC = () => {
                         href={ann.link} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+                        className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary hover:text-white transition-colors"
                       >
                         <ExternalLink size={14} />
-                        Voir plus
+                        Accéder à la ressource
                       </a>
                     )}
                   </div>
 
-                  {/* Card Actions (Instagram style) */}
-                  <div className="px-4 py-3 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                  {/* Card Footer */}
+                  <div className="px-6 py-4 bg-white/5 flex items-center justify-between border-t border-white/5 relative z-10">
+                    <div className="flex items-center gap-6">
                       <button 
                         onClick={() => handleMarkAsRead(ann.id)}
-                        className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${isRead ? 'text-slate-400' : 'text-primary'}`}
+                        className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors ${isRead ? 'text-slate-600' : 'text-primary'}`}
                       >
                         {isRead ? <CheckCircle2 size={16} /> : <Eye size={16} />}
-                        {isRead ? 'Lu' : 'Marquer lu'}
+                        {isRead ? 'Archivé' : 'Marquer lu'}
                       </button>
                       {ann.priority === 'urgent' && (
-                        <div className="flex items-center gap-1 text-[10px] font-black text-rose-500 animate-pulse">
-                          <AlertTriangle size={12} />
-                          URGENT
+                        <div className="flex items-center gap-2 text-[10px] font-black text-danger animate-pulse tracking-widest">
+                          <AlertTriangle size={14} />
+                          PRIORITÉ CRITIQUE
                         </div>
                       )}
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                       {fmtDate(ann.createdAt)}
                     </span>
                   </div>
-                </Card>
+                </GlassCard>
               </motion.div>
             );
           })}
         </AnimatePresence>
 
         {filteredAnnouncements.length === 0 && (
-          <div className="text-center py-20 px-4">
-            <div className="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Megaphone size={40} className="text-slate-200" />
+          <div className="text-center py-24 px-6 glass-ultra rounded-[40px] border-2 border-dashed border-white/5">
+            <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
+              <Megaphone size={48} className="text-slate-700" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Aucune annonce</h3>
-            <p className="text-slate-500">Restez à l'écoute pour les prochaines mises à jour.</p>
+            <h3 className="text-xl font-black text-white tracking-tight">Aucune transmission</h3>
+            <p className="text-slate-500 font-medium mt-2">Le canal de communication est actuellement silencieux.</p>
           </div>
         )}
       </div>
@@ -470,37 +467,37 @@ export const Announcements: React.FC = () => {
           setEditingAnn(null);
           setFormData({ title: '', content: '', priority: 'normal', link: '', isPinned: false });
         }} 
-        title={editingAnn ? "Modifier l'annonce" : "Nouvelle annonce"}
+        title={editingAnn ? "Modifier la transmission" : "Nouvelle transmission"}
       >
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-8 p-2">
+          <div className="space-y-6">
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Titre de l'annonce</label>
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Titre de l'annonce</label>
               <input 
                 type="text" 
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-primary transition-all"
-                placeholder="Ex: Changement de salle pour le cours de Math"
+                className="w-full p-5 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white font-medium placeholder:text-slate-600"
+                placeholder="Ex: Changement de terminal..."
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Priorité</label>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Priorité</label>
                 <select 
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-primary transition-all appearance-none"
+                  className="w-full p-5 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white font-medium appearance-none cursor-pointer"
                 >
-                  <option value="normal">Normal</option>
-                  <option value="important">Important</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="normal" className="bg-[#0F0F1A]">Normal</option>
+                  <option value="important" className="bg-[#0F0F1A]">Important</option>
+                  <option value="urgent" className="bg-[#0F0F1A]">Urgent</option>
                 </select>
               </div>
               <div className="flex items-end pb-4">
-                <label className="flex items-center gap-3 cursor-pointer group">
+                <label className="flex items-center gap-4 cursor-pointer group">
                   <div className="relative">
                     <input 
                       type="checkbox" 
@@ -508,51 +505,53 @@ export const Announcements: React.FC = () => {
                       checked={formData.isPinned}
                       onChange={(e) => setFormData({ ...formData, isPinned: e.target.checked })}
                     />
-                    <div className={`w-10 h-6 rounded-full transition-colors ${formData.isPinned ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'}`} />
-                    <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${formData.isPinned ? 'translate-x-4' : ''}`} />
+                    <div className={`w-12 h-7 rounded-full transition-all duration-500 ${formData.isPinned ? 'bg-primary shadow-[0_0_15px_rgba(108,99,255,0.5)]' : 'bg-white/10'}`} />
+                    <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform duration-500 ${formData.isPinned ? 'translate-x-5' : ''}`} />
                   </div>
-                  <span className="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-indigo-500 transition-colors">Épingler</span>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-primary transition-colors">Prioritaire</span>
                 </label>
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Message</label>
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Message</label>
               <textarea 
                 required
                 rows={5}
                 value={formData.content}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                className="w-full p-5 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white font-medium placeholder:text-slate-600 resize-none"
                 placeholder="Écrivez votre message ici..."
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Lien externe (optionnel)</label>
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Lien externe (optionnel)</label>
               <input 
                 type="url" 
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                placeholder="https://example.com"
+                className="w-full p-5 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-white font-medium placeholder:text-slate-600"
+                placeholder="https://..."
               />
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-4 pt-4">
             <button 
               type="button" 
               onClick={() => setIsModalOpen(false)}
-              className="flex-1 py-4 text-sm font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              className="flex-1 py-5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors"
             >
               Annuler
             </button>
             <button 
               type="submit"
-              className="flex-1 py-4 bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-200 hover:scale-105 transition-transform"
+              className="btn-futuristic-primary flex-1 py-5"
             >
-              {editingAnn ? "Mettre à jour" : "Publier l'annonce"}
+              <span className="font-black uppercase tracking-widest text-xs">
+                {editingAnn ? "Mettre à jour" : "Diffuser l'annonce"}
+              </span>
             </button>
           </div>
         </form>
