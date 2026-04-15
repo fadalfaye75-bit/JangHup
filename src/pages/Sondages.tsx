@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { PollAnalytics } from '../components/PollAnalytics';
-import { ConfirmModal, Spinner, ErrBox, GlassCard, Button, Input, Badge, Modal, AppCard, AutoGrid } from '../components/ui';
+import { ConfirmModal, Spinner, ErrBox, GlassCard, Button, Input, Badge, Modal, AppCard, AutoGrid, Avatar } from '../components/ui';
 import { notificationService } from '../services/notificationService';
 import { cn } from '../lib/utils';
 
@@ -220,6 +220,7 @@ export const Sondages: React.FC = () => {
         const pollRef = await addDoc(collection(db, 'polls'), {
           question: newQuestion,
           userId: user.id,
+          authorAvatar: user.avatar || null,
           className: className,
           isActive: true,
           totalVotes: 0,
@@ -372,6 +373,11 @@ export const Sondages: React.FC = () => {
                   header={
                     <div className="flex justify-between items-start w-full gap-3">
                       <div className="flex items-center gap-2">
+                        <Avatar 
+                          src={poll.authorAvatar} 
+                          name="Délégué" 
+                          size="xs" 
+                        />
                         <Badge variant={poll.isActive ? 'success' : 'secondary'}>
                           {poll.isActive ? 'Actif' : 'Clôturé'}
                         </Badge>

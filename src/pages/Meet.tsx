@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTable, insertRow, updateRow, deleteRow } from '../lib/hooks';
 import { MeetLink, UserRole } from '../types';
-import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, AutoGrid } from '../components/ui';
+import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, AutoGrid, Avatar } from '../components/ui';
 import { 
   Plus, 
   Video, 
@@ -73,6 +73,7 @@ export const Meet: React.FC = () => {
         await insertRow('meetings', {
           ...formData,
           userId: user?.id,
+          authorAvatar: user?.avatar || null,
           className: user?.class_name,
           createdAt: new Date().toISOString()
         });
@@ -258,6 +259,11 @@ export const Meet: React.FC = () => {
                   header={
                     <div className="flex justify-between items-start w-full gap-3">
                       <div className="flex items-center gap-2">
+                        <Avatar 
+                          src={meet.authorAvatar} 
+                          name="Délégué" 
+                          size="xs" 
+                        />
                         <div className="w-8 h-8 rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center p-1.5">
                           {getPlatformIcon(meet.platform) ? (
                             <img src={getPlatformIcon(meet.platform)!} alt={meet.platform} className="w-full h-full object-contain" referrerPolicy="no-referrer" />

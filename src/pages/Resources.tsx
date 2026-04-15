@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTable, insertRow, deleteRow, updateRow } from '../lib/hooks';
 import { Resource, UserRole } from '../types';
-import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, AutoGrid } from '../components/ui';
+import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, AutoGrid, Avatar } from '../components/ui';
 import { 
   Plus, 
   Search, 
@@ -329,9 +329,19 @@ export const Resources: React.FC = () => {
                   }
                 >
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="primary">{res.subject}</Badge>
-                      <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(res.createdAt)}</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="primary">{res.subject}</Badge>
+                        <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(res.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Avatar 
+                          src={res.authorAvatar} 
+                          name={res.author} 
+                          size="xs" 
+                        />
+                        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">{res.author}</span>
+                      </div>
                     </div>
                     <p className="text-[13px] text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
                       {res.description || "Aucune description fournie."}

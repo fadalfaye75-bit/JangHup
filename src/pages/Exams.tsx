@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTable, insertRow, updateRow, deleteRow } from '../lib/hooks';
 import { Exam, UserRole } from '../types';
-import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, AutoGrid } from '../components/ui';
+import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, AutoGrid, Avatar } from '../components/ui';
 import { 
   Plus, 
   Calendar, 
@@ -79,6 +79,7 @@ export const Exams: React.FC = () => {
         await insertRow('exams', {
           ...formData,
           userId: user?.id,
+          authorAvatar: user?.avatar || null,
           className: user?.class_name
         });
 
@@ -252,7 +253,14 @@ export const Exams: React.FC = () => {
                         </div>
                       )}
                       <div className="flex items-center justify-between w-full">
-                        <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(exam.date)}</span>
+                        <div className="flex items-center gap-2">
+                          <Avatar 
+                            src={exam.authorAvatar} 
+                            name="Délégué" 
+                            size="xs" 
+                          />
+                          <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(exam.date)}</span>
+                        </div>
                         <Badge variant={isPast ? 'secondary' : left <= 2 ? 'danger' : 'warning'}>
                           {isPast ? 'Terminé' : `J-${left}`}
                         </Badge>

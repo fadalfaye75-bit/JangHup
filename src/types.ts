@@ -61,6 +61,7 @@ export interface Exam {
   room: string;
   notes?: string;
   className: string;
+  authorAvatar?: string;
   createdAt: string;
 }
 
@@ -72,6 +73,7 @@ export interface MeetLink {
   url: string;
   time: string;
   className: string;
+  authorAvatar?: string;
   createdAt: string;
 }
 
@@ -89,6 +91,7 @@ export interface Poll {
   className: string;
   isActive: boolean;
   totalVotes: number;
+  authorAvatar?: string;
   createdAt: string;
   options?: PollOption[];
   userVoteOptionId?: string;
@@ -147,6 +150,7 @@ export interface Post {
   content: string;
   userId: string;
   authorName: string;
+  authorAvatar?: string;
   className: string;
   votesScore: number;
   commentsCount: number;
@@ -160,6 +164,7 @@ export interface Comment {
   parentId: string | null;
   userId: string;
   authorName: string;
+  authorAvatar?: string;
   content: string;
   votesScore: number;
   createdAt: string;
