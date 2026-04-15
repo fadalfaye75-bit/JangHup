@@ -12,7 +12,7 @@ export const Topbar = () => {
  <motion.header
  initial={{ y: -20, opacity: 0 }}
  animate={{ y: 0, opacity: 1 }}
- className="sticky top-4 z-40 mx-4 lg:mx-8 px-6 py-3 bg-[var(--glass-bg)] backdrop-blur-2xl border border-[var(--glass-border)] rounded-2xl flex items-center justify-between shadow-[var(--shadow-soft)]"
+ className="sticky top-4 z-40 mx-4 lg:mx-8 px-6 py-3 bg-[var(--glass-bg)] backdrop-blur-2xl border border-[var(--border-card)] rounded-2xl flex items-center justify-between shadow-[var(--shadow-soft)]"
  >
  <div className="flex items-center flex-1">
  <div className="relative w-full max-w-md group">

@@ -1,924 +1,1145 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { usePaginatedTable, insertRow, updateRow, deleteRow } from '../../lib/hooks';
-import { Post, Comment, Vote, UserRole } from '../../types';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { 
- Card, 
- Badge, 
- SecHdr, 
- Spinner, 
- ErrBox, 
- Btn, 
- Modal, 
- ConfirmModal,
- Skeleton 
-} from '../../components/ui';
-import { 
- Plus, 
- Search, 
- MessageSquare, 
- ArrowBigUp, 
- ArrowBigDown, 
- Share2, 
- Mail, 
- Trash2, 
- MoreVertical,
- User as UserIcon,
- Clock,
- ChevronRight,
- Reply,
- TrendingUp,
- Filter,
- X,
- Send,
- Bell,
- Zap
-} from 'lucide-react';
-import { GlassCard } from '../components/ui/GlassCard';
-import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
-import { fmtDate } from '../../lib/utils';
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  onSnapshot, 
+  addDoc, 
+  serverTimestamp, 
+  getDocs, 
+  limit,
+  updateDoc,
+  arrayUnion,
+  setDoc,
+  deleteDoc,
+  doc
+} from 'firebase/firestore';
+import { db } from '../firebase';
+import { ChatMessage, ChatRoom, UserRole } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
- where, 
- orderBy, 
- collection, 
- query, 
- onSnapshot, 
- doc, 
- getDoc, 
- setDoc, 
- deleteDoc,
- increment,
- writeBatch,
- serverTimestamp,
- getDocs,
- limit,
- startAfter
-} from 'firebase/firestore';
-import { db } from '../../firebase';
+  Send, 
+  Search, 
+  MoreVertical, 
+  ChevronLeft, 
+  User as UserIcon,
+  Clock,
+  Hash,
+  MessageSquare,
+  Paperclip,
+  Smile,
+  Check,
+  CheckCheck,
+  X,
+  Camera,
+  Image as ImageIcon,
+  FileText,
+  UserPlus,
+  CornerUpLeft,
+  Info,
+  Trash2,
+  ChevronDown,
+  CheckCircle,
+  Heart,
+  ThumbsUp,
+  Laugh,
+  Meh,
+  Frown,
+  Angry
+} from 'lucide-react';
+import { cn } from '../lib/utils';
+import { Button, Badge, Spinner, GlassCard } from '../components/ui';
+import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react';
+import { notificationService } from '../services/notificationService';
+
+// --- Constants ---
+
+const WHATSAPP_WALLPAPER = "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')";
+
+const STICKERS = [
+  'https://cdn-icons-png.flaticon.com/512/2584/2584602.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584606.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584610.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584614.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584618.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584622.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584626.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584630.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584634.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584638.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584642.png',
+  'https://cdn-icons-png.flaticon.com/512/2584/2584646.png',
+];
 
 // --- Sub-components ---
 
-const VoteButtons = React.memo<{ 
- targetId: string; 
- score: number; 
- userVote: 'up' | 'down' | null;
- onVote: (type: 'up' | 'down') => void;
- vertical?: boolean;
-}>(({ targetId, score, userVote, onVote, vertical = true }) => {
- return (
- <div className={`flex ${vertical ? 'flex-col items-center' : 'items-center gap-2'} bg-[var(--glass-bg)] rounded-2xl p-2 border border-[var(--glass-border)] shadow-inner backdrop-blur-md`}>
- <button 
- onClick={(e) => { e.stopPropagation(); onVote('up'); }}
- className={`p-2.5 rounded-xl transition-all duration-500 ${userVote === 'up' ? 'text-warning bg-warning/20 shadow-[0_0_20px_rgba(255,184,0,0.3)] scale-110' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--glass-bg-hover)]'}`}
- >
- <ArrowBigUp size={vertical ? 26 : 22} fill={userVote === 'up' ? 'currentColor' : 'none'} />
- </button>
- <span className={`font-black text-sm tracking-tighter my-1 ${userVote === 'up' ? 'text-warning' : userVote === 'down' ? 'text-primary' : 'text-[var(--text-secondary)]'}`}>
- {score}
- </span>
- <button 
- onClick={(e) => { e.stopPropagation(); onVote('down'); }}
- className={`p-2.5 rounded-xl transition-all duration-500 ${userVote === 'down' ? 'text-primary bg-primary/20 shadow-[0_0_20px_rgba(108,99,255,0.3)] scale-110' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--glass-bg-hover)]'}`}
- >
- <ArrowBigDown size={vertical ? 26 : 22} fill={userVote === 'down' ? 'currentColor' : 'none'} />
- </button>
- </div>
- );
-});
+const MessageBubble: React.FC<{ 
+  message: ChatMessage; 
+  isMe: boolean;
+  showAvatar?: boolean;
+  onReply?: (msg: ChatMessage) => void;
+  onDelete?: (id: string) => void;
+  onReaction?: (msgId: string, emoji: string) => void;
+}> = ({ message, isMe, showAvatar = true, onReply, onDelete, onReaction }) => {
+  const { user } = useAuth();
+  const [showActions, setShowActions] = React.useState(false);
+  const time = message.createdAt?.toDate ? message.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const isRead = message.readBy && message.readBy.length > 1; // Simplified logic
 
-const CommentItem = React.memo<{
- comment: Comment;
- allComments: Comment[];
- depth?: number;
- onReply: (parentId: string, authorName: string) => void;
- onDelete: (id: string) => void;
- onVote: (id: string, type: 'up' | 'down') => void;
- userVotes: Record<string, 'up' | 'down'>;
- canDelete: boolean;
-}>(({ comment, allComments, depth = 0, onReply, onDelete, onVote, userVotes, canDelete }) => {
- const replies = allComments.filter(c => c.parentId === comment.id);
- const [isCollapsed, setIsCollapsed] = useState(false);
+  const reactions = message.reactions || {};
+  const hasReactions = Object.keys(reactions).length > 0;
 
- return (
- <div className={`relative ${depth > 0 ? 'ml-4 md:ml-8 mt-4' : 'mt-6'}`}>
- {depth > 0 && (
- <div className="absolute -left-4 md:-left-8 top-0 bottom-0 w-px bg-[var(--glass-bg)]"/>
- )}
- 
- <div className="flex gap-3">
- <div className="flex flex-col items-center gap-2">
- <div className="w-8 h-8 rounded-full bg-[var(--glass-bg)] flex items-center justify-center text-[var(--text-secondary)]">
- <UserIcon size={16} />
- </div>
- {replies.length > 0 && (
- <button 
- onClick={() => setIsCollapsed(!isCollapsed)}
- className="w-6 h-6 rounded-md bg-[var(--bg-secondary)] flex items-center justify-center text-[var(--text-secondary)] hover:text-primary transition-colors"
- >
- <ChevronRight size={14} className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
- </button>
- )}
- </div>
+  const renderText = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(@\[.*?\]\(.*?\))/g);
+    return parts.map((part, i) => {
+      const mentionMatch = part.match(/@\[(.*?)\]\((.*?)\)/);
+      if (mentionMatch) {
+        return (
+          <span key={i} className="font-bold text-primary bg-primary/10 px-1 rounded">
+            @{mentionMatch[1]}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
 
- <div className="flex-1">
- <div className="bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl p-4 shadow-sm">
- <div className="flex items-center justify-between mb-2">
- <div className="flex items-center gap-2">
- <span className="font-bold text-sm text-[var(--text-main)]">{comment.authorName}</span>
- <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">{fmtDate(comment.createdAt)}</span>
- </div>
- <div className="flex items-center gap-1">
- <VoteButtons 
- targetId={comment.id} 
- score={comment.votesScore} 
- userVote={userVotes[comment.id] || null}
- onVote={(type) => onVote(comment.id, type)}
- vertical={false}
- />
- {canDelete && (
- <button 
- onClick={() => onDelete(comment.id)}
- className="p-1.5 text-[var(--text-secondary)] hover:text-danger transition-colors"
- >
- <Trash2 size={14} />
- </button>
- )}
- </div>
- </div>
- <p className="text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
- {comment.content}
- </p>
- <div className="mt-3 flex items-center gap-4">
- <button 
- onClick={() => onReply(comment.id, comment.authorName)}
- className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-primary transition-colors"
- >
- <Reply size={14} />
- Répondre
- </button>
- </div>
- </div>
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      className={cn(
+        "flex w-full mb-1 group relative",
+        isMe ? "justify-end" : "justify-start",
+        showAvatar ? "mt-4" : "mt-0.5"
+      )}
+    >
+      <div className={cn(
+        "flex max-w-[85%] md:max-w-[70%] items-end gap-1",
+        isMe ? "flex-row-reverse" : "flex-row"
+      )}>
+        {!isMe && (
+          <div className="w-8 shrink-0">
+            {showAvatar && (
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/10 shadow-sm overflow-hidden">
+                {message.userAvatar ? (
+                  <img src={message.userAvatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <UserIcon size={14} />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
+        <div className={cn(
+          "flex flex-col relative",
+          isMe ? "items-end" : "items-start"
+        )}>
+          {!isMe && showAvatar && (
+            <span className="text-[10px] font-bold text-primary mb-1 ml-2 uppercase tracking-wider drop-shadow-sm">
+              {message.userName}
+            </span>
+          )}
+          
+          <div 
+            onClick={() => setShowActions(!showActions)}
+            className={cn(
+            "px-3 py-1.5 rounded-2xl shadow-md relative group/bubble transition-all cursor-pointer",
+            message.type === 'sticker' 
+              ? "bg-transparent border-none shadow-none p-0"
+              : isMe 
+                ? "bg-primary text-white rounded-tr-none ring-1 ring-primary/20" 
+                : "bg-[var(--bg-card)] border border-[var(--border-card)] text-[var(--text-main)] rounded-tl-none ring-1 ring-black/5"
+          )}>
+            {/* Reply Context */}
+            {message.replyTo && (
+              <div className={cn(
+                "mb-2 p-2 rounded-lg border-l-4 text-xs bg-black/5 flex flex-col gap-0.5",
+                isMe ? "border-white/40" : "border-primary/40"
+              )}>
+                <span className="font-bold opacity-80">{message.replyTo.userName}</span>
+                <p className="truncate opacity-70">{message.replyTo.text}</p>
+              </div>
+            )}
 
- {!isCollapsed && replies.length > 0 && (
- <div className="space-y-4">
- {replies.map(reply => (
- <CommentItem 
- key={reply.id} 
- comment={reply} 
- allComments={allComments} 
- depth={depth + 1}
- onReply={onReply}
- onDelete={onDelete}
- onVote={onVote}
- userVotes={userVotes}
- canDelete={canDelete}
- />
- ))}
- </div>
- )}
- </div>
- </div>
- </div>
- );
-});
+            {message.type === 'sticker' ? (
+              <motion.img 
+                whileHover={{ scale: 1.1 }}
+                src={message.stickerUrl} 
+                alt="sticker" 
+                className="w-32 h-32 object-contain"
+                referrerPolicy="no-referrer"
+              />
+            ) : message.type === 'media' && message.mediaType === 'image' ? (
+              <div className="rounded-lg overflow-hidden mb-1">
+                <img src={message.mediaUrl} alt="media" className="max-w-full max-h-60 object-cover" referrerPolicy="no-referrer" />
+              </div>
+            ) : (
+              <p className="text-[13px] md:text-sm leading-relaxed whitespace-pre-wrap break-words">
+                {renderText(message.text || '')}
+              </p>
+            )}
+
+            <div className={cn(
+              "flex items-center gap-1 mt-1 justify-end",
+              message.type === 'sticker' ? "text-[var(--text-muted)]" : isMe ? "text-white/60" : "text-[var(--text-muted)]"
+            )}>
+              <span className="text-[9px] font-medium">{time}</span>
+              {isMe && (
+                <CheckCheck 
+                  size={10} 
+                  className={cn(isRead ? "text-info" : "text-white/40")} 
+                />
+              )}
+            </div>
+
+            {/* Reactions Display */}
+            {hasReactions && (
+              <div className={cn(
+                "absolute -bottom-3 flex flex-wrap gap-1",
+                isMe ? "right-0" : "left-0"
+              )}>
+                {Object.entries(reactions).map(([emoji, uids]) => (
+                  <button
+                    key={emoji}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReaction?.(message.id, emoji);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] shadow-sm border transition-all",
+                      uids.includes(user?.id || '')
+                        ? "bg-primary/10 border-primary/20 text-primary"
+                        : "bg-[var(--bg-card)] border-[var(--border-card)] text-[var(--text-muted)]"
+                    )}
+                  >
+                    <span>{emoji}</span>
+                    <span className="font-bold">{uids.length}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Quick Actions Overlay */}
+            <div className={cn(
+              "absolute top-0 transition-opacity flex gap-1 z-20",
+              showActions ? "opacity-100" : "opacity-0 md:group-hover/bubble:opacity-100 pointer-events-none md:pointer-events-auto",
+              isMe ? "right-full mr-2" : "left-full ml-2"
+            )}>
+              {/* Reaction Picker Bar */}
+              <div className="flex bg-[var(--bg-card)] border border-[var(--border-card)] rounded-full p-1 shadow-lg gap-1">
+                {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReaction?.(message.id, emoji);
+                      setShowActions(false);
+                    }}
+                    className="hover:scale-125 transition-transform p-0.5"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReply?.(message);
+                  setShowActions(false);
+                }}
+                className="p-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-card)] text-[var(--text-muted)] hover:text-primary shadow-sm"
+              >
+                <CornerUpLeft size={14} />
+              </button>
+              {isMe && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.(message.id);
+                    setShowActions(false);
+                  }}
+                  className="p-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-card)] text-[var(--text-muted)] hover:text-danger shadow-sm"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const ChatSidebarItem: React.FC<{
+  room: ChatRoom;
+  isActive: boolean;
+  onClick: () => void;
+}> = ({ room, isActive, onClick }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-4 p-4 transition-all border-b border-[var(--border-card)]/50",
+        isActive 
+          ? "bg-primary/5 border-l-4 border-l-primary" 
+          : "hover:bg-[var(--bg-main)] border-l-4 border-l-transparent"
+      )}
+    >
+      <div className={cn(
+        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+        room.color || "bg-primary/10 text-primary"
+      )}>
+        <Hash size={24} />
+      </div>
+      
+      <div className="flex-1 text-left min-w-0">
+        <div className="flex justify-between items-center mb-1">
+          <h3 className={cn(
+            "text-sm font-bold truncate",
+            isActive ? "text-primary" : "text-[var(--text-main)]"
+          )}>
+            {room.name}
+          </h3>
+          {room.lastMessageTime && (
+            <span className="text-[10px] font-medium text-[var(--text-muted)]">
+              {room.lastMessageTime}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-[var(--text-secondary)] truncate font-medium">
+          {room.lastMessage || "Aucun message"}
+        </p>
+      </div>
+      
+      {room.unreadCount ? (
+        <div className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+          {room.unreadCount}
+        </div>
+      ) : null}
+    </button>
+  );
+};
 
 // --- Main Component ---
 
-const PostItem = React.memo<{
- post: Post;
- user: any;
- userVotes: Record<string, 'up' | 'down'>;
- handleVote: (id: string, type: 'post' | 'comment', voteType: 'up' | 'down') => void;
- handleShareWhatsApp: (post: Post) => void;
- setConfirmDelete: (config: { id: string, type: 'post' | 'comment' }) => void;
- setSelectedPost: (post: Post) => void;
-}>(({ post, user, userVotes, handleVote, handleShareWhatsApp, setConfirmDelete, setSelectedPost }) => {
- return (
- <motion.div
- layout
- initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
- animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
- exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
- transition={{ type:"spring", stiffness: 200, damping: 25 }}
- className="group mb-8"
- >
- <GlassCard 
- className="flex gap-0 p-0 overflow-hidden cursor-pointer border-[var(--glass-border)] hover:border-primary/30 transition-all duration-500"
- onClick={() => setSelectedPost(post)}
- tilt={true}
- >
- {/* Vote Sidebar */}
- <div className="w-20 bg-[var(--bg-card)]/[0.02] flex flex-col items-center py-8 border-r border-[var(--glass-border)] relative z-10">
- <VoteButtons 
- targetId={post.id} 
- score={post.votesScore} 
- userVote={userVotes[post.id] || null}
- onVote={(type) => handleVote(post.id, 'post', type)}
- />
- </div>
-
- {/* Content */}
- <div className="flex-1 p-8 relative z-10">
- <div className="flex items-center justify-between mb-6">
- <div className="flex items-center gap-4">
- <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
- <UserIcon size={16} />
- </div>
- <div className="flex flex-col">
- <span className="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest leading-none mb-1">{post.authorName}</span>
- <span className="text-[9px] text-[var(--text-secondary)] font-black uppercase tracking-tighter">{fmtDate(post.createdAt)}</span>
- </div>
- {new Date(post.createdAt).getTime() > Date.now() - 86400000 && (
- <div className="px-2.5 py-0.5 bg-success/10 text-success rounded-full text-[8px] font-black uppercase tracking-widest border border-success/20 ml-2 animate-pulse">
- Nouveau
- </div>
- )}
- </div>
- <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
- <button 
- onClick={(e) => { e.stopPropagation(); handleShareWhatsApp(post); }}
- className="p-2.5 bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] text-[var(--text-secondary)] hover:text-[#25D366] rounded-xl transition-all"
- >
- <Share2 size={18} />
- </button>
- {(user?.role === UserRole.ADMIN || user?.id === post.userId) && (
- <button 
- onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: post.id, type: 'post' }); }}
- className="p-2.5 bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)] text-[var(--text-secondary)] hover:text-danger rounded-xl transition-all"
- >
- <Trash2 size={18} />
- </button>
- )}
- </div>
- </div>
-
- <h3 className="text-2xl font-black text-[var(--text-main)] mb-4 tracking-tight group-hover:text-primary transition-colors duration-500 leading-tight">
- {post.title}
- </h3>
- <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-8 leading-relaxed font-medium group-hover:text-[var(--text-main)] transition-colors duration-500">
- {post.content}
- </p>
-
- <div className="flex items-center gap-8">
- <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)]">
- <div className="w-8 h-8 rounded-lg bg-[var(--glass-bg)] flex items-center justify-center border border-[var(--glass-border)]">
- <MessageSquare size={14} className="text-primary"/>
- </div>
- {post.commentsCount} commentaires
- </div>
- <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)]">
- <div className="w-8 h-8 rounded-lg bg-[var(--glass-bg)] flex items-center justify-center border border-[var(--glass-border)]">
- <Filter size={14} className="text-primary"/>
- </div>
- {post.className}
- </div>
- </div>
- </div>
- </GlassCard>
- </motion.div>
- );
-});
-
 export const Forum: React.FC = () => {
- const { user, classInfo } = useAuth();
- const [searchTerm, setSearchTerm] = useState('');
- const [debouncedSearch, setDebouncedSearch] = useState('');
- const [sortBy, setSortBy] = useState<'recent' | 'top'>('recent');
- const [selectedPost, setSelectedPost] = useState<Post | null>(null);
- const [isNewPostModalOpen, setIsNewPostModalOpen] = useState(false);
- const [userVotes, setUserVotes] = useState<Record<string, 'up' | 'down'>>({});
- const [replyTarget, setReplyTarget] = useState<{ id: string | null; name: string | null }>({ id: null, name: null });
- const [commentContent, setCommentContent] = useState('');
- 
- const [newPostData, setNewPostData] = useState({ title: '', content: '' });
- const [confirmDelete, setConfirmDelete] = useState<{ id: string; type: 'post' | 'comment' } | null>(null);
- const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
+  const { user } = useAuth();
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputText, setInputText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [showSidebarOnMobile, setShowSidebarOnMobile] = useState(true);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [chatSearch, setChatSearch] = useState('');
+  const [showChatSearch, setShowChatSearch] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
+  const [showMentionList, setShowMentionList] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState('');
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
- useEffect(() => {
- setScrollElement(document.getElementById('scroll-container') as HTMLDivElement);
- }, []);
+  // Handle responsive view
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobileView(mobile);
+      if (!mobile) setShowSidebarOnMobile(true);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
- // Debounce search
- useEffect(() => {
- const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
- return () => clearTimeout(timer);
- }, [searchTerm]);
+  // Fetch members for mentions
+  useEffect(() => {
+    if (!activeRoom) return;
+    const fetchMembers = async () => {
+      const q = query(collection(db, 'users'), where('class_name', '==', activeRoom.name));
+      const snapshot = await getDocs(q);
+      setMembers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    };
+    fetchMembers();
+  }, [activeRoom]);
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        let q;
+        if (user?.role === UserRole.ADMIN) {
+          q = query(collection(db, 'classes'), orderBy('name', 'asc'));
+        } else {
+          q = query(collection(db, 'classes'), where('name', '==', user?.class_name || ''), limit(1));
+        }
+        
+        const snapshot = await getDocs(q);
+        const fetchedRooms = snapshot.docs.map(doc => {
+          const data = doc.data() as any;
+          return {
+            id: doc.id,
+            name: data.name,
+            color: data.color || 'bg-primary/10 text-primary'
+          } as ChatRoom;
+        });
+        
+        setRooms(fetchedRooms);
+        
+        // Auto-select user's class
+        if (user?.class_name) {
+          const myRoom = fetchedRooms.find(r => r.name === user.class_name);
+          if (myRoom) {
+            setActiveRoom(myRoom);
+            if (isMobileView) setShowSidebarOnMobile(false);
+          }
+        } else if (fetchedRooms.length > 0) {
+          setActiveRoom(fetchedRooms[0]);
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching rooms:", err);
+        setLoading(false);
+      }
+    };
+    
+    fetchRooms();
+  }, [user?.class_name, isMobileView]);
 
- // Fetch posts with pagination
- const postConstraints = useMemo(() => {
- const constraints: any[] = [orderBy('createdAt', 'desc')];
- if (user?.role !== UserRole.ADMIN) {
- constraints.unshift(where('className', '==', user?.class_name || ''));
- }
- return constraints;
- }, [user?.class_name, user?.role]);
+  // Listen for messages in active room
+  useEffect(() => {
+    if (!activeRoom) return;
 
- const { 
- data: posts, 
- loading: postsLoading, 
- error: postsError,
- hasMore,
- loadMore,
- loadingMore,
- refetch
- } = usePaginatedTable<Post>(
- 'posts',
- postConstraints,
- 10,
- !!user?.class_name || user?.role === 'ADMIN'
- );
+    const q = query(
+      collection(db, 'messages'),
+      where('className', '==', activeRoom.name),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
 
- // Fetch user votes
- useEffect(() => {
- if (!user) return;
- const q = query(collection(db, 'votes'), where('userId', '==', user.id));
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const votes: Record<string, 'up' | 'down'> = {};
- snapshot.docs.forEach(doc => {
- const data = doc.data() as Vote;
- votes[data.targetId] = data.type;
- });
- setUserVotes(votes);
- }, (err) => {
- console.error("🔥 Forum Votes Snapshot Error:", err);
- });
- return () => unsubscribe();
- }, [user]);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as ChatMessage)).reverse();
+      setMessages(msgs);
+      scrollToBottom();
 
- // Fetch comments for selected post with pagination
- const commentConstraints = useMemo(() => [
- where('postId', '==', selectedPost?.id || ''), 
- orderBy('createdAt', 'asc')
- ], [selectedPost?.id]);
+      // Mark as read
+      msgs.forEach(msg => {
+        if (!msg.readBy?.includes(user?.id || '') && msg.userId !== user?.id) {
+          updateDoc(doc(db, 'messages', msg.id), {
+            readBy: arrayUnion(user?.id)
+          });
+        }
+      });
+    }, (error) => {
+      console.error("Error listening to messages:", error);
+    });
 
- const {
- data: postComments,
- loading: commentsLoading,
- hasMore: hasMoreComments,
- loadMore: loadMoreComments,
- loadingMore: loadingMoreComments,
- } = usePaginatedTable<Comment>(
- 'comments',
- commentConstraints,
- 10,
- !!selectedPost
- );
+    return () => unsubscribe();
+  }, [activeRoom]);
 
- const filteredPosts = useMemo(() => {
- let result = posts.filter(p => 
- p.title.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
- p.content.toLowerCase().includes(debouncedSearch.toLowerCase())
- );
- if (sortBy === 'top') {
- result.sort((a, b) => b.votesScore - a.votesScore);
- }
- return result;
- }, [posts, debouncedSearch, sortBy]);
+  // Listen for typing users
+  useEffect(() => {
+    if (!activeRoom || !user) return;
 
- const handleVote = async (targetId: string, targetType: 'post' | 'comment', type: 'up' | 'down') => {
- if (!user) return;
+    const q = query(
+      collection(db, 'typing'),
+      where('className', '==', activeRoom.name),
+      where('userId', '!=', user.id)
+    );
 
- const voteId = `${user.id}_${targetId}`;
- const voteRef = doc(db, 'votes', voteId);
- const targetRef = doc(db, targetType === 'post' ? 'posts' : 'comments', targetId);
- 
- const currentVote = userVotes[targetId];
- const batch = writeBatch(db);
+    return onSnapshot(q, (snapshot) => {
+      const users = snapshot.docs.map(doc => doc.data().userName);
+      setTypingUsers(users);
+    });
+  }, [activeRoom, user]);
 
- if (currentVote === type) {
- // Remove vote
- batch.delete(voteRef);
- batch.update(targetRef, { votesScore: increment(type === 'up' ? -1 : 1) });
- } else if (currentVote) {
- // Change vote
- batch.update(voteRef, { type });
- batch.update(targetRef, { votesScore: increment(type === 'up' ? 2 : -2) });
- } else {
- // New vote
- batch.set(voteRef, {
- userId: user.id,
- targetId,
- type,
- createdAt: serverTimestamp()
- });
- batch.update(targetRef, { votesScore: increment(type === 'up' ? 1 : -1) });
- }
+  // Handle typing status
+  useEffect(() => {
+    if (!activeRoom || !user) return;
 
- try {
- await batch.commit();
- // Optimistically update if it's a post in the list
- if (targetType === 'post') {
- refetch();
- }
- } catch (err) {
- console.error("Vote error:", err);
- }
- };
+    const typingRef = doc(db, 'typing', user.id);
 
- const handleCreatePost = async (e: React.FormEvent) => {
- e.preventDefault();
- if (!newPostData.title.trim() || !newPostData.content.trim()) return;
+    if (isTyping) {
+      setDoc(typingRef, {
+        userId: user.id,
+        userName: user.name,
+        className: activeRoom.name,
+        updatedAt: serverTimestamp()
+      });
+    } else {
+      deleteDoc(typingRef);
+    }
 
- try {
- await insertRow('posts', {
- ...newPostData,
- userId: user?.id,
- authorName: user?.name,
- className: user?.class_name,
- votesScore: 0,
- commentsCount: 0
- });
- setIsNewPostModalOpen(false);
- setNewPostData({ title: '', content: '' });
- refetch();
- } catch (err) {
- console.error(err);
- }
- };
+    const timer = setTimeout(() => setIsTyping(false), 3000);
+    return () => {
+      clearTimeout(timer);
+      deleteDoc(typingRef);
+    };
+  }, [isTyping, activeRoom, user]);
 
- const handleAddComment = async (e: React.FormEvent) => {
- e.preventDefault();
- if (!selectedPost || !commentContent.trim()) return;
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setShowScrollButton(false);
+    }, 100);
+  };
 
- try {
- const batch = writeBatch(db);
- const commentRef = doc(collection(db, 'comments'));
- 
- batch.set(commentRef, {
- postId: selectedPost.id,
- parentId: replyTarget.id,
- userId: user?.id,
- authorName: user?.name,
- content: commentContent,
- votesScore: 0,
- createdAt: serverTimestamp()
- });
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollButton(!isAtBottom);
+  };
 
- batch.update(doc(db, 'posts', selectedPost.id), {
- commentsCount: increment(1)
- });
+  const handleReaction = async (msgId: string, emoji: string) => {
+    if (!user) return;
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
 
- // Handle mentions (simplified)
- const mentions = commentContent.match(/@(\w+)/g);
- if (mentions) {
- // In a real app, we'd find users and create notifications
- }
+    const reactions = { ...(msg.reactions || {}) };
+    const uids = reactions[emoji] || [];
 
- // Notify post author if not self
- if (selectedPost.userId !== user?.id && !replyTarget.id) {
- const notifRef = doc(collection(db, 'notifications'));
- batch.set(notifRef, {
- userId: selectedPost.userId,
- type: 'reply',
- message: `${user?.name} a répondu à votre post: ${selectedPost.title}`,
- link: `/forum?post=${selectedPost.id}`,
- isRead: false,
- createdAt: serverTimestamp()
- });
- }
+    if (uids.includes(user.id)) {
+      reactions[emoji] = uids.filter(id => id !== user.id);
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+    } else {
+      reactions[emoji] = [...uids, user.id];
+    }
 
- // Notify parent comment author if it's a reply
- if (replyTarget.id) {
- const parentComment = postComments.find(c => c.id === replyTarget.id);
- if (parentComment && parentComment.userId !== user?.id) {
- const notifRef = doc(collection(db, 'notifications'));
- batch.set(notifRef, {
- userId: parentComment.userId,
- type: 'reply',
- message: `${user?.name} a répondu à votre commentaire`,
- link: `/forum?post=${selectedPost.id}`,
- isRead: false,
- createdAt: serverTimestamp()
- });
- }
- }
+    try {
+      await updateDoc(doc(db, 'messages', msgId), { reactions });
+      
+      // Notify message author about the reaction (if it's a new reaction and not by themselves)
+      if (!uids.includes(user.id) && msg.userId !== user.id) {
+        notificationService.notifyUser(
+          msg.userId,
+          `Réaction dans ${activeRoom.name}`,
+          `${user.name} a réagi ${emoji} à votre message.`,
+          'info',
+          '/forum'
+        );
+      }
+    } catch (err) {
+      console.error("Error updating reaction:", err);
+    }
+  };
 
- await batch.commit();
- setCommentContent('');
- setReplyTarget({ id: null, name: null });
- refetch();
- } catch (err) {
- console.error(err);
- }
- };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputText(value);
+    setIsTyping(true);
 
- const handleDelete = async () => {
- if (!confirmDelete) return;
- try {
- if (confirmDelete.type === 'post') {
- await deleteRow('posts', confirmDelete.id);
- if (selectedPost?.id === confirmDelete.id) setSelectedPost(null);
- refetch();
- } else {
- await deleteRow('comments', confirmDelete.id);
- if (selectedPost) {
- await updateRow('posts', selectedPost.id, {
- commentsCount: increment(-1)
- });
- refetch();
- }
- }
- setConfirmDelete(null);
- } catch (err) {
- console.error(err);
- }
- };
+    const lastChar = value[value.length - 1];
+    const words = value.split(' ');
+    const lastWord = words[words.length - 1];
 
- const handleShareWhatsApp = (post: Post) => {
- const { whatsapp } = generateSmartShare('forum', {
- title: post.title,
- content: post.content,
- author: post.authorName,
- className: post.className,
- date: post.createdAt,
- classEmail: classInfo?.class_email
- });
- shareToWhatsApp(whatsapp);
- };
+    if (lastWord.startsWith('@')) {
+      setShowMentionList(true);
+      setMentionSearch(lastWord.slice(1));
+    } else {
+      setShowMentionList(false);
+    }
+  };
 
- const rowVirtualizer = useVirtualizer({
- count: filteredPosts.length,
- getScrollElement: () => scrollElement,
- estimateSize: () => 180,
- overscan: 5,
- });
+  const insertMention = (member: any) => {
+    const words = inputText.split(' ');
+    words[words.length - 1] = `@[${member.name}](${member.id}) `;
+    setInputText(words.join(' '));
+    setShowMentionList(false);
+  };
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!inputText.trim() || !user || !activeRoom) return;
 
- const handleShareEmail = (post: Post) => {
- const { emailSubject, emailBody, classEmail } = generateSmartShare('forum', {
- title: post.title,
- content: post.content,
- author: post.authorName,
- className: post.className,
- date: post.createdAt,
- classEmail: classInfo?.class_email
- });
- shareToEmail(emailSubject, emailBody, classEmail);
- };
+    const text = inputText.trim();
+    
+    // Extract mentions: @[Name](ID)
+    const mentionRegex = /@\[.*?\]\((.*?)\)/g;
+    const mentions: string[] = [];
+    let match;
+    while ((match = mentionRegex.exec(text)) !== null) {
+      mentions.push(match[1]);
+    }
 
- if (postsError) return <ErrBox message={postsError} />;
+    setInputText('');
+    const currentReply = replyingTo;
+    setReplyingTo(null);
 
- return (
- <div className="max-w-7xl mx-auto px-4 pb-20 space-y-10">
- <ConfirmModal 
- isOpen={!!confirmDelete}
- onClose={() => setConfirmDelete(null)}
- onConfirm={handleDelete}
- title={`Supprimer ${confirmDelete?.type === 'post' ? 'le post' : 'le commentaire'}`}
- message="Cette action est irréversible. Êtes-vous sûr ?"
- />
+    try {
+      await addDoc(collection(db, 'messages'), {
+        text,
+        type: 'text',
+        userId: user.id,
+        userName: user.name,
+        userAvatar: user.avatar || null,
+        className: activeRoom.name,
+        createdAt: serverTimestamp(),
+        readBy: [user.id],
+        mentions,
+        replyTo: currentReply ? {
+          id: currentReply.id,
+          text: currentReply.text || (currentReply.type === 'sticker' ? 'Sticker' : 'Média'),
+          userName: currentReply.userName
+        } : null
+      });
 
- <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
- <div className="space-y-1">
- <h1 className="heading-futuristic">Agora Digitale</h1>
- <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-secondary)]">
- Espace de discussion libre pour la classe {user?.class_name}
- </p>
- </div>
- 
- <button 
- onClick={() => setIsNewPostModalOpen(true)} 
- className="btn-futuristic-primary px-10 py-4 flex items-center gap-3 self-start lg:self-center"
- >
- <Plus size={20} />
- <span className="font-black uppercase tracking-widest text-xs">Nouvelle Discussion</span>
- </button>
- </div>
+      // Notify mentioned users
+      mentions.forEach(mentionId => {
+        if (mentionId !== user.id) {
+          notificationService.notifyUser(
+            mentionId,
+            `Mention dans ${activeRoom.name}`,
+            `${user.name} vous a mentionné dans un message.`,
+            'info',
+            '/forum'
+          );
+        }
+      });
 
- <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
- {/* Left Sidebar - Trending & Stats */}
- <div className="lg:col-span-3 space-y-8 order-2 lg:order-1">
- <GlassCard className="p-8 border-[var(--glass-border)] shadow-2xl"tilt={false}>
- <div className="flex items-center gap-3 mb-8 text-primary relative z-10">
- <TrendingUp size={24} />
- <span className="font-black uppercase tracking-widest text-xs">Tendances</span>
- </div>
- <div className="space-y-8 relative z-10">
- {posts.slice(0, 3).map((p, i) => (
- <div key={p.id} className="group cursor-pointer"onClick={() => setSelectedPost(p)}>
- <div className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] mb-3">
- <span className="text-primary mr-2">0{i + 1}</span>
- {p.className}
- </div>
- <div className="text-sm font-black text-[var(--text-main)] group-hover:text-primary transition-colors line-clamp-2 tracking-tight leading-tight">
- {p.title}
- </div>
- <div className="flex items-center gap-4 mt-4">
- <div className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-tighter">
- {p.votesScore} votes
- </div>
- <div className="w-1 h-1 rounded-full bg-[var(--text-main)]"/>
- <div className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-tighter">
- {p.commentsCount} comm.
- </div>
- </div>
- </div>
- ))}
- </div>
- </GlassCard>
+      // Notify user being replied to
+      if (currentReply && currentReply.userId !== user.id) {
+        notificationService.notifyUser(
+          currentReply.userId,
+          `Réponse dans ${activeRoom.name}`,
+          `${user.name} a répondu à votre message.`,
+          'info',
+          '/forum'
+        );
+      }
 
- <GlassCard className="p-8 bg-primary/5 border-primary/20 shadow-[0_0_30px_rgba(108,99,255,0.1)]"tilt={true}>
- <div className="flex items-center gap-3 mb-4 text-primary relative z-10">
- <Zap size={24} className="animate-pulse"/>
- <span className="font-black uppercase tracking-widest text-xs">Flux d'Activité</span>
- </div>
- <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed font-medium relative z-10">
- Restez connecté aux dernières interactions. Le système vous notifiera en temps réel des réponses et mentions.
- </p>
- </GlassCard>
- </div>
+      scrollToBottom();
+    } catch (err) {
+      console.error("Error sending message:", err);
+    }
+  };
 
- {/* Main Feed */}
- <div className="lg:col-span-9 space-y-8 order-1 lg:order-2">
- {/* Filters */}
- <GlassCard className="flex flex-col md:flex-row gap-6 p-6 rounded-[32px] border-[var(--glass-border)] shadow-2xl"tilt={false}>
- <div className="relative flex-1 group z-10">
- <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] group-focus-within:text-primary transition-colors"size={20} />
- <input 
- type="text"
- placeholder="Rechercher dans l'Agora..."
- value={searchTerm}
- onChange={(e) => setSearchTerm(e.target.value)}
- className="w-full pl-14 pr-6 py-4 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-2xl outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-[var(--text-main)] placeholder:text-[var(--text-secondary)]"
- />
- </div>
- <div className="flex gap-3 z-10">
- <button 
- onClick={() => setSortBy('recent')}
- className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${sortBy === 'recent' ? 'bg-primary text-white shadow-[0_0_20px_rgba(108,99,255,0.3)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)]'}`}
- >
- Récents
- </button>
- <button 
- onClick={() => setSortBy('top')}
- className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${sortBy === 'top' ? 'bg-primary text-white shadow-[0_0_20px_rgba(108,99,255,0.3)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)]'}`}
- >
- Populaires
- </button>
- </div>
- </GlassCard>
+  const handleSendSticker = async (stickerUrl: string) => {
+    if (!user || !activeRoom) return;
 
- {/* Posts List */}
- <div className="space-y-6">
- {postsLoading ? (
- Array.from({ length: 5 }).map((_, i) => (
- <Card key={i} className="flex gap-6 p-6">
- <Skeleton className="w-16 h-24 rounded-2xl"/>
- <div className="flex-1 space-y-4">
- <Skeleton className="h-5 w-1/4 rounded-lg"/>
- <Skeleton className="h-8 w-3/4 rounded-lg"/>
- <Skeleton className="h-16 w-full rounded-xl"/>
- </div>
- </Card>
- ))
- ) : filteredPosts.length > 0 ? (
- <>
- <div
- style={{
- height: `${rowVirtualizer.getTotalSize()}px`,
- width: '100%',
- position: 'relative',
- }}
- >
- {rowVirtualizer.getVirtualItems().map((virtualRow) => {
- const post = filteredPosts[virtualRow.index];
- return (
- <div
- key={post.id}
- style={{
- position: 'absolute',
- top: 0,
- left: 0,
- width: '100%',
- height: `${virtualRow.size}px`,
- transform: `translateY(${virtualRow.start}px)`,
- }}
- >
- <PostItem
- post={post}
- user={user}
- userVotes={userVotes}
- handleVote={handleVote}
- handleShareWhatsApp={handleShareWhatsApp}
- setConfirmDelete={setConfirmDelete}
- setSelectedPost={setSelectedPost}
- />
- </div>
- );
- })}
- </div>
- 
- {hasMore && !debouncedSearch && (
- <div className="flex justify-center pt-8">
- <button 
- onClick={loadMore} 
- disabled={loadingMore}
- className="px-10 py-4 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-2xl text-[10px] font-black uppercase tracking-widest text-[var(--text-main)] hover:bg-[var(--glass-bg-hover)] transition-all disabled:opacity-50"
- >
- {loadingMore ? <Spinner size={18} /> : 'Charger plus de données'}
- </button>
- </div>
- )}
- </>
- ) : (
- <div className="text-center py-24 glass-ultra rounded-[40px] border-2 border-dashed border-[var(--glass-border)]">
- <MessageSquare size={64} className="mx-auto text-[var(--text-secondary)] mb-6"/>
- <h3 className="text-xl font-black text-[var(--text-main)] tracking-tight">Aucune discussion</h3>
- <p className="text-[var(--text-secondary)] font-medium mt-2 max-w-xs mx-auto">Soyez le premier à initialiser un flux de discussion dans votre classe !</p>
- <button 
- onClick={() => setIsNewPostModalOpen(true)}
- className="mt-8 text-[10px] font-black uppercase tracking-widest text-primary hover:text-[var(--text-main)] transition-colors"
- >
- Lancer un sujet
- </button>
- </div>
- )}
- </div>
- </div>
- </div>
+    try {
+      await addDoc(collection(db, 'messages'), {
+        stickerUrl,
+        type: 'sticker',
+        userId: user.id,
+        userName: user.name,
+        userAvatar: user.avatar || null,
+        className: activeRoom.name,
+        createdAt: serverTimestamp(),
+        readBy: [user.id]
+      });
+      setShowStickerPicker(false);
+      scrollToBottom();
+    } catch (err) {
+      console.error("Error sending sticker:", err);
+    }
+  };
 
- {/* Post Detail Modal */}
- <AnimatePresence>
- {selectedPost && (
- <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
- <motion.div 
- initial={{ opacity: 0, scale: 0.95, y: 20 }}
- animate={{ opacity: 1, scale: 1, y: 0 }}
- exit={{ opacity: 0, scale: 0.95, y: 20 }}
- className="bg-[var(--bg-card)] rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-[var(--glass-border)] flex flex-col"
- >
- <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--bg-secondary)]">
- <div className="flex items-center gap-3">
- <Btn variant="ghost"className="p-2 rounded-full"onClick={() => setSelectedPost(null)}>
- <X size={20} />
- </Btn>
- <h3 className="text-lg font-bold text-[var(--text-main)]">Discussion</h3>
- </div>
- <div className="flex items-center gap-2">
- <Btn variant="secondary"size="sm"onClick={() => handleShareWhatsApp(selectedPost)}>
- <Share2 size={16} />
- Partager
- </Btn>
- </div>
- </div>
+  const handleDeleteMessage = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'messages', id));
+    } catch (err) {
+      console.error("Error deleting message:", err);
+    }
+  };
 
- <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 custom-scrollbar">
- {/* Post Content */}
- <div className="flex gap-6">
- <div className="hidden md:block">
- <VoteButtons 
- targetId={selectedPost.id} 
- score={selectedPost.votesScore} 
- userVote={userVotes[selectedPost.id] || null}
- onVote={(type) => handleVote(selectedPost.id, 'post', type)}
- />
- </div>
- <div className="flex-1 space-y-4">
- <div className="flex items-center gap-2">
- <Badge type="primary">{selectedPost.className}</Badge>
- <span className="text-xs text-[var(--text-secondary)]">Posté par <span className="font-bold text-[var(--text-secondary)]">{selectedPost.authorName}</span> • {fmtDate(selectedPost.createdAt)}</span>
- </div>
- <h1 className="text-3xl font-bold text-[var(--text-main)] leading-tight">{selectedPost.title}</h1>
- <div className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap text-lg">
- {selectedPost.content}
- </div>
- </div>
- </div>
+  const handleRoomSelect = (room: ChatRoom) => {
+    setActiveRoom(room);
+    if (isMobileView) setShowSidebarOnMobile(false);
+  };
 
- <div className="h-px bg-[var(--glass-bg)]"/>
+  const onEmojiClick = (emojiData: any) => {
+    setInputText(prev => prev + emojiData.emoji);
+    setIsTyping(true);
+  };
 
- {/* Comments Section */}
- <div className="space-y-6">
- <div className="flex items-center justify-between">
- <h3 className="text-xl font-bold text-[var(--text-main)] flex items-center gap-2">
- <MessageSquare size={20} className="text-primary"/>
- Commentaires ({selectedPost.commentsCount})
- </h3>
- </div>
+  const renderDateDivider = (date: string) => (
+    <div className="flex justify-center my-6 sticky top-2 z-10">
+      <div className="px-4 py-1 rounded-lg bg-[var(--bg-card)]/80 backdrop-blur-sm border border-[var(--border-card)] shadow-sm">
+        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
+          {date}
+        </span>
+      </div>
+    </div>
+  );
 
- <div className="space-y-4">
- {postComments.filter(c => !c.parentId).map(comment => (
- <CommentItem 
- key={comment.id} 
- comment={comment} 
- allComments={postComments}
- onReply={(id, name) => setReplyTarget({ id, name })}
- onDelete={(id) => setConfirmDelete({ id, type: 'comment' })}
- onVote={(id, type) => handleVote(id, 'comment', type)}
- userVotes={userVotes}
- canDelete={user?.role === UserRole.ADMIN || user?.id === comment.userId}
- />
- ))}
- 
- {hasMoreComments && (
- <div className="flex justify-center pt-4">
- <Btn 
- variant="secondary"
- size="sm"
- onClick={loadMoreComments} 
- disabled={loadingMoreComments}
- >
- {loadingMoreComments ? <Spinner size={16} /> : 'Charger plus de commentaires'}
- </Btn>
- </div>
- )}
+  const groupMessagesByDate = (msgs: ChatMessage[]) => {
+    const groups: { date: string, messages: ChatMessage[] }[] = [];
+    msgs.forEach(msg => {
+      const date = msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Aujourd\'hui';
+      const lastGroup = groups[groups.length - 1];
+      if (lastGroup && lastGroup.date === date) {
+        lastGroup.messages.push(msg);
+      } else {
+        groups.push({ date, messages: [msg] });
+      }
+    });
+    return groups;
+  };
 
- {postComments.length === 0 && !commentsLoading && (
- <div className="text-center py-10 text-[var(--text-secondary)]">
- Aucun commentaire pour le moment. Soyez le premier à répondre !
- </div>
- )}
+  if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
 
- {commentsLoading && (
- <div className="flex justify-center py-8">
- <Spinner />
- </div>
- )}
- </div>
- </div>
- </div>
+  return (
+    <div className="h-[calc(100vh-120px)] max-w-7xl mx-auto flex overflow-hidden bg-[var(--bg-card)] border border-[var(--border-card)] rounded-[32px] shadow-2xl">
+      
+      {/* Sidebar */}
+      <AnimatePresence mode="wait">
+        {(!isMobileView || showSidebarOnMobile) && (
+          <motion.div 
+            initial={isMobileView ? { x: -300 } : false}
+            animate={{ x: 0 }}
+            exit={{ x: -300 }}
+            className={cn(
+              "w-full md:w-80 flex flex-col border-r border-[var(--border-card)] bg-[var(--bg-card)] z-20",
+              isMobileView ? "absolute inset-0" : "relative"
+            )}
+          >
+            <div className="p-6 border-b border-[var(--border-card)]">
+              <h2 className="text-xl font-bold text-[var(--text-main)] mb-4">Discussions</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
+                <input 
+                  type="text"
+                  placeholder="Rechercher..."
+                  className="w-full bg-[var(--bg-main)] border border-[var(--border-main)] rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                />
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {rooms.map(room => (
+                <ChatSidebarItem 
+                  key={room.id}
+                  room={room}
+                  isActive={activeRoom?.id === room.id}
+                  onClick={() => handleRoomSelect(room)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
- {/* Comment Input */}
- <div className="p-6 border-t border-[var(--glass-border)] bg-[var(--bg-secondary)]">
- <form onSubmit={handleAddComment} className="space-y-3">
- {replyTarget.id && (
- <div className="flex items-center justify-between bg-primary/10 px-4 py-2 rounded-xl">
- <span className="text-xs font-bold text-primary">En réponse à {replyTarget.name}</span>
- <button onClick={() => setReplyTarget({ id: null, name: null })} className="text-primary hover:text-primary/70">
- <X size={14} />
- </button>
- </div>
- )}
- <div className="relative">
- <textarea 
- rows={2}
- value={commentContent}
- onChange={(e) => setCommentContent(e.target.value)}
- placeholder="Qu'en pensez-vous ?"
- className="w-full pl-4 pr-14 py-4 bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-sm resize-none"
- />
- <button 
- type="submit"
- disabled={!commentContent.trim()}
- className="absolute right-3 bottom-3 p-3 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-110 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
- >
- <Send size={18} />
- </button>
- </div>
- </form>
- </div>
- </motion.div>
- </div>
- )}
- </AnimatePresence>
+      {/* Chat Area */}
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        {activeRoom ? (
+          <>
+            {/* Chat Header */}
+            <div className="h-20 flex items-center justify-between px-6 bg-[var(--bg-card)] border-b border-[var(--border-card)] z-20 shadow-sm">
+              <div className="flex items-center gap-4">
+                {isMobileView && (
+                  <button 
+                    onClick={() => setShowSidebarOnMobile(true)}
+                    className="p-2 -ml-2 rounded-full hover:bg-[var(--bg-main)] text-[var(--text-muted)]"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
+                  activeRoom.color || "bg-primary/10 text-primary"
+                )}>
+                  <Hash size={20} />
+                </div>
+                <div className="cursor-pointer" onClick={() => setShowGroupInfo(true)}>
+                  <h3 className="text-sm font-bold text-[var(--text-main)]">{activeRoom.name}</h3>
+                  <div className="flex items-center gap-1.5">
+                    {typingUsers.length > 0 ? (
+                      <span className="text-[10px] font-bold text-primary animate-pulse">
+                        {typingUsers.join(', ')} {typingUsers.length > 1 ? 'écrivent...' : 'écrit...'}
+                      </span>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                        <span className="text-[10px] font-bold text-success uppercase tracking-wider">En ligne</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setShowChatSearch(!showChatSearch)}
+                  className={cn(
+                    "p-2 rounded-full transition-colors",
+                    showChatSearch ? "bg-primary/10 text-primary" : "hover:bg-[var(--bg-main)] text-[var(--text-muted)]"
+                  )}
+                >
+                  <Search size={18} />
+                </button>
+                <button 
+                  onClick={() => setShowGroupInfo(true)}
+                  className="p-2 rounded-full hover:bg-[var(--bg-main)] text-[var(--text-muted)] transition-colors"
+                >
+                  <Info size={18} />
+                </button>
+                <button className="p-2 rounded-full hover:bg-[var(--bg-main)] text-[var(--text-muted)] transition-colors">
+                  <MoreVertical size={18} />
+                </button>
+              </div>
+            </div>
 
- {/* New Post Modal */}
- <Modal 
- isOpen={isNewPostModalOpen} 
- onClose={() => setIsNewPostModalOpen(false)} 
- title="Lancer une discussion"
- >
- <form onSubmit={handleCreatePost} className="space-y-5">
- <div className="space-y-1.5">
- <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Titre du sujet</label>
- <input 
- type="text"
- required
- value={newPostData.title}
- onChange={(e) => setNewPostData({ ...newPostData, title: e.target.value })}
- className="w-full px-5 py-3.5 bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-sm"
- placeholder="Ex: Question sur le cours de Physique"
- />
- </div>
+            {/* Search Bar */}
+            <AnimatePresence>
+              {showChatSearch && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="bg-[var(--bg-card)] border-b border-[var(--border-card)] px-6 py-3 z-10"
+                >
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
+                    <input 
+                      type="text"
+                      value={chatSearch}
+                      onChange={(e) => setChatSearch(e.target.value)}
+                      placeholder="Rechercher dans la discussion..."
+                      className="w-full bg-[var(--bg-main)] border border-[var(--border-main)] rounded-lg py-1.5 pl-9 pr-4 text-xs outline-none focus:ring-1 focus:ring-primary/30"
+                      autoFocus
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
- <div className="space-y-1.5">
- <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Contenu</label>
- <textarea 
- rows={6}
- required
- value={newPostData.content}
- onChange={(e) => setNewPostData({ ...newPostData, content: e.target.value })}
- className="w-full px-5 py-3.5 bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-2xl outline-none focus:ring-2 focus:ring-primary transition-all text-sm resize-none"
- placeholder="Détaillez votre question ou partagez votre information ici..."
- />
- </div>
+            {/* Messages Area with Wallpaper */}
+            <div 
+              ref={chatContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col relative"
+              style={{ 
+                backgroundImage: WHATSAPP_WALLPAPER,
+                backgroundSize: '400px',
+                backgroundRepeat: 'repeat',
+                backgroundColor: 'var(--bg-main)'
+              }}
+            >
+              {/* Overlay for readability */}
+              <div className="absolute inset-0 bg-[var(--bg-main)]/85 pointer-events-none" />
+              
+              <div className="relative z-10 flex-1 flex flex-col">
+                <div className="flex-1" />
+                <div className="space-y-1">
+                  {groupMessagesByDate(messages.filter(m => 
+                    !chatSearch || m.text?.toLowerCase().includes(chatSearch.toLowerCase())
+                  )).map((group, gIdx) => (
+                    <React.Fragment key={group.date}>
+                      {renderDateDivider(group.date)}
+                      {group.messages.map((msg, idx) => {
+                        const isMe = msg.userId === user?.id;
+                        const prevMsg = group.messages[idx - 1];
+                        const showAvatar = !prevMsg || prevMsg.userId !== msg.userId;
+                        
+                        return (
+                            <MessageBubble 
+                              key={msg.id} 
+                              message={msg} 
+                              isMe={isMe}
+                              showAvatar={showAvatar}
+                              onReply={setReplyingTo}
+                              onDelete={handleDeleteMessage}
+                              onReaction={handleReaction}
+                            />
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
 
- <div className="flex gap-3 pt-4">
- <Btn 
- type="button"
- variant="secondary"
- className="flex-1"
- onClick={() => setIsNewPostModalOpen(false)}
- >
- Annuler
- </Btn>
- <Btn type="submit"className="flex-1">
- Publier
- </Btn>
- </div>
- </form>
- </Modal>
- </div>
- );
+              {/* Scroll to Bottom Button */}
+              <AnimatePresence>
+                {showScrollButton && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.5, y: 20 }}
+                    onClick={scrollToBottom}
+                    className="absolute bottom-6 right-6 w-10 h-10 rounded-full bg-[var(--bg-card)] border border-[var(--border-card)] shadow-lg flex items-center justify-center text-primary z-30 hover:bg-[var(--bg-main)] transition-colors"
+                  >
+                    <ChevronDown size={20} />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 md:p-6 bg-[var(--bg-card)] border-t border-[var(--border-card)] relative z-20">
+              {/* Reply Preview */}
+              <AnimatePresence>
+                {replyingTo && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded-lg flex items-center justify-between"
+                  >
+                    <div className="flex flex-col gap-0.5 overflow-hidden">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Réponse à {replyingTo.userName}</span>
+                      <p className="text-xs text-[var(--text-secondary)] truncate">{replyingTo.text || 'Média'}</p>
+                    </div>
+                    <button onClick={() => setReplyingTo(null)} className="text-[var(--text-muted)] hover:text-primary">
+                      <X size={16} />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {showMentionList && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute bottom-full left-16 mb-2 w-64 bg-[var(--bg-card)] border border-[var(--border-card)] rounded-xl shadow-2xl overflow-hidden z-30"
+                  >
+                    <div className="p-2 border-b border-[var(--border-card)] bg-[var(--bg-main)]">
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Mentionner un membre</span>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                      {members.filter(m => m.name.toLowerCase().includes(mentionSearch.toLowerCase())).map(member => (
+                        <button
+                          key={member.id}
+                          onClick={() => insertMention(member)}
+                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-primary/5 transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                            {member.avatar ? <img src={member.avatar} alt="" className="w-full h-full object-cover rounded-full" /> : member.name[0]}
+                          </div>
+                          <span className="text-sm font-medium text-[var(--text-main)]">{member.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {showEmojiPicker && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                    className="absolute bottom-full left-6 mb-4 z-30"
+                  >
+                    <div className="shadow-2xl rounded-3xl overflow-hidden border border-[var(--border-card)]">
+                      <EmojiPicker 
+                        onEmojiClick={onEmojiClick}
+                        theme={Theme.AUTO}
+                        emojiStyle={EmojiStyle.APPLE}
+                        lazyLoadEmojis={true}
+                        searchPlaceholder="Rechercher un emoji..."
+                        width={320}
+                        height={400}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                {showStickerPicker && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                    className="absolute bottom-full left-6 right-6 mb-4 bg-[var(--bg-card)] border border-[var(--border-card)] rounded-3xl shadow-2xl p-4 z-30"
+                  >
+                    <div className="flex items-center justify-between mb-4 px-2">
+                      <h4 className="text-sm font-bold text-[var(--text-main)]">Stickers</h4>
+                      <button 
+                        onClick={() => setShowStickerPicker(false)}
+                        className="text-[var(--text-muted)] hover:text-primary"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-2">
+                      {STICKERS.map((url, idx) => (
+                        <button 
+                          key={idx}
+                          onClick={() => handleSendSticker(url)}
+                          className="aspect-square rounded-xl hover:bg-[var(--bg-main)] p-2 transition-all hover:scale-110"
+                        >
+                          <img src={url} alt="sticker" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <form 
+                onSubmit={handleSendMessage}
+                className="flex items-center gap-3 bg-[var(--bg-main)] border border-[var(--border-main)] rounded-2xl p-2 pl-4 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setShowEmojiPicker(!showEmojiPicker);
+                      setShowStickerPicker(false);
+                    }}
+                    className={cn(
+                      "transition-colors",
+                      showEmojiPicker ? "text-primary" : "text-[var(--text-muted)] hover:text-primary"
+                    )}
+                  >
+                    <Smile size={20} />
+                  </button>
+                </div>
+                
+                <input 
+                  type="text"
+                  value={inputText}
+                  onChange={handleInputChange}
+                  onFocus={() => {
+                    setShowEmojiPicker(false);
+                    setShowStickerPicker(false);
+                  }}
+                  placeholder="Écrivez votre message..."
+                  className="flex-1 bg-transparent border-none outline-none text-sm py-2 text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
+                />
+                
+                {inputText.trim() ? (
+                  <button 
+                    type="submit"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
+                  >
+                    <Send size={18} />
+                  </button>
+                ) : (
+                  <div className="w-10 h-10" />
+                )}
+              </form>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+            <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center text-primary mb-6">
+              <MessageSquare size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Bienvenue sur le Forum</h3>
+            <p className="text-[var(--text-secondary)] max-w-md font-medium">
+              Sélectionnez une discussion dans la liste de gauche pour commencer à échanger en temps réel avec vos camarades.
+            </p>
+          </div>
+        )}
+
+        {/* Group Info Sidebar */}
+        <AnimatePresence>
+          {showGroupInfo && activeRoom && (
+            <motion.div 
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 300, opacity: 0 }}
+              className="w-full md:w-80 border-l border-[var(--border-card)] bg-[var(--bg-card)] z-30 flex flex-col absolute inset-y-0 right-0 md:relative"
+            >
+              <div className="h-20 flex items-center px-6 border-b border-[var(--border-card)]">
+                <button onClick={() => setShowGroupInfo(false)} className="mr-4 text-[var(--text-muted)] hover:text-primary">
+                  <X size={20} />
+                </button>
+                <h3 className="font-bold text-[var(--text-main)]">Infos du groupe</h3>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                <div className="flex flex-col items-center mb-8">
+                  <div className={cn(
+                    "w-32 h-32 rounded-3xl flex items-center justify-center shadow-xl mb-4",
+                    activeRoom.color || "bg-primary/10 text-primary"
+                  )}>
+                    <Hash size={60} />
+                  </div>
+                  <h2 className="text-xl font-bold text-[var(--text-main)]">{activeRoom.name}</h2>
+                  <span className="text-xs text-[var(--text-muted)] font-medium mt-1">Groupe • 25 membres</span>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="bg-[var(--bg-main)]/50 p-4 rounded-2xl border border-[var(--border-card)]">
+                    <h4 className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Description</h4>
+                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                      Espace de discussion officiel pour la classe {activeRoom.name}. Partagez vos ressources, posez vos questions et collaborez en temps réel.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    {[
+                      { icon: ImageIcon, label: 'Médias, liens et docs', count: '12' },
+                      { icon: Clock, label: 'Messages éphémères', status: 'Désactivé' },
+                      { icon: CheckCircle, label: 'Chiffrement', status: 'Bout en bout' }
+                    ].map((item, idx) => (
+                      <button key={idx} className="w-full flex items-center justify-between p-3 hover:bg-[var(--bg-main)] rounded-xl transition-colors">
+                        <div className="flex items-center gap-3">
+                          <item.icon size={18} className="text-[var(--text-muted)]" />
+                          <span className="text-sm font-medium text-[var(--text-main)]">{item.label}</span>
+                        </div>
+                        <span className="text-xs text-[var(--text-muted)]">{item.count || item.status}</span>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-3">Médias récents</h4>
+                    <div className="grid grid-cols-3 gap-2 px-1">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="aspect-square rounded-xl bg-[var(--bg-main)] border border-[var(--border-main)] overflow-hidden group cursor-pointer">
+                          <img src={`https://picsum.photos/seed/${activeRoom.name}${i}/200`} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" referrerPolicy="no-referrer" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center justify-between mb-4 px-3">
+                      <h4 className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Membres (25)</h4>
+                      <button className="text-[10px] font-bold text-primary uppercase">Voir tout</button>
+                    </div>
+                    <div className="space-y-1">
+                      {[
+                        { name: 'Admin', role: 'Administrateur', avatar: null, status: 'Disponible' },
+                        { name: user?.name, role: 'Vous', avatar: user?.avatar, status: 'En ligne' },
+                      ].map((member, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 hover:bg-[var(--bg-main)] rounded-xl transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary overflow-hidden border border-primary/10">
+                              {member.avatar ? <img src={member.avatar} alt="" className="w-full h-full object-cover" /> : <UserIcon size={18} />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-[var(--text-main)]">{member.name}</p>
+                              <p className="text-[10px] text-[var(--text-muted)]">{member.status}</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{member.role}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4">
+                    <button className="w-full flex items-center gap-3 p-4 text-danger hover:bg-danger/5 rounded-2xl transition-colors font-bold text-sm">
+                      <Trash2 size={18} />
+                      Quitter le groupe
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
 };

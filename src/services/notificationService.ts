@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
-import { Notification as AppNotification } from '../../types';
+import { db } from '../firebase';
+import { Notification as AppNotification } from '../types';
 
 export const notificationService = {
   /**
@@ -72,17 +72,28 @@ export const notificationService = {
    */
   async requestPermission() {
     if (!('Notification' in window)) {
-      console.log("This browser does not support desktop notification");
+      console.warn("This browser does not support desktop notifications");
       return false;
     }
 
-    if (Notification.permission === 'granted') return true;
+    try {
+      if (Notification.permission === 'granted') {
+        console.log("Notification permission already granted");
+        return true;
+      }
 
-    if (Notification.permission !== 'denied') {
+      if (Notification.permission === 'denied') {
+        console.warn("Notification permission was previously denied. User must reset it in browser settings.");
+        return false;
+      }
+
+      // Modern browsers return a promise
       const permission = await Notification.requestPermission();
+      console.log("Notification permission result:", permission);
       return permission === 'granted';
+    } catch (err) {
+      console.error("Error requesting notification permission:", err);
+      return false;
     }
-
-    return false;
   }
 };

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, X, Megaphone, GraduationCap, Video, BarChart3, BookOpen, ArrowRight, Command } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTable } from '../lib/hooks';
-import { useAuth } from '../src/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { where } from 'firebase/firestore';
 import { Announcement, Exam, MeetLink, Poll, Resource } from '../types';
 

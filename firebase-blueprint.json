@@ -80,6 +80,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["postId", "userId", "authorName", "content"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A real-time chat message",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "stickerUrl": { "type": "string", "format": "uri" },
+        "type": { "type": "string", "enum": ["text", "sticker"] },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string", "format": "uri" },
+        "className": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "userId", "userName", "className"]
     }
   },
   "firestore": {
@@ -110,6 +126,10 @@
     "/notifications/{notifId}": {
       "schema": "ForumNotification",
       "description": "User notifications"
+    },
+    "/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Real-time chat messages"
     }
   }
 }

@@ -13,8 +13,8 @@ import {
  orderBy,
  getDocs
 } from 'firebase/firestore';
-import { db } from '../../firebase';
-import { Poll, PollOption, PollVote } from '../../types';
+import { db } from '../firebase';
+import { Poll, PollOption, PollVote } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, X, Check } from 'lucide-react';
 

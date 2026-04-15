@@ -24,13 +24,13 @@ import {
   Command,
   AlertTriangle
 } from 'lucide-react';
-import { useAuth } from '../src/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationBell } from './NotificationBell';
 import { Badge } from './ui';
-import { useTheme } from '../src/theme/theme';
+import { useTheme } from '../theme/theme';
 import { cn } from '../lib/utils';
 
 interface LayoutProps {
@@ -91,41 +91,35 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-transparent transition-colors duration-500 overflow-hidden">
+    <div className="flex min-h-screen bg-[var(--bg-main)] transition-colors duration-300 overflow-hidden">
       {/* Sidebar - Desktop */}
       <motion.aside 
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className={`hidden md:flex flex-col glass-ultra m-6 mr-0 rounded-[32px] transition-all duration-500 z-50 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
+        className={`hidden md:flex flex-col bg-[var(--bg-card)] border-r border-[var(--border-main)] transition-all duration-300 z-50 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
       >
-        <div className="p-8 flex items-center justify-between">
+        <div className="p-6 flex items-center justify-between">
           {!isSidebarCollapsed ? (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex items-center gap-3"
             >
-              <div className="relative group">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-neon-blue to-accent shadow-[0_0_20px_rgba(108,99,255,0.4)] flex items-center justify-center text-white font-black text-xl">
-                  J
-                </div>
-                <div className="absolute inset-0 blur-xl bg-primary/30 group-hover:bg-primary/50 transition-colors" />
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-lg">
+                J
               </div>
-              <span className="font-black text-2xl tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+              <span className="font-bold text-xl tracking-tight text-[var(--text-main)]">
                 JangHup
               </span>
             </motion.div>
           ) : (
-            <div className="relative group mx-auto">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-neon-blue to-accent shadow-[0_0_20px_rgba(108,99,255,0.4)] flex items-center justify-center text-white font-black text-xl">
-                J
-              </div>
-              <div className="absolute inset-0 blur-xl bg-primary/30 group-hover:bg-primary/50 transition-colors" />
+            <div className="w-8 h-8 rounded-lg bg-primary mx-auto flex items-center justify-center text-white font-bold text-lg">
+              J
             </div>
           )}
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -134,38 +128,30 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`relative flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-500 group ${
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                   isActive 
-                    ? 'text-white' 
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'text-primary bg-primary/5' 
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--bg-main)]'
                 }`}
                 title={isSidebarCollapsed ? item.label : undefined}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-gradient-to-r from-primary/20 to-neon-blue/20 rounded-2xl border border-primary/30 shadow-[0_0_15px_rgba(108,99,255,0.2)]"
-                    initial={false}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-                <Icon size={22} className={cn("relative z-10 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3", isActive && "text-primary")} />
+                <Icon size={20} className={cn("relative z-10", isActive && "text-primary")} />
                 {!isSidebarCollapsed && (
-                  <span className="font-bold text-sm relative z-10 tracking-tight">{item.label}</span>
+                  <span className="font-medium text-sm relative z-10">{item.label}</span>
                 )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-6 border-t border-white/5">
+        <div className="p-4 border-t border-[var(--border-main)]">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-4 px-4 py-3 w-full rounded-2xl text-slate-400 hover:text-danger hover:bg-danger/10 transition-all duration-500 group"
+            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-[var(--text-secondary)] hover:text-danger hover:bg-danger/5 transition-all duration-200 group"
             title={isSidebarCollapsed ? "Déconnexion" : undefined}
           >
-            <LogOut size={22} className="group-hover:-translate-x-1 transition-transform" />
-            {!isSidebarCollapsed && <span className="font-bold text-sm">Déconnexion</span>}
+            <LogOut size={20} />
+            {!isSidebarCollapsed && <span className="font-medium text-sm">Déconnexion</span>}
           </button>
         </div>
       </motion.aside>
@@ -183,60 +169,55 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <motion.header 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="mx-6 lg:mx-10 mt-6 px-8 py-4 glass-ultra rounded-[24px] flex items-center justify-between z-40"
+          className="h-16 px-6 lg:px-8 bg-[var(--bg-card)] border-b border-[var(--border-main)] flex items-center justify-between z-40"
         >
-          <div className="flex items-center gap-6 flex-1">
+          <div className="flex items-center gap-4 flex-1">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-2 text-slate-400 hover:bg-white/5 rounded-xl transition-colors"
+              className="md:hidden p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-main)] rounded-lg transition-colors"
             >
-              <Menu size={24} />
+              <Menu size={20} />
             </button>
             
             <button 
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="hidden md:flex p-2 text-slate-400 hover:bg-white/5 rounded-xl transition-colors"
+              className="hidden md:flex p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-main)] rounded-lg transition-colors"
             >
-              <Menu size={22} />
+              <Menu size={20} />
             </button>
             
             <button 
               onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-3 px-6 py-2.5 bg-white/5 border border-white/5 hover:border-primary/40 rounded-2xl text-slate-400 hover:text-slate-200 transition-all duration-500 w-full max-w-sm group"
+              className="flex items-center gap-3 px-4 py-2 bg-[var(--bg-main)] border border-[var(--border-main)] hover:border-primary/40 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-all duration-200 w-full max-w-sm group"
             >
-              <Search size={18} className="group-hover:text-primary transition-colors" />
-              <span className="text-sm font-bold tracking-tight">Recherche intelligente...</span>
-              <div className="ml-auto hidden sm:flex items-center gap-1.5 text-[10px] font-black bg-white/10 px-2 py-1 rounded-lg border border-white/10">
-                <Command size={12} /> K
+              <Search size={16} className="group-hover:text-primary transition-colors" />
+              <span className="text-sm">Recherche...</span>
+              <div className="ml-auto hidden sm:flex items-center gap-1 text-[10px] font-bold bg-[var(--bg-card)] px-1.5 py-0.5 rounded border border-[var(--border-main)]">
+                <Command size={10} /> K
               </div>
             </button>
           </div>
 
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex items-center gap-3 md:gap-4">
             <motion.button
-              whileHover={{ scale: 1.15, rotate: 15 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={toggleTheme}
-              className="p-3 rounded-2xl text-slate-400 hover:bg-white/5 transition-colors"
+              className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-main)] transition-colors"
             >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </motion.button>
 
             <NotificationBell />
 
-            <div className="flex items-center gap-4 pl-6 border-l border-white/10">
+            <div className="flex items-center gap-3 pl-4 border-l border-[var(--border-main)]">
               <div className="hidden sm:block text-right">
-                <p className="text-sm font-black leading-none mb-1.5 tracking-tight">{user?.name}</p>
-                <Badge type="primary" className="text-[9px] px-2 py-0.5">{user?.role}</Badge>
+                <p className="text-sm font-bold leading-none mb-1 text-[var(--text-main)]">{user?.name}</p>
+                <Badge variant="primary" className="text-[10px] px-1.5 py-0">{user?.role}</Badge>
               </div>
-              <motion.div 
-                whileHover={{ scale: 1.1 }}
-                className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary via-neon-blue to-accent p-[2px] cursor-pointer shadow-lg shadow-primary/20"
-              >
-                <div className="w-full h-full rounded-2xl bg-slate-900 border-2 border-transparent overflow-hidden">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} alt="User" className="w-full h-full object-cover" />
-                </div>
-              </motion.div>
+              <div className="w-9 h-9 rounded-full bg-[var(--bg-main)] border border-[var(--border-main)] overflow-hidden cursor-pointer">
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} alt="User" className="w-full h-full object-cover" />
+              </div>
             </div>
           </div>
         </motion.header>
@@ -252,7 +233,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <motion.nav 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="md:hidden fixed bottom-6 left-6 right-6 h-16 glass rounded-[24px] flex items-center justify-around px-4 z-50 shadow-2xl"
+          className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--bg-card)] border-t border-[var(--border-main)] flex items-center justify-around px-4 z-50"
         >
           {menuItems.slice(0, 4).map((item) => {
             const isActive = location.pathname === item.path;
@@ -262,21 +243,21 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center gap-1 transition-all duration-300",
-                  isActive ? "text-primary scale-110" : "text-slate-400"
+                  "flex flex-col items-center gap-1 transition-all duration-200",
+                  isActive ? "text-primary" : "text-[var(--text-secondary)]"
                 )}
               >
                 <Icon size={20} />
-                <span className="text-[10px] font-bold uppercase tracking-tighter">{item.label.split(' ')[0]}</span>
+                <span className="text-[10px] font-medium">{item.label.split(' ')[0]}</span>
               </Link>
             );
           })}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition-all"
+            className="flex flex-col items-center gap-1 text-[var(--text-secondary)]"
           >
             <Menu size={20} />
-            <span className="text-[10px] font-bold uppercase tracking-tighter">Menu</span>
+            <span className="text-[10px] font-medium">Menu</span>
           </button>
         </motion.nav>
       </main>
@@ -290,24 +271,24 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-slate-950/40 backdrop-blur-md z-[60] md:hidden"
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] md:hidden"
             />
             <motion.aside
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-72 glass z-[70] md:hidden flex flex-col m-4 rounded-[32px] overflow-hidden"
+              className="fixed inset-y-0 left-0 w-72 bg-[var(--bg-card)] z-[70] md:hidden flex flex-col shadow-xl"
             >
               <div className="p-6 flex items-center justify-between border-b border-[var(--border-main)]">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20 flex items-center justify-center text-white font-bold text-xl">
+                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-lg">
                     J
                   </div>
-                  <span className="font-bold text-xl tracking-tighter">JangHup</span>
+                  <span className="font-bold text-xl tracking-tight text-[var(--text-main)]">JangHup</span>
                 </div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-500 dark:text-slate-400 hover:bg-black/5 rounded-full">
-                  <X size={24} />
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-main)] rounded-lg">
+                  <X size={20} />
                 </button>
               </div>
               <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
@@ -320,14 +301,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                       to={item.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300",
+                        "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
                         isActive 
-                          ? 'bg-primary/10 text-primary border border-primary/20' 
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
+                          ? 'bg-primary/10 text-primary' 
+                          : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--bg-main)]'
                       )}
                     >
                       <Icon size={20} />
-                      <span className="font-bold text-sm">{item.label}</span>
+                      <span className="font-medium text-sm">{item.label}</span>
                     </Link>
                   );
                 })}
@@ -335,10 +316,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="p-4 border-t border-[var(--border-main)]">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-3 px-4 py-3 w-full rounded-2xl text-danger hover:bg-danger/10 transition-all duration-300"
+                  className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-danger hover:bg-danger/5 transition-all duration-200"
                 >
                   <LogOut size={20} />
-                  <span className="font-bold text-sm">Déconnexion</span>
+                  <span className="font-medium text-sm">Déconnexion</span>
                 </button>
               </div>
             </motion.aside>

@@ -17,9 +17,9 @@ import {
   getDocs,
   writeBatch
 } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
-import { User, SchoolClass, UserRole } from '../../types';
-import { handleFirestoreError, OperationType } from '../../lib/hooks';
+import { auth, db } from '../firebase';
+import { User, SchoolClass, UserRole } from '../types';
+import { handleFirestoreError, OperationType } from '../lib/hooks';
 
 export const authService = {
   async loginUser(email: string, password: string) {

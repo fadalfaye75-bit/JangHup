@@ -119,6 +119,9 @@ export interface ActivityLog {
   action: string;
   target: string;
   type: string;
+  userName?: string;
+  userRole?: string;
+  details?: string;
   createdAt: string;
 }
 
@@ -164,6 +167,37 @@ export interface Vote {
   userId: string;
   targetId: string; // post or comment id
   type: 'up' | 'down';
+}
+
+export interface ChatMessage {
+  id: string;
+  text?: string;
+  stickerUrl?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video' | 'file' | 'audio';
+  replyTo?: {
+    id: string;
+    text: string;
+    userName: string;
+  };
+  type: 'text' | 'sticker' | 'media' | 'system';
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  className: string;
+  createdAt: any;
+  readBy?: string[]; // Array of user IDs who read the message
+  reactions?: Record<string, string[]>; // emoji -> array of user IDs
+  mentions?: string[]; // array of user IDs mentioned
+}
+
+export interface ChatRoom {
+  id: string;
+  name: string;
+  lastMessage?: string;
+  lastMessageTime?: any;
+  unreadCount?: number;
+  color?: string;
 }
 
 export type ViewState = 'DASHBOARD' | 'ANNOUNCEMENTS' | 'EXAMS' | 'MEETINGS' | 'POLLS' | 'NOTIFICATIONS' | 'PROFILE' | 'ADMIN' | 'FORUM';

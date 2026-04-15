@@ -1,29 +1,27 @@
 import React from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from './src/context/AuthContext';
-import { Login } from './src/pages/Login';
+import { useAuth } from './context/AuthContext';
+import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
 import { UserRole } from './types';
 import { Loader2 } from 'lucide-react';
-import { ThemeProvider } from './src/theme/theme';
-import { ErrorBoundary } from './src/components/ErrorBoundary';
-import { NotificationListener } from './src/components/NotificationListener';
+import { ThemeProvider } from './theme/theme';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { NotificationListener } from './components/NotificationListener';
 import { AnimatePresence, motion } from 'motion/react';
 
 // Standard imports for instant tab switching (no network delay)
-import { Dashboard } from './src/pages/Dashboard';
-import { Announcements } from './src/pages/Announcements';
-import { Exams } from './src/pages/Exams';
-import { Meet } from './src/pages/Meet';
-import { Class } from './src/pages/Class';
-import { Profile } from './src/pages/Profile';
-import { Admin } from './src/pages/Admin';
-import { Sondages as Polls } from './src/pages/Sondages';
-import { Resources } from './src/pages/Resources';
-import { Forum } from './src/pages/Forum';
-import { Notifications } from './src/pages/Notifications';
-
-import { FuturisticBackground } from './src/components/FuturisticBackground';
+import { Dashboard } from './pages/Dashboard';
+import { Announcements } from './pages/Announcements';
+import { Exams } from './pages/Exams';
+import { Meet } from './pages/Meet';
+import { Class } from './pages/Class';
+import { Profile } from './pages/Profile';
+import { Admin } from './pages/Admin';
+import { Sondages as Polls } from './pages/Sondages';
+import { Resources } from './pages/Resources';
+import { Forum } from './pages/Forum';
+import { Notifications } from './pages/Notifications';
 
 const ProtectedLayout: React.FC = () => {
   const { user, loading } = useAuth();
@@ -31,17 +29,13 @@ const ProtectedLayout: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)]">
-        <FuturisticBackground />
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-6"
         >
-          <div className="relative">
-            <Loader2 className="animate-spin text-primary" size={64} />
-            <div className="absolute inset-0 blur-xl bg-primary/20 animate-pulse" />
-          </div>
-          <p className="text-primary font-black tracking-widest uppercase text-sm">Initialisation de JangHup...</p>
+          <Loader2 className="animate-spin text-primary" size={48} />
+          <p className="text-primary font-bold tracking-wider uppercase text-xs">Initialisation de JangHup...</p>
         </motion.div>
       </div>
     );
@@ -53,7 +47,6 @@ const ProtectedLayout: React.FC = () => {
 
   return (
     <Layout>
-      <FuturisticBackground />
       <Outlet />
     </Layout>
   );
@@ -105,7 +98,6 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)]">
-        <FuturisticBackground />
         <Loader2 className="animate-spin text-primary" size={48} />
       </div>
     );
@@ -115,7 +107,6 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <NotificationListener />
-        <FuturisticBackground />
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
           <Route element={<ProtectedLayout />}>

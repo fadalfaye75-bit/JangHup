@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #6C63FF;
+  --color-accent: #00C896;
+  --color-info: #3B8BEB;
+  --color-warning: #FFA502;
+  --color-danger: #FF4757;
+  --color-success: #00C896;
+  
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  
+  --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  :root {
+    --bg-main: #F6F8FC;
+    --bg-secondary: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --text-main: #1A1A2E;
+    --text-secondary: #5B6475;
+    --text-muted: #8A94A6;
+    --border-main: #E5E7EB;
+    --border-card: #E5E7EB;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.06);
+    --ring-color: rgba(108, 99, 255, 0.15);
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.5);
+  }
+
+  .dark {
+    --bg-main: #121826;
+    --bg-secondary: #1A2233;
+    --bg-card: #1A2233;
+    --text-main: #E8EEF9;
+    --text-secondary: rgba(232, 238, 249, 0.75);
+    --text-muted: rgba(232, 238, 249, 0.55);
+    --border-main: rgba(255, 255, 255, 0.08);
+    --border-card: rgba(255, 255, 255, 0.08);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    --ring-color: rgba(108, 99, 255, 0.25);
+    --glass-bg: rgba(26, 34, 51, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.08);
+  }
+
+  body {
+    @apply text-[var(--text-main)] antialiased transition-colors duration-300 min-h-screen overflow-x-hidden leading-relaxed;
+    font-family: var(--font-sans);
+    background-color: var(--bg-main);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  * {
+    @apply border-[var(--border-main)];
+    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+    transition-duration: 300ms;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-[var(--bg-card)] border border-[var(--border-card)] shadow-[var(--shadow-card)] rounded-xl overflow-hidden;
+  }
+  
+  .card-standard {
+    @apply bg-[var(--bg-card)] border border-[var(--border-card)] shadow-[var(--shadow-card)] rounded-xl transition-all duration-200 overflow-hidden;
+  }
+
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight font-semibold text-[var(--text-main)];
+  }
+
+  /* Buttons */
+  .btn-standard {
+    @apply relative inline-flex items-center justify-center px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none gap-2;
+  }
+  
+  .btn-primary {
+    @apply bg-primary text-white hover:opacity-90 shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-main)] hover:bg-[var(--bg-main)];
+  }
+  
+  .dark .btn-secondary {
+    @apply bg-white/5 border-white/10 text-[var(--text-main)] hover:bg-white/10;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white hover:opacity-90 shadow-sm;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-[var(--text-main)] hover:bg-[var(--border-main)]/20;
+  }
+
+  /* Badges */
+  .badge-standard {
+    @apply inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+  
+  .badge-urgent {
+    @apply bg-danger/10 text-danger border border-danger/20;
+  }
+  
+  .badge-important {
+    @apply bg-warning/10 text-warning border border-warning/20;
+  }
+  
+  .badge-normal {
+    @apply bg-success/10 text-success border border-success/20;
+  }
+  
+  .badge-info {
+    @apply bg-info/10 text-info border border-info/20;
+  }
+
+  /* Inputs */
+  .input-standard {
+    @apply w-full bg-[var(--bg-card)] border border-[var(--border-main)] rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+  }
+}

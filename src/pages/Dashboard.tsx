@@ -1,412 +1,462 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useTable } from '../../lib/hooks';
-import { Announcement, Exam, MeetLink, Poll, Resource, ActivityLog, User, UserRole } from '../../types';
-import { Card, Badge, Skeleton } from '../../components/ui';
-import { GlassCard } from '../components/ui/GlassCard';
+import { useTable } from '../lib/hooks';
+import { Announcement, Exam, MeetLink, Poll, ActivityLog, UserRole } from '../types';
+import { Badge, Skeleton, GlassCard, Button, AppCard, AutoGrid } from '../components/ui';
 import { 
- Megaphone, 
- Calendar,
- Clock,
- ArrowRight,
- Plus,
- Users,
- BarChart3,
- BookOpen,
- Video,
- ExternalLink,
- Activity,
- ChevronRight,
- Shield,
- Mail
+  Megaphone, 
+  Calendar,
+  Clock,
+  ArrowRight,
+  Plus,
+  Users,
+  BarChart3,
+  BookOpen,
+  ExternalLink,
+  ChevronRight,
+  Shield,
+  Mail,
+  User,
+  Activity,
+  TrendingUp,
+  MessageSquare,
+  ArrowUpRight,
+  Bell,
+  X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { fmtDate, daysLeft } from '../../lib/utils';
-import { motion } from 'motion/react';
+import { fmtDate, daysLeft } from '../lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
 import { where, orderBy, query, collection, onSnapshot, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db } from '../firebase';
+import { cn } from '../lib/utils';
+import { notificationService } from '../services/notificationService';
 
 const DashboardSkeleton = () => (
- <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
- <div className="space-y-2">
- <Skeleton className="h-10 w-64"/>
- <Skeleton className="h-4 w-48"/>
- </div>
+  <div className="space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto px-4">
+    <div className="space-y-2">
+      <Skeleton className="h-10 w-64"/>
+      <Skeleton className="h-4 w-48"/>
+    </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
- {[1, 2, 3, 4].map(i => (
- <Skeleton key={i} className="h-32 w-full rounded-xl"/>
- ))}
- </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {[1, 2, 3, 4].map(i => (
+        <Skeleton key={i} className="h-32 w-full rounded-xl"/>
+      ))}
+    </div>
 
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
- <div className="lg:col-span-2 space-y-6">
- <Skeleton className="h-64 w-full rounded-xl"/>
- <Skeleton className="h-64 w-full rounded-xl"/>
- </div>
- <div className="space-y-6">
- <Skeleton className="h-96 w-full rounded-xl"/>
- </div>
- </div>
- </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 space-y-6">
+        <Skeleton className="h-64 w-full rounded-xl"/>
+        <Skeleton className="h-64 w-full rounded-xl"/>
+      </div>
+      <div className="space-y-6">
+        <Skeleton className="h-96 w-full rounded-xl"/>
+      </div>
+    </div>
+  </div>
 );
 
 export const Dashboard: React.FC = () => {
- const { user } = useAuth();
- 
- // Memoized constraints to prevent unnecessary re-renders
- const classConstraints = React.useMemo(() => {
- const constraints: any[] = [orderBy('createdAt', 'desc')];
- if (user?.role !== UserRole.ADMIN) {
- constraints.unshift(where('className', '==', user?.class_name || ''));
- }
- return constraints;
- }, [user?.class_name, user?.role]);
+  const { user } = useAuth();
+  
+  const classConstraints = React.useMemo(() => {
+    const constraints: any[] = [orderBy('createdAt', 'desc')];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
 
- const examConstraints = React.useMemo(() => {
- const constraints: any[] = [orderBy('date', 'asc')];
- if (user?.role !== UserRole.ADMIN) {
- constraints.unshift(where('className', '==', user?.class_name || ''));
- }
- return constraints;
- }, [user?.class_name, user?.role]);
+  const examConstraints = React.useMemo(() => {
+    const constraints: any[] = [orderBy('date', 'asc')];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
 
- const meetConstraints = React.useMemo(() => {
- const constraints: any[] = [orderBy('time', 'asc')];
- if (user?.role !== UserRole.ADMIN) {
- constraints.unshift(where('className', '==', user?.class_name || ''));
- }
- return constraints;
- }, [user?.class_name, user?.role]);
+  const meetConstraints = React.useMemo(() => {
+    const constraints: any[] = [orderBy('time', 'asc')];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
 
- const pollConstraints = React.useMemo(() => {
- const constraints: any[] = [where('isActive', '==', true)];
- if (user?.role !== UserRole.ADMIN) {
- constraints.unshift(where('className', '==', user?.class_name || ''));
- }
- return constraints;
- }, [user?.class_name, user?.role]);
+  const pollConstraints = React.useMemo(() => {
+    const constraints: any[] = [where('isActive', '==', true)];
+    if (user?.role !== UserRole.ADMIN) {
+      constraints.unshift(where('className', '==', user?.class_name || ''));
+    }
+    return constraints;
+  }, [user?.class_name, user?.role]);
 
- const activityConstraints = React.useMemo(() => [
- where('userId', '==', user?.id || ''),
- orderBy('createdAt', 'desc')
- ], [user?.id]);
+  const activityConstraints = React.useMemo(() => [
+    where('userId', '==', user?.id || ''),
+    orderBy('createdAt', 'desc')
+  ], [user?.id]);
 
- // Data Fetching
- const { data: announcements, loading: annLoading } = useTable<Announcement>(
- 'announcements', 
- classConstraints,
- 5,
- !!user?.class_name || user?.role === 'ADMIN'
- );
- 
- const { data: exams, loading: examLoading } = useTable<Exam>(
- 'exams', 
- examConstraints,
- 5,
- !!user?.class_name || user?.role === 'ADMIN'
- );
- 
- const { data: meetings, loading: meetLoading } = useTable<MeetLink>(
- 'meetings', 
- meetConstraints,
- 5,
- !!user?.class_name || user?.role === 'ADMIN'
- );
- 
- const { data: polls, loading: pollLoading } = useTable<Poll>(
- 'polls', 
- pollConstraints,
- 10,
- !!user?.class_name || user?.role === 'ADMIN'
- );
+  const { data: announcements, loading: annLoading } = useTable<Announcement>(
+    'announcements', 
+    classConstraints,
+    5,
+    !!user?.class_name || user?.role === 'ADMIN'
+  );
+  
+  const { data: exams, loading: examLoading } = useTable<Exam>(
+    'exams', 
+    examConstraints,
+    5,
+    !!user?.class_name || user?.role === 'ADMIN'
+  );
+  
+  const { data: meetings, loading: meetLoading } = useTable<MeetLink>(
+    'meetings', 
+    meetConstraints,
+    5,
+    !!user?.class_name || user?.role === 'ADMIN'
+  );
+  
+  const { data: polls, loading: pollLoading } = useTable<Poll>(
+    'polls', 
+    pollConstraints,
+    10,
+    !!user?.class_name || user?.role === 'ADMIN'
+  );
 
- const [studentCount, setStudentCount] = React.useState(0);
+  const [studentCount, setStudentCount] = React.useState(0);
 
- React.useEffect(() => {
- if (!user?.class_name) return;
- const q = query(collection(db, 'users_public'), where('class_name', '==', user.class_name));
- getDocs(q).then(snap => setStudentCount(snap.size));
- }, [user?.class_name]);
+  React.useEffect(() => {
+    if (!user?.class_name) return;
+    const q = query(collection(db, 'users_public'), where('class_name', '==', user.class_name));
+    getDocs(q).then(snap => setStudentCount(snap.size));
+  }, [user?.class_name]);
 
- const { data: activities, loading: activityLoading } = useTable<ActivityLog>(
- 'activity_logs',
- activityConstraints,
- 10,
- !!user?.id
- );
+  const { data: activities, loading: activityLoading } = useTable<ActivityLog>(
+    'activity_logs',
+    activityConstraints,
+    10,
+    !!user?.id
+  );
 
- const [readStatuses, setReadStatuses] = React.useState<Record<string, boolean>>({});
+  const [readStatuses, setReadStatuses] = React.useState<Record<string, boolean>>({});
+  const [showNotifBanner, setShowNotifBanner] = React.useState(false);
+  const [notifError, setNotifError] = React.useState<string | null>(null);
 
- React.useEffect(() => {
- if (!user) return;
- const statusQ = query(
- collection(db, 'announcement_read_statuses'),
- where('userId', '==', user.id)
- );
- const unsubscribe = onSnapshot(statusQ, (snapshot) => {
- const statuses: Record<string, boolean> = {};
- snapshot.docs.forEach(doc => {
- statuses[doc.data().announcementId] = true;
- });
- setReadStatuses(statuses);
- });
- return () => unsubscribe();
- }, [user]);
+  React.useEffect(() => {
+    if ('Notification' in window) {
+      if (Notification.permission === 'default') {
+        setShowNotifBanner(true);
+      } else if (Notification.permission === 'denied') {
+        // Optionally show a small hint that notifications are blocked
+      }
+    }
+  }, []);
 
- const isLoading = annLoading || examLoading || meetLoading || pollLoading || activityLoading;
+  const handleEnableNotifs = async () => {
+    setNotifError(null);
+    try {
+      const granted = await notificationService.requestPermission();
+      if (granted) {
+        setShowNotifBanner(false);
+      } else {
+        if (Notification.permission === 'denied') {
+          setNotifError("Les notifications sont bloquées par votre navigateur. Veuillez les autoriser dans les paramètres du site.");
+        } else {
+          setNotifError("Impossible d'activer les notifications. Assurez-vous d'être sur un navigateur compatible.");
+        }
+      }
+    } catch (err) {
+      setNotifError("Une erreur est survenue lors de l'activation.");
+    }
+  };
 
- const nextMeeting = React.useMemo(() => meetings.find(m => new Date(m.time) > new Date()), [meetings]);
- const activePollsCount = React.useMemo(() => polls.length, [polls]);
+  React.useEffect(() => {
+    if (!user) return;
+    const statusQ = query(
+      collection(db, 'announcement_read_statuses'),
+      where('userId', '==', user.id)
+    );
+    const unsubscribe = onSnapshot(statusQ, (snapshot) => {
+      const statuses: Record<string, boolean> = {};
+      snapshot.docs.forEach(doc => {
+        statuses[doc.data().announcementId] = true;
+      });
+      setReadStatuses(statuses);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
- if (isLoading) return <DashboardSkeleton />;
+  const isLoading = annLoading || examLoading || meetLoading || pollLoading || activityLoading;
 
- const containerVariants: any = {
- hidden: { opacity: 0 },
- show: {
- opacity: 1,
- transition: {
- staggerChildren: 0.1,
- delayChildren: 0.3
- }
- }
- };
+  const nextMeeting = React.useMemo(() => meetings.find(m => new Date(m.time) > new Date()), [meetings]);
+  const activePollsCount = React.useMemo(() => polls.length, [polls]);
 
- const itemVariants: any = {
- hidden: { opacity: 0, y: 30, filter: 'blur(10px)' },
- show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type:"spring", stiffness: 200, damping: 25 } }
- };
+  if (isLoading) return <DashboardSkeleton />;
 
- return (
- <motion.div 
- variants={containerVariants}
- initial="hidden"
- animate="show"
- className="max-w-7xl mx-auto space-y-16 pb-20 px-4"
- >
- 
- {/* Header - Immersive Style */}
- <motion.header variants={itemVariants} className="space-y-6 relative">
- <div className="absolute -top-20 -left-20 w-64 h-64 bg-primary/20 blur-[120px] rounded-full pointer-events-none"/>
- <div className="flex items-center gap-4 text-[var(--text-secondary)] mb-2">
- <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[10px] font-black uppercase tracking-widest text-primary shadow-[0_0_15px_rgba(108,99,255,0.2)]">
- JàngHub v3.0
- </div>
- <ChevronRight size={14} className="text-[var(--text-secondary)]"/>
- <span className="text-[10px] font-black text-[var(--text-secondary)] tracking-[0.3em] uppercase">{user?.class_name || 'Ma Classe'}</span>
- </div>
- <h1 className="heading-futuristic">
- Tableau de bord
- </h1>
- <p className="text-[var(--text-secondary)] text-xl max-w-3xl font-medium leading-relaxed">
- Bienvenue dans votre espace immersif, <span className="text-[var(--text-main)] font-black">{user?.name}</span>. Votre parcours académique est synchronisé en temps réel.
- </p>
- </motion.header>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
 
- {/* Stats Grid - 4 Futuristic Cards */}
- <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
- {[
- { icon: BarChart3, label: 'Sondages', value: activePollsCount, unit: 'actifs', color: 'primary' },
- { icon: Megaphone, label: 'Annonces', value: announcements.length, unit: 'récentes', color: 'accent' },
- { icon: Clock, label: 'Prochain Cours', value: nextMeeting ? nextMeeting.title : 'Aucun', unit: nextMeeting ? fmtDate(nextMeeting.time) : 'Planifié', color: 'warning' },
- { icon: Users, label: 'Ma Classe', value: studentCount, unit: 'étudiants', color: 'neon-blue' }
- ].map((stat, i) => (
- <GlassCard key={i} className="p-8 relative group overflow-hidden border-[var(--glass-border)] hover:border-[var(--glass-border)] transition-all duration-500"tilt={true}>
- <div className={`absolute -top-10 -right-10 w-32 h-32 bg-${stat.color}/10 blur-[60px] rounded-full group-hover:bg-${stat.color}/20 transition-colors duration-700`} />
- <div className="flex items-center gap-5 mb-8 relative z-10">
- <div className={`w-14 h-14 rounded-2xl bg-${stat.color}/10 text-${stat.color} flex items-center justify-center shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border border-${stat.color}/20 group-hover:scale-110 transition-transform duration-500`}>
- <stat.icon size={28} />
- </div>
- <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-secondary)]">{stat.label}</span>
- </div>
- <div className="flex flex-col gap-1 relative z-10">
- <span className="text-4xl font-black tracking-tighter text-[var(--text-main)] truncate group-hover:text-primary transition-colors duration-500">{stat.value}</span>
- <span className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">{stat.unit}</span>
- </div>
- </GlassCard>
- ))}
- </motion.div>
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0 }
+  };
 
- {/* Quick Actions - Floating Buttons */}
- <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-6">
- {[
- { to: '/polls', icon: BarChart3, label: 'Sondages', color: 'primary' },
- { to: '/exams', icon: Calendar, label: 'Emploi du temps', color: 'warning' },
- { to: '/announcements', icon: Megaphone, label: 'Annonces', color: 'accent' },
- { to: '/profile', icon: Plus, label: 'Rejoindre classe', color: 'danger' }
- ].map((action, i) => (
- <Link key={i} to={action.to} className="group">
- <GlassCard className="flex items-center gap-4 p-6 border-[var(--glass-border)] hover:border-primary/30 hover:-translate-y-2 transition-all duration-500 shadow-2xl"tilt={true}>
- <div className={`p-3 rounded-xl bg-${action.color}/10 text-${action.color} group-hover:scale-110 group-hover:rotate-6 transition-transform shadow-lg border border-${action.color}/20 relative z-10`}>
- <action.icon size={20} />
- </div>
- <span className="font-black text-xs uppercase tracking-widest text-[var(--text-secondary)] group-hover:text-[var(--text-main)] transition-colors relative z-10">{action.label}</span>
- </GlassCard>
- </Link>
- ))}
- </motion.div>
+  return (
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="max-w-5xl mx-auto space-y-8 pb-20 px-4"
+    >
+      
+      {/* Notification Permission Banner */}
+      <AnimatePresence>
+        {showNotifBanner && (
+          <motion.div
+            initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+            animate={{ height: 'auto', opacity: 1, marginBottom: 32 }}
+            exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                    <Bell size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[var(--text-main)]">Activer les notifications</h4>
+                    <p className="text-xs text-[var(--text-secondary)] font-medium">Ne manquez plus aucune annonce, examen ou mention importante.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={handleEnableNotifs} className="text-[10px] px-4">Activer</Button>
+                  <button onClick={() => setShowNotifBanner(false)} className="p-2 text-[var(--text-muted)] hover:text-danger transition-colors">
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+              {notifError && (
+                <div className="text-[10px] font-bold text-danger bg-danger/10 p-2 rounded-lg border border-danger/20 animate-in fade-in slide-in-from-top-1">
+                  {notifError}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
- {/* Main Content Grid */}
- <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-12">
- 
- {/* Left Column - Announcements & Exams */}
- <div className="lg:col-span-2 space-y-12">
- 
- {/* Recent Announcements */}
- <section className="space-y-8">
- <div className="flex items-center justify-between">
- <h2 className="text-2xl font-black text-[var(--text-main)] flex items-center gap-4">
- <div className="w-2 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(108,99,255,0.5)]"/>
- Annonces récentes
- </h2>
- <Link to="/announcements"className="text-[10px] font-black uppercase tracking-[0.2em] text-primary hover:text-[var(--text-main)] transition-colors">Voir tout</Link>
- </div>
- <div className="space-y-6">
- {announcements.map(ann => {
- const isRead = readStatuses[ann.id];
- return (
- <GlassCard key={ann.id} className={`p-8 group relative border-[var(--glass-border)] hover:border-primary/30 transition-all duration-500 ${!isRead ? 'shadow-[0_0_40px_rgba(108,99,255,0.05)]' : ''}`} tilt={false}>
- {!isRead && (
- <div className="absolute top-8 left-[-6px] w-3 h-3 rounded-full bg-primary shadow-[0_0_15px_rgba(108,99,255,0.8)] z-20"/>
- )}
- <div className="flex justify-between items-start mb-6 relative z-10">
- <h3 className="text-xl font-black text-[var(--text-main)] group-hover:text-primary transition-colors tracking-tight leading-tight max-w-[80%]">{ann.title}</h3>
- <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
- ann.priority === 'urgent' ? 'bg-danger/10 text-danger border-danger/20' : 
- ann.priority === 'important' ? 'bg-warning/10 text-warning border-warning/20' : 
- 'bg-primary/10 text-primary border-primary/20'
- }`}>
- {ann.priority}
- </div>
- </div>
- <p className="text-[var(--text-secondary)] text-sm line-clamp-2 mb-8 leading-relaxed font-medium relative z-10">
- {ann.content}
- </p>
- <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] relative z-10">
- <div className="flex items-center gap-3">
- <div className="w-8 h-8 rounded-full bg-[var(--glass-bg)] flex items-center justify-center text-primary border border-[var(--glass-border)]">
- <Users size={14} />
- </div>
- {ann.author}
- </div>
- <span>{fmtDate(ann.createdAt)}</span>
- </div>
- </GlassCard>
- );
- })}
- {announcements.length === 0 && (
- <div className="p-20 text-center glass-ultra rounded-[40px] border-2 border-dashed border-[var(--glass-border)]">
- <p className="text-[var(--text-secondary)] font-black uppercase tracking-[0.3em] text-xs">Aucune annonce détectée.</p>
- </div>
- )}
- </div>
- </section>
+      {/* Header */}
+      <motion.header variants={itemVariants} className="space-y-2">
+        <div className="flex items-center gap-2 text-[var(--text-muted)] mb-1">
+          <Badge variant="primary" className="text-[10px] font-bold uppercase tracking-wider">
+            Tableau de bord
+          </Badge>
+          <ChevronRight size={14} />
+          <span className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase">{user?.class_name || 'Ma Classe'}</span>
+        </div>
+        <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">
+          Bienvenue, {user?.name}
+        </h1>
+        <p className="text-[var(--text-secondary)] text-sm font-medium">
+          Voici un aperçu de l'activité récente dans votre nexus académique.
+        </p>
+      </motion.header>
 
- {/* Upcoming Exams */}
- <section className="space-y-8">
- <div className="flex items-center justify-between">
- <h2 className="text-2xl font-black text-[var(--text-main)] flex items-center gap-4">
- <div className="w-2 h-8 bg-warning rounded-full shadow-[0_0_15px_rgba(255,184,0,0.5)]"/>
- Examens à venir
- </h2>
- <Link to="/exams"className="text-[10px] font-black uppercase tracking-[0.2em] text-warning hover:text-[var(--text-main)] transition-colors">Voir tout</Link>
- </div>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
- {exams.map(exam => {
- const left = daysLeft(exam.date);
- return (
- <GlassCard key={exam.id} className="p-8 border-[var(--glass-border)] hover:border-warning/40 transition-all duration-500 group"tilt={true}>
- <div className="flex justify-between items-start mb-8 relative z-10">
- <div className="w-14 h-14 rounded-2xl bg-warning/10 text-warning flex items-center justify-center group-hover:scale-110 transition-transform duration-500 border border-warning/20">
- <BookOpen size={28} />
- </div>
- <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
- left <= 2 ? 'bg-danger/10 text-danger border-danger/20' : 'bg-warning/10 text-warning border-warning/20'
- }`}>
- J-{left}
- </div>
- </div>
- <h3 className="text-xl font-black text-[var(--text-main)] mb-4 tracking-tight group-hover:text-warning transition-colors duration-500 relative z-10">{exam.subject}</h3>
- <div className="flex flex-col gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] relative z-10">
- <span className="flex items-center gap-3"><Calendar size={16} className="text-warning"/> {fmtDate(exam.date)}</span>
- <span className="flex items-center gap-3"><Clock size={16} className="text-warning"/> {exam.duration}</span>
- </div>
- </GlassCard>
- );
- })}
- {exams.length === 0 && (
- <div className="col-span-full p-20 text-center glass-ultra rounded-[40px] border-2 border-dashed border-[var(--glass-border)]">
- <p className="text-[var(--text-secondary)] font-black uppercase tracking-[0.3em] text-xs">Aucun examen en vue.</p>
- </div>
- )}
- </div>
- </section>
- </div>
+      {/* Stats Grid */}
+      <motion.div variants={itemVariants}>
+        <AutoGrid minWidth="200px">
+          {[
+            { icon: BarChart3, label: 'Sondages', value: activePollsCount, unit: 'actifs', color: 'text-primary', bg: 'bg-primary/10' },
+            { icon: Megaphone, label: 'Annonces', value: announcements.length, unit: 'récentes', color: 'text-warning', bg: 'bg-warning/10' },
+            { icon: Clock, label: 'Prochain Cours', value: nextMeeting ? nextMeeting.title : 'Aucun', unit: nextMeeting ? fmtDate(nextMeeting.time) : 'Planifié', color: 'text-success', bg: 'bg-success/10' },
+            { icon: Users, label: 'Ma Classe', value: studentCount, unit: 'étudiants', color: 'text-info', bg: 'bg-info/10' }
+          ].map((stat, i) => (
+            <AppCard key={stat.label} variant="compact" className="group">
+              <div className="flex items-center justify-between mb-4">
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", stat.bg, stat.color)}>
+                  <stat.icon size={20} />
+                </div>
+                <div className="flex items-center gap-1 text-success text-[10px] font-bold">
+                  <ArrowUpRight size={14} />
+                  Live
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-[var(--text-main)] tracking-tight">{stat.value}</p>
+                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{stat.label}</p>
+              </div>
+            </AppCard>
+          ))}
+        </AutoGrid>
+      </motion.div>
 
- {/* Right Column - Recent Activity */}
- <div className="space-y-12">
- <section className="space-y-8">
- <h2 className="text-2xl font-black text-[var(--text-main)] flex items-center gap-4">
- <div className="w-2 h-8 bg-danger rounded-full shadow-[0_0_15px_rgba(255,71,87,0.5)]"/>
- Activité
- </h2>
- <GlassCard className="p-10 space-y-10 relative overflow-hidden border-[var(--glass-border)] shadow-2xl"tilt={false}>
- <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-primary via-neon-blue to-accent animate-pulse z-20"/>
- {activities.map((activity, idx) => (
- <div key={activity.id} className="flex gap-6 relative group z-10">
- {idx !== activities.length - 1 && (
- <div className="absolute left-[23px] top-12 bottom-[-40px] w-[2px] bg-[var(--glass-bg)] group-hover:bg-primary/20 transition-colors duration-500"/>
- )}
- <div className="w-12 h-12 rounded-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] flex items-center justify-center z-10 shrink-0 group-hover:border-primary/40 transition-all duration-500">
- <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_15px_rgba(108,99,255,0.8)] group-hover:scale-125 transition-transform"/>
- </div>
- <div className="space-y-2 pt-1">
- <p className="text-sm font-black text-[var(--text-main)] leading-tight tracking-tight group-hover:text-primary transition-colors duration-500">
- {activity.action}
- </p>
- <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">
- {fmtDate(activity.createdAt)}
- </p>
- </div>
- </div>
- ))}
- {activities.length === 0 && (
- <div className="text-center py-16 relative z-10">
- <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-[0.3em]">Silence radio...</p>
- </div>
- )}
- </GlassCard>
- </section>
+      {/* Main Content Grid */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Column - Announcements & Exams */}
+        <div className="lg:col-span-2 space-y-8">
+          
+          {/* Recent Announcements */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+                <Megaphone size={20} className="text-primary" />
+                Annonces récentes
+              </h2>
+              <Link to="/announcements">
+                <Button variant="secondary" size="sm" className="text-[10px]">Voir tout</Button>
+              </Link>
+            </div>
+            <div className="space-y-4">
+              {announcements.map(ann => {
+                const isRead = readStatuses[ann.id];
+                return (
+                  <AppCard 
+                    key={ann.id} 
+                    title={ann.title}
+                    icon={!isRead ? <div className="w-2 h-2 rounded-full bg-primary" /> : <Megaphone size={18} />}
+                    badge={
+                      <Badge variant={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'primary'} className="text-[8px] px-1.5 py-0 uppercase">
+                        {ann.priority}
+                      </Badge>
+                    }
+                    footer={
+                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-[var(--bg-card)] flex items-center justify-center text-primary border border-[var(--border-card)]">
+                            <User size={12} />
+                          </div>
+                          {ann.author}
+                        </div>
+                        <span>{fmtDate(ann.createdAt)}</span>
+                      </div>
+                    }
+                  >
+                    <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-medium">
+                      {ann.content}
+                    </p>
+                  </AppCard>
+                );
+              })}
+              {announcements.length === 0 && (
+                <div className="p-12 text-center border-2 border-dashed border-[var(--border-main)] rounded-2xl">
+                  <p className="text-[var(--text-muted)] font-bold uppercase tracking-wider text-[10px]">Aucune annonce récente.</p>
+                </div>
+              )}
+            </div>
+          </section>
 
- {/* Quick Links / Resources */}
- <section className="space-y-8">
- <h2 className="text-2xl font-black text-[var(--text-main)] flex items-center gap-4">
- <div className="w-2 h-8 bg-accent rounded-full shadow-[0_0_15px_rgba(0,200,150,0.5)]"/>
- Ressources
- </h2>
- <div className="space-y-4">
- {[
- { label:"Guide de l'étudiant", icon: BookOpen },
- { label:"Règlement intérieur", icon: Shield },
- { label:"Contact Administration", icon: Mail }
- ].map((res, i) => (
- <a key={i} href="#"className="block group">
- <GlassCard className="flex items-center justify-between p-6 rounded-[24px] hover:bg-[var(--glass-bg)] hover:-translate-x-3 transition-all duration-500 border-[var(--glass-border)] shadow-xl"tilt={true}>
- <div className="flex items-center gap-5 relative z-10">
- <div className="w-12 h-12 rounded-2xl bg-[var(--glass-bg)] flex items-center justify-center text-[var(--text-secondary)] group-hover:text-accent transition-colors duration-500 border border-[var(--glass-border)]">
- <res.icon size={20} />
- </div>
- <span className="text-sm font-black text-[var(--text-secondary)] group-hover:text-[var(--text-main)] transition-colors duration-500 uppercase tracking-widest">{res.label}</span>
- </div>
- <ExternalLink size={18} className="text-[var(--text-secondary)] group-hover:text-accent transition-colors duration-500 relative z-10"/>
- </GlassCard>
- </a>
- ))}
- </div>
- </section>
- </div>
+          {/* Upcoming Exams */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+                <Calendar size={20} className="text-warning" />
+                Prochains Examens
+              </h2>
+              <Link to="/exams">
+                <Button variant="secondary" size="sm" className="text-[10px]">Calendrier</Button>
+              </Link>
+            </div>
+            <AutoGrid minWidth="200px">
+              {exams.map(exam => {
+                const days = daysLeft(exam.date);
+                return (
+                  <AppCard 
+                    key={exam.id}
+                    variant="compact"
+                    title={exam.subject}
+                    badge={
+                      <Badge variant={days <= 3 ? 'danger' : 'warning'} className="text-[8px] px-1.5 py-0">
+                        {days === 0 ? "Aujourd'hui" : days === 1 ? "Demain" : `J-${days}`}
+                      </Badge>
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center shrink-0">
+                        <Calendar size={20} />
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Date de l'examen</p>
+                        <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-main)]">
+                          <Clock size={12} className="text-warning" />
+                          {new Date(exam.date).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </AppCard>
+                );
+              })}
+              {exams.length === 0 && (
+                <div className="col-span-full p-12 text-center border-2 border-dashed border-[var(--border-main)] rounded-2xl">
+                  <p className="text-[var(--text-muted)] font-bold uppercase tracking-wider text-[10px]">Aucun examen planifié.</p>
+                </div>
+              )}
+            </AutoGrid>
+          </section>
+        </div>
 
- </motion.div>
- </motion.div>
- );
+        {/* Right Column - Activity & Quick Links */}
+        <div className="space-y-8">
+          {/* Quick Links */}
+          <section className="space-y-4">
+            <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+              <TrendingUp size={20} className="text-primary" />
+              Raccourcis
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { to: '/forum', icon: MessageSquare, label: 'Forum', color: 'text-primary', bg: 'bg-primary/10' },
+                { to: '/resources', icon: BookOpen, label: 'Cours', color: 'text-success', bg: 'bg-success/10' },
+                { to: '/meet', icon: ExternalLink, label: 'Meet', color: 'text-info', bg: 'bg-info/10' },
+                { to: '/class', icon: Shield, label: 'Classe', color: 'text-warning', bg: 'bg-warning/10' }
+              ].map((link, i) => (
+                <Link key={i} to={link.to}>
+                  <AppCard variant="compact" className="flex flex-col items-center gap-3 hover:border-primary/30 transition-all text-center group">
+                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", link.bg, link.color)}>
+                      <link.icon size={24} />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-main)]">{link.label}</span>
+                  </AppCard>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          {/* Activity Feed */}
+          <section className="space-y-4">
+            <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+              <Activity size={20} className="text-primary" />
+              Votre Activité
+            </h2>
+            <div className="space-y-3">
+              {activities.slice(0, 5).map(log => (
+                <div key={log.id} className="flex gap-3 p-3 bg-[var(--bg-card)] border border-[var(--border-main)] rounded-xl shadow-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-[var(--text-main)] leading-tight">{log.action}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] font-medium">{fmtDate(log.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+              {activities.length === 0 && (
+                <div className="p-8 text-center border border-dashed border-[var(--border-main)] rounded-xl">
+                  <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">Aucune activité.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 };

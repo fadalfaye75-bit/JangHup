@@ -3,7 +3,7 @@ import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuth } from '../src/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { Notification } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 

@@ -1,10 +1,17 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator, doc, getDocFromServer, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
+import { 
+  initializeFirestore, 
+  connectFirestoreEmulator, 
+  doc, 
+  getDocFromServer, 
+  persistentLocalCache, 
+  persistentMultipleTabManager 
+} from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
 // Import the Firebase configuration
-import firebaseConfig from './firebase-applet-config.json';
+import firebaseConfig from '../firebase-applet-config.json';
 
 /**
  * Senior Architecture Pattern: Singleton Initialization
@@ -15,20 +22,18 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Services
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const storage = getStorage(app);
 
 /**
- * Enable Offline Persistence for Robustness
- * This allows the app to work offline and caches data for faster loads.
+ * Initialize Firestore with Modern Persistence API
+ * Replaces deprecated enableMultiTabIndexedDbPersistence
  */
-enableMultiTabIndexedDbPersistence(db).catch((err) => {
-  if (err.code == 'failed-precondition') {
-    console.warn('Firebase persistence failed: Multiple tabs open');
-  } else if (err.code == 'unimplemented') {
-    console.warn('Firebase persistence not supported by browser');
-  }
-});
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+}, firebaseConfig.firestoreDatabaseId);
+
+export const storage = getStorage(app);
 
 /**
  * Development Emulators Support
@@ -52,6 +57,9 @@ async function validateConnection() {
   } catch (error: any) {
     if (error.message?.includes('the client is offline')) {
       console.error('❌ Firebase: Client is offline. Check your configuration or network.');
+    } else if (error.message?.includes('Missing or insufficient permissions')) {
+      // This is expected because we don't allow reading _internal_ by default
+      console.log('🔥 Firebase: Connection established successfully (verified via rules rejection).');
     } else {
       console.warn('⚠️ Firebase: Health check warning (expected if doc missing):', error.message);
     }

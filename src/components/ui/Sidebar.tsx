@@ -14,7 +14,7 @@ export const Sidebar = ({ activeTab, setActiveTab }: { activeTab: string, setAct
  <motion.aside
  initial={{ x: -50, opacity: 0 }}
  animate={{ x: 0, opacity: 1 }}
- className="fixed left-0 top-0 h-screen w-20 lg:w-64 bg-[var(--glass-bg)] backdrop-blur-[14px] border-r border-[var(--glass-border)] flex flex-col items-center lg:items-start py-8 z-50 transition-all duration-300"
+ className="fixed left-0 top-0 h-screen w-20 lg:w-64 bg-[var(--glass-bg)] backdrop-blur-[14px] border-r border-[var(--border-card)] flex flex-col items-center lg:items-start py-8 z-50 transition-all duration-300"
  >
  <div className="px-0 lg:px-8 mb-12 flex items-center justify-center lg:justify-start w-full">
  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent shadow-[0_0_20px_rgba(108,99,255,0.4)] flex items-center justify-center text-[var(--text-main)] font-bold text-xl">

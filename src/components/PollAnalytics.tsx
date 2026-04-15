@@ -1,5 +1,5 @@
 import React from 'react';
-import { Poll } from '../../types';
+import { Poll } from '../types';
 import { motion } from 'motion/react';
 import { TrendingUp, Users, Award } from 'lucide-react';
 import { 
@@ -38,7 +38,7 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
  const CustomTooltip = ({ active, payload }: any) => {
  if (active && payload && payload.length) {
  return (
- <div className="bg-[var(--glass-bg)] backdrop-blur-xl border border-[var(--glass-border)] p-4 rounded-2xl shadow-2xl">
+ <div className="bg-[var(--glass-bg)] backdrop-blur-xl border border-[var(--border-card)] p-4 rounded-2xl shadow-2xl">
  <p className="text-[var(--text-main)] font-black text-xs uppercase tracking-widest mb-2">{payload[0].name}</p>
  <p className="text-primary text-lg font-black tracking-tighter">
  {payload[0].value} <span className="text-[10px] uppercase tracking-normal text-[var(--text-secondary)]">votes</span>
@@ -56,19 +56,19 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
  <div className="flex flex-col gap-10">
  {/* Stats Cards */}
  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
- <GlassCard className="p-6 border-[var(--glass-border)]"tilt={true}>
+ <GlassCard className="p-6 border-[var(--border-card)]"tilt={true}>
  <Users size={20} className="text-primary mb-4"/>
  <p className="text-4xl font-black text-[var(--text-main)] tracking-tighter">{poll.totalVotes}</p>
  <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-[0.2em] mt-1">Total Participants</p>
  </GlassCard>
  
- <GlassCard className="p-6 border-[var(--glass-border)]"tilt={true}>
+ <GlassCard className="p-6 border-[var(--border-card)]"tilt={true}>
  <Award size={20} className="text-neon-blue mb-4"/>
  <p className="text-xl font-black text-[var(--text-main)] truncate tracking-tight">{winner?.label || 'N/A'}</p>
  <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-[0.2em] mt-1">Vecteur Dominant</p>
  </GlassCard>
 
- <GlassCard className="p-6 border-[var(--glass-border)]"tilt={true}>
+ <GlassCard className="p-6 border-[var(--border-card)]"tilt={true}>
  <TrendingUp size={20} className="text-success mb-4"/>
  <p className="text-4xl font-black text-[var(--text-main)] tracking-tighter">{participationRate}%</p>
  <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-[0.2em] mt-1">Engagement Flux</p>
@@ -77,7 +77,7 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
 
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
  {/* Bar Chart */}
- <GlassCard className="p-8 border-[var(--glass-border)] min-h-[400px]"tilt={false}>
+ <GlassCard className="p-8 border-[var(--border-card)] min-h-[400px]"tilt={false}>
  <h4 className="text-[10px] font-black text-[var(--text-secondary)] mb-10 uppercase tracking-[0.3em]">Répartition Analytique</h4>
  <div className="h-[280px] w-full">
  <ResponsiveContainer width="100%"height="100%">
@@ -104,7 +104,7 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
  </GlassCard>
 
  {/* Pie Chart */}
- <GlassCard className="p-8 border-[var(--glass-border)] flex flex-col items-center justify-center min-h-[400px]"tilt={false}>
+ <GlassCard className="p-8 border-[var(--border-card)] flex flex-col items-center justify-center min-h-[400px]"tilt={false}>
  <h4 className="text-[10px] font-black text-[var(--text-secondary)] mb-10 uppercase tracking-[0.3em]">Visualisation Holo-Circulaire</h4>
  <div className="h-[250px] w-full relative">
  <ResponsiveContainer width="100%"height="100%">
@@ -142,7 +142,7 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
  </div>
  <div className="mt-10 flex flex-wrap gap-4 justify-center">
  {options.map((opt, idx) => (
- <div key={opt.id} className="flex items-center gap-3 bg-[var(--glass-bg)] px-4 py-2 rounded-2xl border border-[var(--glass-border)]">
+ <div key={opt.id} className="flex items-center gap-3 bg-[var(--glass-bg)] px-4 py-2 rounded-2xl border border-[var(--border-card)]">
  <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.2)]"style={{ background: COLORS[idx % COLORS.length] }} />
  <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest">{opt.label}</span>
  </div>
