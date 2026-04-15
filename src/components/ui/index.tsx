@@ -8,6 +8,7 @@ export * from './GlassCard';
 export * from './Button';
 export * from './Input';
 export * from './AppCard';
+export * from './Avatar';
 
 export const Badge: React.FC<{ children: React.ReactNode; variant?: 'info' | 'success' | 'warning' | 'danger' | 'primary' | 'secondary'; className?: string }> = ({ children, variant = 'info', className }) => {
   const styles = {

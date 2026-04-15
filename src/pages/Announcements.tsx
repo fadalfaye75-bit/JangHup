@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Announcement, UserRole } from '../types';
-import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard } from '../components/ui';
+import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, Avatar } from '../components/ui';
 import { 
   Plus, 
   Search, 
@@ -130,6 +130,7 @@ export const Announcements: React.FC = () => {
           ...formData,
           userId: user.id,
           author: user.name,
+          authorAvatar: user.avatar || null,
           className: user.class_name,
           color: 'primary',
           createdAt: new Date().toISOString()
@@ -233,6 +234,7 @@ export const Announcements: React.FC = () => {
       content: ann.content,
       priority: ann.priority,
       className: ann.className,
+      url: ann.link,
       date: ann.createdAt,
       classEmail: classInfo?.class_email
     });
@@ -245,6 +247,7 @@ export const Announcements: React.FC = () => {
       content: ann.content,
       priority: ann.priority,
       className: ann.className,
+      url: ann.link,
       date: ann.createdAt,
       classEmail: classInfo?.class_email
     });
@@ -283,19 +286,19 @@ export const Announcements: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[var(--text-muted)] mb-1">
+          <div className="flex items-center gap-2 text-gray-500 mb-1">
             <Badge variant="primary" className="text-[10px] font-bold uppercase tracking-wider">Communication</Badge>
             <ChevronRight size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{user?.class_name || 'Ma Classe'}</span>
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">Annonces Officielles</h1>
-          <p className="text-xs font-medium text-[var(--text-secondary)]">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Annonces Officielles</h1>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400">
             {unreadCount > 0 ? `${unreadCount} nouvelles annonces à lire.` : 'Vous êtes à jour sur toutes les annonces.'}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {unreadCount > 0 && (
-            <Button variant="secondary" size="sm" onClick={handleMarkAllAsRead} className="text-[10px] font-bold uppercase tracking-wider">
+            <Button variant="secondary" size="sm" onClick={handleMarkAllAsRead} className="text-[13px] font-medium">
               Tout marquer lu
             </Button>
           )}
@@ -304,8 +307,8 @@ export const Announcements: React.FC = () => {
               onClick={() => { setEditingAnn(null); setFormData({ title: '', content: '', priority: 'normal', link: '', isPinned: false }); setIsModalOpen(true); }}
               className="flex items-center gap-2"
             >
-              <Plus size={18} />
-              <span className="font-bold uppercase tracking-wider text-xs">Publier</span>
+              <Plus size={16} />
+              <span>Publier</span>
             </Button>
           )}
         </div>
@@ -313,13 +316,13 @@ export const Announcements: React.FC = () => {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
         <input 
           type="text"
           placeholder="Rechercher une annonce..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="input-standard pl-12 py-3"
+          className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2.5 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
         />
       </div>
 
@@ -340,64 +343,64 @@ export const Announcements: React.FC = () => {
               >
                 <AppCard 
                   header={
-                    <div className="flex justify-between items-center w-full">
-                      <div className="flex items-center gap-3">
-                        {ann.isPinned ? <Pin size={18} className="text-warning fill-warning" /> : <Megaphone size={18} className={cn(!isRead ? "text-primary" : "text-[var(--text-muted)]")} />}
-                        <h3 className={cn("text-base md:text-lg font-bold tracking-tight leading-tight", !isRead && "text-primary")}>
+                    <div className="flex justify-between items-start w-full gap-3">
+                      <div className="flex items-center gap-2">
+                        {ann.isPinned ? <Pin size={16} className="text-amber-500 fill-amber-500" /> : <Megaphone size={16} className={cn(!isRead ? "text-blue-500" : "text-gray-400")} />}
+                        <h3 className={cn("text-[16px] font-semibold leading-tight", !isRead ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-200")}>
                           {ann.title}
                         </h3>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleShareWhatsApp(ann)} className="p-2 text-[var(--text-muted)] hover:text-[#25D366] transition-colors">
-                          <Share2 size={16} />
-                        </button>
+                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(ann)} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
+                          <Share2 size={14} />
+                        </Button>
                         {canManage && (
                           <>
-                            <button onClick={() => handleTogglePin(ann)} className={cn("p-2 transition-colors", ann.isPinned ? "text-warning" : "text-[var(--text-muted)] hover:text-warning")}>
-                              <Pin size={16} />
-                            </button>
-                            <button onClick={() => handleEdit(ann)} className="p-2 text-[var(--text-muted)] hover:text-primary transition-colors">
-                              <MoreHorizontal size={16} />
-                            </button>
-                            <button onClick={() => handleDelete(ann.id)} className="p-2 text-[var(--text-muted)] hover:text-danger transition-colors">
-                              <Trash2 size={16} />
-                            </button>
+                            <Button variant="ghost" size="sm" onClick={() => handleTogglePin(ann)} className={cn("px-2 py-1 h-auto", ann.isPinned ? "text-amber-500" : "text-gray-500 hover:text-amber-500")}>
+                              <Pin size={14} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(ann)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
+                              <MoreHorizontal size={14} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(ann.id)} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
+                              <Trash2 size={14} />
+                            </Button>
                           </>
                         )}
                       </div>
                     </div>
                   }
                   footer={
-                    <div className="flex items-center justify-between">
+                    <>
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-[var(--bg-card)] border border-[var(--border-card)] flex items-center justify-center text-primary shadow-sm">
-                          <UserIcon size={14} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-[var(--text-main)] uppercase tracking-wider">{ann.author}</span>
-                          <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase">Auteur</span>
-                        </div>
+                        <Avatar 
+                          src={ann.authorAvatar} 
+                          name={ann.author} 
+                          size="xs" 
+                        />
+                        <span className="text-[12px] text-gray-500 dark:text-gray-400">{ann.author}</span>
+                        <span className="text-gray-300 dark:text-gray-600">•</span>
+                        <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(ann.createdAt)}</span>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         {isRead && (
-                          <div className="flex items-center gap-1 text-success text-[10px] font-bold uppercase tracking-wider">
+                          <div className="flex items-center gap-1 text-green-600 text-[12px]">
                             <CheckCircle2 size={12} /> Lu
                           </div>
                         )}
-                        <Badge variant={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'primary'} className="text-[8px] px-2 py-0.5 uppercase">
+                        <Badge variant={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'secondary'}>
                           {ann.priority}
                         </Badge>
                       </div>
-                    </div>
+                    </>
                   }
                   className={cn(
-                    "transition-all",
-                    !isRead && "ring-2 ring-primary/20 shadow-lg shadow-primary/5",
-                    ann.isPinned && "ring-2 ring-warning/20"
+                    !isRead && "border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-900/10",
+                    ann.isPinned && "border-amber-200 dark:border-amber-900/50"
                   )}
                 >
-                  <div className="space-y-4">
-                    <p className="text-sm md:text-base text-[var(--text-secondary)] font-medium leading-relaxed whitespace-pre-wrap">
+                  <div className="space-y-3">
+                    <p className="text-[14px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                       {ann.content}
                     </p>
 
@@ -409,10 +412,10 @@ export const Announcements: React.FC = () => {
                         rel="noopener noreferrer"
                         variant="secondary"
                         size="sm"
-                        className="flex items-center gap-2 w-fit rounded-xl"
+                        className="flex items-center gap-2 w-fit mt-2"
                       >
                         <ExternalLink size={14} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">En savoir plus</span>
+                        <span>En savoir plus</span>
                       </Button>
                     )}
                   </div>
@@ -424,10 +427,10 @@ export const Announcements: React.FC = () => {
       </div>
 
       {filteredAnnouncements.length === 0 && (
-        <div className="text-center py-16 border-2 border-dashed border-[var(--border-main)] rounded-[32px]">
-          <Megaphone size={48} className="mx-auto text-[var(--text-muted)] mb-4"/>
-          <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight">Aucune annonce</h3>
-          <p className="text-[var(--text-secondary)] font-medium text-sm mt-1">Il n'y a aucune annonce correspondant à votre recherche.</p>
+        <div className="text-center py-16 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+          <Megaphone size={32} className="mx-auto text-gray-400 mb-4"/>
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight">Aucune annonce</h3>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">Il n'y a aucune annonce correspondant à votre recherche.</p>
         </div>
       )}
 
@@ -440,16 +443,17 @@ export const Announcements: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Titre de l'annonce</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Titre de l'annonce</label>
               <Input 
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Ex: Report du cours de Physique"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Priorité</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Priorité</label>
               <div className="flex gap-2">
                 {(['normal', 'important', 'urgent'] as const).map((p) => (
                   <button
@@ -457,10 +461,10 @@ export const Announcements: React.FC = () => {
                     type="button"
                     onClick={() => setFormData({ ...formData, priority: p })}
                     className={cn(
-                      "flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all",
+                      "flex-1 py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wider border transition-all",
                       formData.priority === p 
-                        ? p === 'urgent' ? "bg-danger text-white border-danger" : p === 'important' ? "bg-warning text-white border-warning" : "bg-primary text-white border-primary"
-                        : "bg-[var(--bg-main)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-muted)]"
+                        ? p === 'urgent' ? "bg-red-500 text-white border-red-500" : p === 'important' ? "bg-amber-500 text-white border-amber-500" : "bg-blue-500 text-white border-blue-500"
+                        : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                     )}
                   >
                     {p}
@@ -469,23 +473,24 @@ export const Announcements: React.FC = () => {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Contenu de l'annonce</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Contenu de l'annonce</label>
               <textarea 
                 required
                 rows={5}
                 value={formData.content}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                className="input-standard resize-none py-3"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400 resize-none"
                 placeholder="Détails de l'annonce..."
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Lien externe (Facultatif)</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Lien externe (Facultatif)</label>
               <Input 
                 type="url"
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 placeholder="https://..."
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="flex items-center gap-2 ml-1">
@@ -494,9 +499,9 @@ export const Announcements: React.FC = () => {
                 id="isPinned"
                 checked={formData.isPinned}
                 onChange={(e) => setFormData({ ...formData, isPinned: e.target.checked })}
-                className="w-4 h-4 rounded border-[var(--border-main)] text-primary focus:ring-primary"
+                className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
               />
-              <label htmlFor="isPinned" className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider cursor-pointer">Épingler l'annonce</label>
+              <label htmlFor="isPinned" className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer">Épingler l'annonce</label>
             </div>
           </div>
           <div className="flex gap-3 pt-2">

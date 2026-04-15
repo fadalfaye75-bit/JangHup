@@ -17,6 +17,7 @@ import { db } from '../firebase';
 import { Poll, PollOption, PollVote } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, X, Check } from 'lucide-react';
+import { Avatar } from './ui/Avatar';
 
 export const StoryPolls: React.FC<{ onClose: () => void }> = ({ onClose }) => {
  const { user } = useAuth();
@@ -148,9 +149,11 @@ export const StoryPolls: React.FC<{ onClose: () => void }> = ({ onClose }) => {
  {/* Header */}
  <div style={{ position: 'absolute', top: '40px', left: '20px', right: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
- <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', padding: '2px' }}>
- <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>JH</div>
- </div>
+  <Avatar 
+    name="JangHup" 
+    size="sm" 
+    className="border-2 border-primary"
+  />
  <div>
  <p style={{ fontSize: '14px', fontWeight: '700' }}>JangHup Sondages</p>
  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>{currentIndex + 1} sur {polls.length}</p>

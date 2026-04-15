@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTable } from '../lib/hooks';
 import { Announcement, Exam, MeetLink, Poll, ActivityLog, UserRole } from '../types';
-import { Badge, Skeleton, GlassCard, Button, AppCard, AutoGrid } from '../components/ui';
+import { Badge, Skeleton, GlassCard, Button, AppCard, AutoGrid, Avatar } from '../components/ui';
 import { 
   Megaphone, 
   Calendar,
@@ -257,17 +257,17 @@ export const Dashboard: React.FC = () => {
 
       {/* Header */}
       <motion.header variants={itemVariants} className="space-y-2">
-        <div className="flex items-center gap-2 text-[var(--text-muted)] mb-1">
+        <div className="flex items-center gap-2 text-gray-500 mb-1">
           <Badge variant="primary" className="text-[10px] font-bold uppercase tracking-wider">
             Tableau de bord
           </Badge>
           <ChevronRight size={14} />
-          <span className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase">{user?.class_name || 'Ma Classe'}</span>
+          <span className="text-[10px] font-bold text-gray-500 tracking-wider uppercase">{user?.class_name || 'Ma Classe'}</span>
         </div>
-        <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">
           Bienvenue, {user?.name}
         </h1>
-        <p className="text-[var(--text-secondary)] text-sm font-medium">
+        <p className="text-[14px] text-gray-500 dark:text-gray-400">
           Voici un aperçu de l'activité récente dans votre nexus académique.
         </p>
       </motion.header>
@@ -276,24 +276,24 @@ export const Dashboard: React.FC = () => {
       <motion.div variants={itemVariants}>
         <AutoGrid minWidth="200px">
           {[
-            { icon: BarChart3, label: 'Sondages', value: activePollsCount, unit: 'actifs', color: 'text-primary', bg: 'bg-primary/10' },
-            { icon: Megaphone, label: 'Annonces', value: announcements.length, unit: 'récentes', color: 'text-warning', bg: 'bg-warning/10' },
-            { icon: Clock, label: 'Prochain Cours', value: nextMeeting ? nextMeeting.title : 'Aucun', unit: nextMeeting ? fmtDate(nextMeeting.time) : 'Planifié', color: 'text-success', bg: 'bg-success/10' },
-            { icon: Users, label: 'Ma Classe', value: studentCount, unit: 'étudiants', color: 'text-info', bg: 'bg-info/10' }
+            { icon: BarChart3, label: 'Sondages', value: activePollsCount, unit: 'actifs', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+            { icon: Megaphone, label: 'Annonces', value: announcements.length, unit: 'récentes', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+            { icon: Clock, label: 'Prochain Cours', value: nextMeeting ? nextMeeting.title : 'Aucun', unit: nextMeeting ? fmtDate(nextMeeting.time) : 'Planifié', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+            { icon: Users, label: 'Ma Classe', value: studentCount, unit: 'étudiants', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20' }
           ].map((stat, i) => (
             <AppCard key={stat.label} variant="compact" className="group">
               <div className="flex items-center justify-between mb-4">
-                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", stat.bg, stat.color)}>
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 border border-transparent dark:border-white/5", stat.bg, stat.color)}>
                   <stat.icon size={20} />
                 </div>
-                <div className="flex items-center gap-1 text-success text-[10px] font-bold">
+                <div className="flex items-center gap-1 text-emerald-500 text-[11px] font-semibold">
                   <ArrowUpRight size={14} />
                   Live
                 </div>
               </div>
               <div>
-                <p className="text-2xl font-bold text-[var(--text-main)] tracking-tight">{stat.value}</p>
-                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{stat.label}</p>
+                <p className="text-[24px] font-semibold text-gray-900 dark:text-white tracking-tight">{stat.value}</p>
+                <p className="text-[12px] font-medium text-gray-500">{stat.label}</p>
               </div>
             </AppCard>
           ))}
@@ -309,12 +309,12 @@ export const Dashboard: React.FC = () => {
           {/* Recent Announcements */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-                <Megaphone size={20} className="text-primary" />
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2 tracking-tight">
+                <Megaphone size={18} className="text-gray-400" />
                 Annonces récentes
               </h2>
               <Link to="/announcements">
-                <Button variant="secondary" size="sm" className="text-[10px]">Voir tout</Button>
+                <Button variant="secondary" size="sm" className="text-[12px]">Voir tout</Button>
               </Link>
             </div>
             <div className="space-y-4">
@@ -324,33 +324,35 @@ export const Dashboard: React.FC = () => {
                   <AppCard 
                     key={ann.id} 
                     title={ann.title}
-                    icon={!isRead ? <div className="w-2 h-2 rounded-full bg-primary" /> : <Megaphone size={18} />}
+                    icon={!isRead ? <div className="w-2 h-2 rounded-full bg-blue-500" /> : <Megaphone size={16} className="text-gray-400" />}
                     badge={
-                      <Badge variant={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'primary'} className="text-[8px] px-1.5 py-0 uppercase">
+                      <Badge variant={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'primary'}>
                         {ann.priority}
                       </Badge>
                     }
                     footer={
-                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                      <div className="flex items-center justify-between w-full pt-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg bg-[var(--bg-card)] flex items-center justify-center text-primary border border-[var(--border-card)]">
-                            <User size={12} />
-                          </div>
-                          {ann.author}
+                          <Avatar 
+                            src={ann.authorAvatar} 
+                            name={ann.author} 
+                            size="xs" 
+                          />
+                          <span className="text-[13px] font-medium text-gray-700 dark:text-gray-300">{ann.author}</span>
                         </div>
-                        <span>{fmtDate(ann.createdAt)}</span>
+                        <span className="text-[12px] text-gray-500">{fmtDate(ann.createdAt)}</span>
                       </div>
                     }
                   >
-                    <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-medium">
+                    <p className="text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed">
                       {ann.content}
                     </p>
                   </AppCard>
                 );
               })}
               {announcements.length === 0 && (
-                <div className="p-12 text-center border-2 border-dashed border-[var(--border-main)] rounded-2xl">
-                  <p className="text-[var(--text-muted)] font-bold uppercase tracking-wider text-[10px]">Aucune annonce récente.</p>
+                <div className="p-12 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                  <p className="text-gray-500 text-[13px]">Aucune annonce récente.</p>
                 </div>
               )}
             </div>
@@ -359,12 +361,12 @@ export const Dashboard: React.FC = () => {
           {/* Upcoming Exams */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-                <Calendar size={20} className="text-warning" />
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2 tracking-tight">
+                <Calendar size={18} className="text-gray-400" />
                 Prochains Examens
               </h2>
               <Link to="/exams">
-                <Button variant="secondary" size="sm" className="text-[10px]">Calendrier</Button>
+                <Button variant="secondary" size="sm" className="text-[12px]">Calendrier</Button>
               </Link>
             </div>
             <AutoGrid minWidth="200px">
@@ -376,19 +378,19 @@ export const Dashboard: React.FC = () => {
                     variant="compact"
                     title={exam.subject}
                     badge={
-                      <Badge variant={days <= 3 ? 'danger' : 'warning'} className="text-[8px] px-1.5 py-0">
+                      <Badge variant={days <= 3 ? 'danger' : 'warning'}>
                         {days === 0 ? "Aujourd'hui" : days === 1 ? "Demain" : `J-${days}`}
                       </Badge>
                     }
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center shrink-0">
-                        <Calendar size={20} />
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 flex items-center justify-center shrink-0">
+                        <Calendar size={14} />
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Date de l'examen</p>
-                        <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-main)]">
-                          <Clock size={12} className="text-warning" />
+                        <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Date</p>
+                        <div className="flex items-center gap-1.5 text-[13px] font-medium text-gray-900 dark:text-white">
+                          <Clock size={12} className="text-gray-400" />
                           {new Date(exam.date).toLocaleDateString()}
                         </div>
                       </div>
@@ -397,8 +399,8 @@ export const Dashboard: React.FC = () => {
                 );
               })}
               {exams.length === 0 && (
-                <div className="col-span-full p-12 text-center border-2 border-dashed border-[var(--border-main)] rounded-2xl">
-                  <p className="text-[var(--text-muted)] font-bold uppercase tracking-wider text-[10px]">Aucun examen planifié.</p>
+                <div className="col-span-full p-12 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                  <p className="text-gray-500 text-[13px]">Aucun examen planifié.</p>
                 </div>
               )}
             </AutoGrid>
@@ -409,23 +411,23 @@ export const Dashboard: React.FC = () => {
         <div className="space-y-8">
           {/* Quick Links */}
           <section className="space-y-4">
-            <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-              <TrendingUp size={20} className="text-primary" />
+            <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2 tracking-tight">
+              <TrendingUp size={18} className="text-gray-400" />
               Raccourcis
             </h2>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { to: '/forum', icon: MessageSquare, label: 'Forum', color: 'text-primary', bg: 'bg-primary/10' },
-                { to: '/resources', icon: BookOpen, label: 'Cours', color: 'text-success', bg: 'bg-success/10' },
-                { to: '/meet', icon: ExternalLink, label: 'Meet', color: 'text-info', bg: 'bg-info/10' },
-                { to: '/class', icon: Shield, label: 'Classe', color: 'text-warning', bg: 'bg-warning/10' }
+                { to: '/forum', icon: MessageSquare, label: 'Forum', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+                { to: '/resources', icon: BookOpen, label: 'Cours', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+                { to: '/meet', icon: ExternalLink, label: 'Meet', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+                { to: '/class', icon: Shield, label: 'Classe', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' }
               ].map((link, i) => (
                 <Link key={i} to={link.to}>
-                  <AppCard variant="compact" className="flex flex-col items-center gap-3 hover:border-primary/30 transition-all text-center group">
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", link.bg, link.color)}>
-                      <link.icon size={24} />
+                  <AppCard variant="compact" className="flex flex-col items-center gap-3 hover:border-gray-300 dark:hover:border-gray-600 transition-all text-center group">
+                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 border border-transparent dark:border-white/5", link.bg, link.color)}>
+                      <link.icon size={20} />
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-main)]">{link.label}</span>
+                    <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300">{link.label}</span>
                   </AppCard>
                 </Link>
               ))}
@@ -434,23 +436,28 @@ export const Dashboard: React.FC = () => {
 
           {/* Activity Feed */}
           <section className="space-y-4">
-            <h2 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-              <Activity size={20} className="text-primary" />
+            <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2 tracking-tight">
+              <Activity size={18} className="text-gray-400" />
               Votre Activité
             </h2>
             <div className="space-y-3">
               {activities.slice(0, 5).map(log => (
-                <div key={log.id} className="flex gap-3 p-3 bg-[var(--bg-card)] border border-[var(--border-main)] rounded-xl shadow-sm">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                <div key={log.id} className="flex gap-3 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+                  <Avatar 
+                    src={log.userAvatar} 
+                    name={log.userName || log.actor} 
+                    size="xs" 
+                    className="shrink-0"
+                  />
                   <div className="space-y-0.5">
-                    <p className="text-xs font-bold text-[var(--text-main)] leading-tight">{log.action}</p>
-                    <p className="text-[10px] text-[var(--text-muted)] font-medium">{fmtDate(log.createdAt)}</p>
+                    <p className="text-[13px] font-medium text-gray-900 dark:text-white leading-tight">{log.action}</p>
+                    <p className="text-[11px] text-gray-500">{fmtDate(log.createdAt)}</p>
                   </div>
                 </div>
               ))}
               {activities.length === 0 && (
-                <div className="p-8 text-center border border-dashed border-[var(--border-main)] rounded-xl">
-                  <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">Aucune activité.</p>
+                <div className="p-8 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                  <p className="text-gray-500 text-[13px]">Aucune activité.</p>
                 </div>
               )}
             </div>

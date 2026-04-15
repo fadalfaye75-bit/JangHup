@@ -47,16 +47,20 @@ import {
   Laugh,
   Meh,
   Frown,
-  Angry
+  Angry,
+  Copy as CopyIcon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Button, Badge, Spinner, GlassCard } from '../components/ui';
+import { Button, Badge, Spinner, GlassCard, Avatar } from '../components/ui';
 import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { notificationService } from '../services/notificationService';
 
 // --- Constants ---
 
-const WHATSAPP_WALLPAPER = "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')";
+const MINIMAL_WALLPAPER = "radial-gradient(#e5e7eb 0.5px, transparent 0.5px)";
+const DARK_MINIMAL_WALLPAPER = "radial-gradient(#374151 0.5px, transparent 0.5px)";
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/2584/2584602.png',
@@ -93,44 +97,92 @@ const MessageBubble: React.FC<{
 
   const renderText = (text: string) => {
     if (!text) return null;
-    const parts = text.split(/(@\[.*?\]\(.*?\))/g);
-    return parts.map((part, i) => {
-      const mentionMatch = part.match(/@\[(.*?)\]\((.*?)\)/);
-      if (mentionMatch) {
-        return (
-          <span key={i} className="font-bold text-primary bg-primary/10 px-1 rounded">
-            @{mentionMatch[1]}
-          </span>
-        );
-      }
-      return part;
-    });
+    
+    // Process mentions first to keep them as custom components if needed, 
+    // or just let markdown handle the rest.
+    // We'll use a custom component for mentions within ReactMarkdown
+    
+    return (
+      <div className="markdown-content">
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          components={{
+            p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+            a: ({ href, children }) => (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium decoration-blue-500/30 underline-offset-2">
+                {children}
+              </a>
+            ),
+            code: ({ children }) => (
+              <code className="bg-gray-100 dark:bg-gray-700/50 px-1.5 py-0.5 rounded font-mono text-[13px] text-pink-500 dark:text-pink-400">
+                {children}
+              </code>
+            ),
+            pre: ({ children }) => (
+              <pre className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl font-mono text-[13px] my-3 overflow-x-auto custom-scrollbar border border-gray-200 dark:border-gray-700 shadow-inner">
+                {children}
+              </pre>
+            ),
+            strong: ({ children }) => <strong className="font-bold text-gray-900 dark:text-white">{children}</strong>,
+            em: ({ children }) => <em className="italic opacity-90">{children}</em>,
+            ul: ({ children }) => <ul className="list-disc ml-5 my-2 space-y-1">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal ml-5 my-2 space-y-1">{children}</ol>,
+            li: ({ children }) => <li className="pl-1">{children}</li>,
+            blockquote: ({ children }) => (
+              <blockquote className="border-l-4 border-blue-500/30 dark:border-blue-500/20 pl-4 italic my-3 text-gray-600 dark:text-gray-400 bg-blue-50/30 dark:bg-blue-900/10 py-1 rounded-r-lg">
+                {children}
+              </blockquote>
+            ),
+            h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-4 first:mt-0">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-md font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-sm font-bold mb-1 mt-2 first:mt-0">{children}</h3>,
+            // Custom mention handling
+            span: ({ className, children }) => {
+              if (typeof children === 'string' && children.startsWith('@')) {
+                return (
+                  <span className="font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-md border border-blue-100 dark:border-blue-800/50">
+                    {children}
+                  </span>
+                );
+              }
+              return <span className={className}>{children}</span>;
+            }
+          }}
+        >
+          {text.replace(/@\[(.*?)\]\((.*?)\)/g, '@$1')}
+        </ReactMarkdown>
+      </div>
+    );
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    // Could add a toast here if available
   };
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={{ y: -1 }}
       className={cn(
         "flex w-full mb-1 group relative",
         isMe ? "justify-end" : "justify-start",
-        showAvatar ? "mt-4" : "mt-0.5"
+        showAvatar ? "mt-5" : "mt-1"
       )}
     >
       <div className={cn(
-        "flex max-w-[85%] md:max-w-[70%] items-end gap-1",
+        "flex max-w-[85%] md:max-w-[75%] items-end gap-2",
         isMe ? "flex-row-reverse" : "flex-row"
       )}>
         {!isMe && (
           <div className="w-8 shrink-0">
             {showAvatar && (
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/10 shadow-sm overflow-hidden">
-                {message.userAvatar ? (
-                  <img src={message.userAvatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <UserIcon size={14} />
-                )}
-              </div>
+              <Avatar 
+                src={message.userAvatar} 
+                name={message.userName} 
+                size="sm" 
+              />
             )}
           </div>
         )}
@@ -140,7 +192,7 @@ const MessageBubble: React.FC<{
           isMe ? "items-end" : "items-start"
         )}>
           {!isMe && showAvatar && (
-            <span className="text-[10px] font-bold text-primary mb-1 ml-2 uppercase tracking-wider drop-shadow-sm">
+            <span className="text-[11px] font-medium text-gray-500 mb-1 ml-2">
               {message.userName}
             </span>
           )}
@@ -148,21 +200,21 @@ const MessageBubble: React.FC<{
           <div 
             onClick={() => setShowActions(!showActions)}
             className={cn(
-            "px-3 py-1.5 rounded-2xl shadow-md relative group/bubble transition-all cursor-pointer",
+            "px-4 py-3 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] relative group/bubble transition-all cursor-pointer",
             message.type === 'sticker' 
               ? "bg-transparent border-none shadow-none p-0"
               : isMe 
-                ? "bg-primary text-white rounded-tr-none ring-1 ring-primary/20" 
-                : "bg-[var(--bg-card)] border border-[var(--border-card)] text-[var(--text-main)] rounded-tl-none ring-1 ring-black/5"
+                ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white border border-blue-600/50" 
+                : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
           )}>
             {/* Reply Context */}
             {message.replyTo && (
               <div className={cn(
-                "mb-2 p-2 rounded-lg border-l-4 text-xs bg-black/5 flex flex-col gap-0.5",
-                isMe ? "border-white/40" : "border-primary/40"
+                "mb-3 p-2.5 rounded-xl border-l-4 text-[12px] bg-black/5 flex flex-col gap-1",
+                isMe ? "border-white/40" : "border-blue-500/40"
               )}>
-                <span className="font-bold opacity-80">{message.replyTo.userName}</span>
-                <p className="truncate opacity-70">{message.replyTo.text}</p>
+                <span className="font-bold opacity-90">{message.replyTo.userName}</span>
+                <p className="truncate opacity-80 italic">{message.replyTo.text}</p>
               </div>
             )}
 
@@ -175,24 +227,24 @@ const MessageBubble: React.FC<{
                 referrerPolicy="no-referrer"
               />
             ) : message.type === 'media' && message.mediaType === 'image' ? (
-              <div className="rounded-lg overflow-hidden mb-1">
-                <img src={message.mediaUrl} alt="media" className="max-w-full max-h-60 object-cover" referrerPolicy="no-referrer" />
+              <div className="rounded-xl overflow-hidden mb-1.5 border border-black/5">
+                <img src={message.mediaUrl} alt="media" className="max-w-full max-h-72 object-cover" referrerPolicy="no-referrer" />
               </div>
             ) : (
-              <p className="text-[13px] md:text-sm leading-relaxed whitespace-pre-wrap break-words">
+              <div className="text-[14.5px] leading-[1.6] break-words">
                 {renderText(message.text || '')}
-              </p>
+              </div>
             )}
 
             <div className={cn(
-              "flex items-center gap-1 mt-1 justify-end",
-              message.type === 'sticker' ? "text-[var(--text-muted)]" : isMe ? "text-white/60" : "text-[var(--text-muted)]"
+              "flex items-center gap-1.5 mt-1.5 justify-end",
+              message.type === 'sticker' ? "text-gray-500" : isMe ? "text-white/60" : "text-gray-400"
             )}>
-              <span className="text-[9px] font-medium">{time}</span>
+              <span className="text-[10px] font-semibold tracking-wide uppercase">{time}</span>
               {isMe && (
                 <CheckCheck 
-                  size={10} 
-                  className={cn(isRead ? "text-info" : "text-white/40")} 
+                  size={12} 
+                  className={cn(isRead ? "text-blue-200" : "text-white/30")} 
                 />
               )}
             </div>
@@ -211,14 +263,14 @@ const MessageBubble: React.FC<{
                       onReaction?.(message.id, emoji);
                     }}
                     className={cn(
-                      "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] shadow-sm border transition-all",
+                      "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] shadow-sm border transition-all",
                       uids.includes(user?.id || '')
-                        ? "bg-primary/10 border-primary/20 text-primary"
-                        : "bg-[var(--bg-card)] border-[var(--border-card)] text-[var(--text-muted)]"
+                        ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400"
+                        : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500"
                     )}
                   >
                     <span>{emoji}</span>
-                    <span className="font-bold">{uids.length}</span>
+                    <span className="font-medium">{uids.length}</span>
                   </button>
                 ))}
               </div>
@@ -231,7 +283,7 @@ const MessageBubble: React.FC<{
               isMe ? "right-full mr-2" : "left-full ml-2"
             )}>
               {/* Reaction Picker Bar */}
-              <div className="flex bg-[var(--bg-card)] border border-[var(--border-card)] rounded-full p-1 shadow-lg gap-1">
+              <div className="flex bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 shadow-sm gap-1">
                 {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
                   <button
                     key={emoji}
@@ -240,7 +292,7 @@ const MessageBubble: React.FC<{
                       onReaction?.(message.id, emoji);
                       setShowActions(false);
                     }}
-                    className="hover:scale-125 transition-transform p-0.5"
+                    className="hover:scale-110 transition-transform p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     {emoji}
                   </button>
@@ -250,10 +302,22 @@ const MessageBubble: React.FC<{
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
+                  handleCopy(message.text || '');
+                  setShowActions(false);
+                }}
+                className="p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white shadow-sm"
+                title="Copier"
+              >
+                <CopyIcon size={14} />
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
                   onReply?.(message);
                   setShowActions(false);
                 }}
-                className="p-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-card)] text-[var(--text-muted)] hover:text-primary shadow-sm"
+                className="p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white shadow-sm"
+                title="Répondre"
               >
                 <CornerUpLeft size={14} />
               </button>
@@ -264,7 +328,7 @@ const MessageBubble: React.FC<{
                     onDelete?.(message.id);
                     setShowActions(false);
                   }}
-                  className="p-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-card)] text-[var(--text-muted)] hover:text-danger shadow-sm"
+                  className="p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-red-500 shadow-sm"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -286,40 +350,40 @@ const ChatSidebarItem: React.FC<{
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-4 p-4 transition-all border-b border-[var(--border-card)]/50",
+        "w-full flex items-center gap-3 px-4 py-3 transition-all",
         isActive 
-          ? "bg-primary/5 border-l-4 border-l-primary" 
-          : "hover:bg-[var(--bg-main)] border-l-4 border-l-transparent"
+          ? "bg-white dark:bg-gray-800" 
+          : "hover:bg-white/50 dark:hover:bg-gray-800/50"
       )}
     >
       <div className={cn(
-        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-        room.color || "bg-primary/10 text-primary"
+        "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+        room.color || "bg-blue-50 dark:bg-blue-900/20 text-blue-500"
       )}>
-        <Hash size={24} />
+        <Hash size={18} />
       </div>
       
       <div className="flex-1 text-left min-w-0">
-        <div className="flex justify-between items-center mb-1">
+        <div className="flex justify-between items-center mb-0.5">
           <h3 className={cn(
-            "text-sm font-bold truncate",
-            isActive ? "text-primary" : "text-[var(--text-main)]"
+            "text-[14px] font-medium truncate",
+            isActive ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"
           )}>
             {room.name}
           </h3>
           {room.lastMessageTime && (
-            <span className="text-[10px] font-medium text-[var(--text-muted)]">
+            <span className="text-[11px] text-gray-400">
               {room.lastMessageTime}
             </span>
           )}
         </div>
-        <p className="text-xs text-[var(--text-secondary)] truncate font-medium">
+        <p className="text-[12px] text-gray-500 truncate">
           {room.lastMessage || "Aucun message"}
         </p>
       </div>
       
       {room.unreadCount ? (
-        <div className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+        <div className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-medium flex items-center justify-center">
           {room.unreadCount}
         </div>
       ) : null}
@@ -350,6 +414,7 @@ export const Forum: React.FC = () => {
   const [members, setMembers] = useState<any[]>([]);
   const [showMentionList, setShowMentionList] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
+  const [showMarkdownGuide, setShowMarkdownGuide] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -370,9 +435,13 @@ export const Forum: React.FC = () => {
   useEffect(() => {
     if (!activeRoom) return;
     const fetchMembers = async () => {
-      const q = query(collection(db, 'users'), where('class_name', '==', activeRoom.name));
-      const snapshot = await getDocs(q);
-      setMembers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      try {
+        const q = query(collection(db, 'users_public'), where('class_name', '==', activeRoom.name));
+        const snapshot = await getDocs(q);
+        setMembers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err) {
+        console.error("Error fetching members:", err);
+      }
     };
     fetchMembers();
   }, [activeRoom]);
@@ -669,8 +738,8 @@ export const Forum: React.FC = () => {
 
   const renderDateDivider = (date: string) => (
     <div className="flex justify-center my-6 sticky top-2 z-10">
-      <div className="px-4 py-1 rounded-lg bg-[var(--bg-card)]/80 backdrop-blur-sm border border-[var(--border-card)] shadow-sm">
-        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
+      <div className="px-3 py-1 rounded-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-800 shadow-sm">
+        <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">
           {date}
         </span>
       </div>
@@ -694,7 +763,7 @@ export const Forum: React.FC = () => {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
 
   return (
-    <div className="h-[calc(100vh-120px)] max-w-7xl mx-auto flex overflow-hidden bg-[var(--bg-card)] border border-[var(--border-card)] rounded-[32px] shadow-2xl">
+    <div className="h-[calc(100vh-120px)] max-w-7xl mx-auto flex overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm">
       
       {/* Sidebar */}
       <AnimatePresence mode="wait">
@@ -704,23 +773,23 @@ export const Forum: React.FC = () => {
             animate={{ x: 0 }}
             exit={{ x: -300 }}
             className={cn(
-              "w-full md:w-80 flex flex-col border-r border-[var(--border-card)] bg-[var(--bg-card)] z-20",
+              "w-full md:w-80 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 z-20",
               isMobileView ? "absolute inset-0" : "relative"
             )}
           >
-            <div className="p-6 border-b border-[var(--border-card)]">
-              <h2 className="text-xl font-bold text-[var(--text-main)] mb-4">Discussions</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
+            <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-4 px-2 tracking-tight">Discussions</h2>
+              <div className="relative px-2">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <input 
                   type="text"
                   placeholder="Rechercher..."
-                  className="w-full bg-[var(--bg-main)] border border-[var(--border-main)] rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-1.5 pl-9 pr-4 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
                 />
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar py-2">
               {rooms.map(room => (
                 <ChatSidebarItem 
                   key={room.id}
@@ -735,61 +804,61 @@ export const Forum: React.FC = () => {
       </AnimatePresence>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col relative overflow-hidden">
+      <div className="flex-1 flex flex-col relative overflow-hidden bg-white dark:bg-gray-900">
         {activeRoom ? (
           <>
             {/* Chat Header */}
-            <div className="h-20 flex items-center justify-between px-6 bg-[var(--bg-card)] border-b border-[var(--border-card)] z-20 shadow-sm">
-              <div className="flex items-center gap-4">
+            <div className="h-14 flex items-center justify-between px-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-20">
+              <div className="flex items-center gap-3">
                 {isMobileView && (
                   <button 
                     onClick={() => setShowSidebarOnMobile(true)}
-                    className="p-2 -ml-2 rounded-full hover:bg-[var(--bg-main)] text-[var(--text-muted)]"
+                    className="p-1.5 -ml-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
                   >
-                    <ChevronLeft size={24} />
+                    <ChevronLeft size={18} />
                   </button>
                 )}
                 <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
-                  activeRoom.color || "bg-primary/10 text-primary"
+                  "w-7 h-7 rounded-md flex items-center justify-center",
+                  activeRoom.color || "bg-blue-50 dark:bg-blue-900/20 text-blue-500"
                 )}>
-                  <Hash size={20} />
+                  <Hash size={14} />
                 </div>
                 <div className="cursor-pointer" onClick={() => setShowGroupInfo(true)}>
-                  <h3 className="text-sm font-bold text-[var(--text-main)]">{activeRoom.name}</h3>
+                  <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">{activeRoom.name}</h3>
                   <div className="flex items-center gap-1.5">
                     {typingUsers.length > 0 ? (
-                      <span className="text-[10px] font-bold text-primary animate-pulse">
+                      <span className="text-[11px] font-medium text-blue-500 animate-pulse">
                         {typingUsers.join(', ')} {typingUsers.length > 1 ? 'écrivent...' : 'écrit...'}
                       </span>
                     ) : (
                       <>
-                        <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                        <span className="text-[10px] font-bold text-success uppercase tracking-wider">En ligne</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="text-[11px] text-gray-500">En ligne</span>
                       </>
                     )}
                   </div>
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button 
                   onClick={() => setShowChatSearch(!showChatSearch)}
                   className={cn(
-                    "p-2 rounded-full transition-colors",
-                    showChatSearch ? "bg-primary/10 text-primary" : "hover:bg-[var(--bg-main)] text-[var(--text-muted)]"
+                    "p-1.5 rounded-md transition-colors",
+                    showChatSearch ? "bg-blue-50 dark:bg-blue-900/20 text-blue-500" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
                   )}
                 >
-                  <Search size={18} />
+                  <Search size={16} />
                 </button>
                 <button 
                   onClick={() => setShowGroupInfo(true)}
-                  className="p-2 rounded-full hover:bg-[var(--bg-main)] text-[var(--text-muted)] transition-colors"
+                  className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors"
                 >
-                  <Info size={18} />
+                  <Info size={16} />
                 </button>
-                <button className="p-2 rounded-full hover:bg-[var(--bg-main)] text-[var(--text-muted)] transition-colors">
-                  <MoreVertical size={18} />
+                <button className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
+                  <MoreVertical size={16} />
                 </button>
               </div>
             </div>
@@ -801,16 +870,16 @@ export const Forum: React.FC = () => {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="bg-[var(--bg-card)] border-b border-[var(--border-card)] px-6 py-3 z-10"
+                  className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-3 z-10"
                 >
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                     <input 
                       type="text"
                       value={chatSearch}
                       onChange={(e) => setChatSearch(e.target.value)}
                       placeholder="Rechercher dans la discussion..."
-                      className="w-full bg-[var(--bg-main)] border border-[var(--border-main)] rounded-lg py-1.5 pl-9 pr-4 text-xs outline-none focus:ring-1 focus:ring-primary/30"
+                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg py-1.5 pl-9 pr-4 text-[13px] outline-none focus:ring-1 focus:ring-blue-500/30"
                       autoFocus
                     />
                   </div>
@@ -824,14 +893,13 @@ export const Forum: React.FC = () => {
               onScroll={handleScroll}
               className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col relative"
               style={{ 
-                backgroundImage: WHATSAPP_WALLPAPER,
-                backgroundSize: '400px',
-                backgroundRepeat: 'repeat',
+                backgroundImage: document.documentElement.classList.contains('dark') ? DARK_MINIMAL_WALLPAPER : MINIMAL_WALLPAPER,
+                backgroundSize: '24px 24px',
                 backgroundColor: 'var(--bg-main)'
               }}
             >
               {/* Overlay for readability */}
-              <div className="absolute inset-0 bg-[var(--bg-main)]/85 pointer-events-none" />
+              <div className="absolute inset-0 bg-white/85 dark:bg-gray-900/85 pointer-events-none" />
               
               <div className="relative z-10 flex-1 flex flex-col">
                 <div className="flex-1" />
@@ -872,16 +940,16 @@ export const Forum: React.FC = () => {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.5, y: 20 }}
                     onClick={scrollToBottom}
-                    className="absolute bottom-6 right-6 w-10 h-10 rounded-full bg-[var(--bg-card)] border border-[var(--border-card)] shadow-lg flex items-center justify-center text-primary z-30 hover:bg-[var(--bg-main)] transition-colors"
+                    className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center text-gray-500 z-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
-                    <ChevronDown size={20} />
+                    <ChevronDown size={16} />
                   </motion.button>
                 )}
               </AnimatePresence>
             </div>
 
             {/* Input Area */}
-            <div className="p-4 md:p-6 bg-[var(--bg-card)] border-t border-[var(--border-card)] relative z-20">
+            <div className="p-4 md:p-6 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 relative z-20">
               {/* Reply Preview */}
               <AnimatePresence>
                 {replyingTo && (
@@ -889,13 +957,13 @@ export const Forum: React.FC = () => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="mb-3 p-3 bg-primary/5 border-l-4 border-primary rounded-lg flex items-center justify-between"
+                    className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 border-l-2 border-blue-500 rounded-md flex items-center justify-between"
                   >
                     <div className="flex flex-col gap-0.5 overflow-hidden">
-                      <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Réponse à {replyingTo.userName}</span>
-                      <p className="text-xs text-[var(--text-secondary)] truncate">{replyingTo.text || 'Média'}</p>
+                      <span className="text-[12px] font-semibold text-blue-500">Réponse à {replyingTo.userName}</span>
+                      <p className="text-[13px] text-gray-600 dark:text-gray-300 truncate">{replyingTo.text || 'Média'}</p>
                     </div>
-                    <button onClick={() => setReplyingTo(null)} className="text-[var(--text-muted)] hover:text-primary">
+                    <button onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                       <X size={16} />
                     </button>
                   </motion.div>
@@ -908,45 +976,68 @@ export const Forum: React.FC = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute bottom-full left-16 mb-2 w-64 bg-[var(--bg-card)] border border-[var(--border-card)] rounded-xl shadow-2xl overflow-hidden z-30"
+                    className="absolute bottom-full left-16 mb-2 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg overflow-hidden z-30"
                   >
-                    <div className="p-2 border-b border-[var(--border-card)] bg-[var(--bg-main)]">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Mentionner un membre</span>
+                    <div className="p-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Mentionner un membre</span>
                     </div>
                     <div className="max-h-48 overflow-y-auto custom-scrollbar">
                       {members.filter(m => m.name.toLowerCase().includes(mentionSearch.toLowerCase())).map(member => (
                         <button
                           key={member.id}
                           onClick={() => insertMention(member)}
-                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-primary/5 transition-colors text-left"
+                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
                         >
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
-                            {member.avatar ? <img src={member.avatar} alt="" className="w-full h-full object-cover rounded-full" /> : member.name[0]}
-                          </div>
-                          <span className="text-sm font-medium text-[var(--text-main)]">{member.name}</span>
+                          <Avatar 
+                            src={member.avatar} 
+                            name={member.name} 
+                            size="xs" 
+                          />
+                          <span className="text-[13px] font-medium text-gray-900 dark:text-white">{member.name}</span>
                         </button>
                       ))}
                     </div>
                   </motion.div>
                 )}
 
-                {showEmojiPicker && (
+                {showMarkdownGuide && (
                   <motion.div 
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                    className="absolute bottom-full left-6 mb-4 z-30"
+                    className="absolute bottom-full left-20 mb-4 z-30 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl p-4"
                   >
-                    <div className="shadow-2xl rounded-3xl overflow-hidden border border-[var(--border-card)]">
-                      <EmojiPicker 
-                        onEmojiClick={onEmojiClick}
-                        theme={Theme.AUTO}
-                        emojiStyle={EmojiStyle.APPLE}
-                        lazyLoadEmojis={true}
-                        searchPlaceholder="Rechercher un emoji..."
-                        width={320}
-                        height={400}
-                      />
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Guide Markdown</span>
+                      <button onClick={() => setShowMarkdownGuide(false)} className="text-gray-400 hover:text-gray-600">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className="space-y-2 text-[12px]">
+                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
+                        <span className="text-gray-500">Gras</span>
+                        <code className="text-blue-500">**texte**</code>
+                      </div>
+                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
+                        <span className="text-gray-500">Italique</span>
+                        <code className="text-blue-500">*texte*</code>
+                      </div>
+                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
+                        <span className="text-gray-500">Code</span>
+                        <code className="text-blue-500">`code`</code>
+                      </div>
+                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
+                        <span className="text-gray-500">Bloc Code</span>
+                        <code className="text-blue-500">```bloc```</code>
+                      </div>
+                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
+                        <span className="text-gray-500">Liste</span>
+                        <code className="text-blue-500">- item</code>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Citation</span>
+                        <code className="text-blue-500">&gt; texte</code>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -956,15 +1047,15 @@ export const Forum: React.FC = () => {
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                    className="absolute bottom-full left-6 right-6 mb-4 bg-[var(--bg-card)] border border-[var(--border-card)] rounded-3xl shadow-2xl p-4 z-30"
+                    className="absolute bottom-full left-6 right-6 mb-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-4 z-30"
                   >
                     <div className="flex items-center justify-between mb-4 px-2">
-                      <h4 className="text-sm font-bold text-[var(--text-main)]">Stickers</h4>
+                      <h4 className="text-[14px] font-semibold text-gray-900 dark:text-white">Stickers</h4>
                       <button 
                         onClick={() => setShowStickerPicker(false)}
-                        className="text-[var(--text-muted)] hover:text-primary"
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                       >
-                        <X size={18} />
+                        <X size={16} />
                       </button>
                     </div>
                     <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-2">
@@ -972,7 +1063,7 @@ export const Forum: React.FC = () => {
                         <button 
                           key={idx}
                           onClick={() => handleSendSticker(url)}
-                          className="aspect-square rounded-xl hover:bg-[var(--bg-main)] p-2 transition-all hover:scale-110"
+                          className="aspect-square rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 p-2 transition-all hover:scale-105"
                         >
                           <img src={url} alt="sticker" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                         </button>
@@ -984,7 +1075,7 @@ export const Forum: React.FC = () => {
 
               <form 
                 onSubmit={handleSendMessage}
-                className="flex items-center gap-3 bg-[var(--bg-main)] border border-[var(--border-main)] rounded-2xl p-2 pl-4 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all"
+                className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 pl-4 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all"
               >
                 <div className="flex items-center gap-2">
                   <button 
@@ -992,13 +1083,30 @@ export const Forum: React.FC = () => {
                     onClick={() => {
                       setShowEmojiPicker(!showEmojiPicker);
                       setShowStickerPicker(false);
+                      setShowMarkdownGuide(false);
                     }}
                     className={cn(
-                      "transition-colors",
-                      showEmojiPicker ? "text-primary" : "text-[var(--text-muted)] hover:text-primary"
+                      "transition-colors p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700",
+                      showEmojiPicker ? "text-blue-500" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                     )}
+                    title="Emoji"
                   >
-                    <Smile size={20} />
+                    <Smile size={18} />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setShowMarkdownGuide(!showMarkdownGuide);
+                      setShowEmojiPicker(false);
+                      setShowStickerPicker(false);
+                    }}
+                    className={cn(
+                      "transition-colors p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700",
+                      showMarkdownGuide ? "text-blue-500" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    )}
+                    title="Guide Markdown"
+                  >
+                    <FileText size={18} />
                   </button>
                 </div>
                 
@@ -1011,29 +1119,29 @@ export const Forum: React.FC = () => {
                     setShowStickerPicker(false);
                   }}
                   placeholder="Écrivez votre message..."
-                  className="flex-1 bg-transparent border-none outline-none text-sm py-2 text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
+                  className="flex-1 bg-transparent border-none outline-none text-[14px] py-1.5 text-gray-900 dark:text-white placeholder:text-gray-400"
                 />
                 
                 {inputText.trim() ? (
                   <button 
                     type="submit"
-                    className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
+                    className="w-8 h-8 rounded-md flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 transition-colors"
                   >
-                    <Send size={18} />
+                    <Send size={14} />
                   </button>
                 ) : (
-                  <div className="w-10 h-10" />
+                  <div className="w-8 h-8" />
                 )}
               </form>
             </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-            <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center text-primary mb-6">
-              <MessageSquare size={40} />
+            <div className="w-16 h-16 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 mb-6">
+              <MessageSquare size={32} />
             </div>
-            <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Bienvenue sur le Forum</h3>
-            <p className="text-[var(--text-secondary)] max-w-md font-medium">
+            <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2 tracking-tight">Bienvenue sur le Forum</h3>
+            <p className="text-[14px] text-gray-500 dark:text-gray-400 max-w-md">
               Sélectionnez une discussion dans la liste de gauche pour commencer à échanger en temps réel avec vos camarades.
             </p>
           </div>
@@ -1046,31 +1154,31 @@ export const Forum: React.FC = () => {
               initial={{ x: 300, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 300, opacity: 0 }}
-              className="w-full md:w-80 border-l border-[var(--border-card)] bg-[var(--bg-card)] z-30 flex flex-col absolute inset-y-0 right-0 md:relative"
+              className="w-full md:w-80 border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 z-30 flex flex-col absolute inset-y-0 right-0 md:relative"
             >
-              <div className="h-20 flex items-center px-6 border-b border-[var(--border-card)]">
-                <button onClick={() => setShowGroupInfo(false)} className="mr-4 text-[var(--text-muted)] hover:text-primary">
-                  <X size={20} />
+              <div className="h-14 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
+                <button onClick={() => setShowGroupInfo(false)} className="mr-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                  <X size={18} />
                 </button>
-                <h3 className="font-bold text-[var(--text-main)]">Infos du groupe</h3>
+                <h3 className="font-semibold text-[14px] text-gray-900 dark:text-white">Infos du groupe</h3>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
                 <div className="flex flex-col items-center mb-8">
                   <div className={cn(
-                    "w-32 h-32 rounded-3xl flex items-center justify-center shadow-xl mb-4",
-                    activeRoom.color || "bg-primary/10 text-primary"
+                    "w-20 h-20 rounded-2xl flex items-center justify-center mb-4",
+                    activeRoom.color || "bg-blue-50 dark:bg-blue-900/20 text-blue-500"
                   )}>
-                    <Hash size={60} />
+                    <Hash size={40} />
                   </div>
-                  <h2 className="text-xl font-bold text-[var(--text-main)]">{activeRoom.name}</h2>
-                  <span className="text-xs text-[var(--text-muted)] font-medium mt-1">Groupe • 25 membres</span>
+                  <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">{activeRoom.name}</h2>
+                  <span className="text-[13px] text-gray-500 mt-1">Groupe • 25 membres</span>
                 </div>
                 
                 <div className="space-y-6">
-                  <div className="bg-[var(--bg-main)]/50 p-4 rounded-2xl border border-[var(--border-card)]">
-                    <h4 className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Description</h4>
-                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                  <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</h4>
+                    <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                       Espace de discussion officiel pour la classe {activeRoom.name}. Partagez vos ressources, posez vos questions et collaborez en temps réel.
                     </p>
                   </div>
@@ -1081,21 +1189,21 @@ export const Forum: React.FC = () => {
                       { icon: Clock, label: 'Messages éphémères', status: 'Désactivé' },
                       { icon: CheckCircle, label: 'Chiffrement', status: 'Bout en bout' }
                     ].map((item, idx) => (
-                      <button key={idx} className="w-full flex items-center justify-between p-3 hover:bg-[var(--bg-main)] rounded-xl transition-colors">
+                      <button key={idx} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
                         <div className="flex items-center gap-3">
-                          <item.icon size={18} className="text-[var(--text-muted)]" />
-                          <span className="text-sm font-medium text-[var(--text-main)]">{item.label}</span>
+                          <item.icon size={16} className="text-gray-400" />
+                          <span className="text-[13px] font-medium text-gray-900 dark:text-white">{item.label}</span>
                         </div>
-                        <span className="text-xs text-[var(--text-muted)]">{item.count || item.status}</span>
+                        <span className="text-[12px] text-gray-500">{item.count || item.status}</span>
                       </button>
                     ))}
                   </div>
                   
                   <div>
-                    <h4 className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-3">Médias récents</h4>
+                    <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3 px-3">Médias récents</h4>
                     <div className="grid grid-cols-3 gap-2 px-1">
                       {[1, 2, 3].map(i => (
-                        <div key={i} className="aspect-square rounded-xl bg-[var(--bg-main)] border border-[var(--border-main)] overflow-hidden group cursor-pointer">
+                        <div key={i} className="aspect-square rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden group cursor-pointer">
                           <img src={`https://picsum.photos/seed/${activeRoom.name}${i}/200`} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" referrerPolicy="no-referrer" />
                         </div>
                       ))}
@@ -1104,33 +1212,35 @@ export const Forum: React.FC = () => {
                   
                   <div>
                     <div className="flex items-center justify-between mb-4 px-3">
-                      <h4 className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Membres (25)</h4>
-                      <button className="text-[10px] font-bold text-primary uppercase">Voir tout</button>
+                      <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Membres (25)</h4>
+                      <button className="text-[11px] font-semibold text-blue-500 uppercase">Voir tout</button>
                     </div>
                     <div className="space-y-1">
                       {[
                         { name: 'Admin', role: 'Administrateur', avatar: null, status: 'Disponible' },
                         { name: user?.name, role: 'Vous', avatar: user?.avatar, status: 'En ligne' },
                       ].map((member, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 hover:bg-[var(--bg-main)] rounded-xl transition-colors">
+                        <div key={idx} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary overflow-hidden border border-primary/10">
-                              {member.avatar ? <img src={member.avatar} alt="" className="w-full h-full object-cover" /> : <UserIcon size={18} />}
-                            </div>
+                            <Avatar 
+                              src={member.avatar} 
+                              name={member.name} 
+                              size="sm" 
+                            />
                             <div>
-                              <p className="text-sm font-bold text-[var(--text-main)]">{member.name}</p>
-                              <p className="text-[10px] text-[var(--text-muted)]">{member.status}</p>
+                              <p className="text-[13px] font-medium text-gray-900 dark:text-white">{member.name}</p>
+                              <p className="text-[11px] text-gray-500">{member.status}</p>
                             </div>
                           </div>
-                          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{member.role}</span>
+                          <span className="text-[10px] font-medium text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md">{member.role}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   <div className="pt-4">
-                    <button className="w-full flex items-center gap-3 p-4 text-danger hover:bg-danger/5 rounded-2xl transition-colors font-bold text-sm">
-                      <Trash2 size={18} />
+                    <button className="w-full flex items-center gap-3 p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium text-[13px]">
+                      <Trash2 size={16} />
                       Quitter le groupe
                     </button>
                   </div>

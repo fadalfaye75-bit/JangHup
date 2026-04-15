@@ -79,40 +79,40 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-main)] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="bg-[var(--bg-card)] border border-[var(--border-main)] rounded-[32px] shadow-[var(--shadow-soft)] overflow-hidden">
+        <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-10 text-center">
             <motion.div 
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
-              className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg"
+              className="w-14 h-14 bg-blue-500 text-white rounded-xl flex items-center justify-center mx-auto mb-6 shadow-md"
             >
-              <GraduationCap size={32} />
+              <GraduationCap size={28} />
             </motion.div>
 
-            <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight mb-1">JàngHub</h1>
-            <p className="text-[var(--text-secondary)] font-medium text-sm">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight mb-1">JàngHub</h1>
+            <p className="text-[14px] text-gray-500 dark:text-gray-400">
               {mode === 'register' ? "Inscription" : mode === 'class' ? "Espace Étudiant" : "Administration"}
             </p>
           </div>
 
           <div className="px-10 pb-10">
             {mode !== 'register' && (
-              <div className="flex bg-[var(--bg-main)] p-1 rounded-xl mb-8 border border-[var(--border-main)]">
+              <div className="flex bg-gray-50 dark:bg-gray-900 p-1 rounded-lg mb-8 border border-gray-200 dark:border-gray-800">
                 <button 
                   onClick={() => setMode('class')}
-                  className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all duration-200 ${mode === 'class' ? 'bg-[var(--bg-card)] text-primary shadow-sm border border-[var(--border-main)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'}`}
+                  className={`flex-1 py-1.5 text-[12px] font-medium rounded-md transition-all duration-200 ${mode === 'class' ? 'bg-white dark:bg-gray-800 text-blue-500 shadow-sm border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
                 >
                   Étudiant
                 </button>
                 <button 
                   onClick={() => setMode('admin')}
-                  className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all duration-200 ${mode === 'admin' ? 'bg-[var(--bg-card)] text-primary shadow-sm border border-[var(--border-main)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'}`}
+                  className={`flex-1 py-1.5 text-[12px] font-medium rounded-md transition-all duration-200 ${mode === 'admin' ? 'bg-white dark:bg-gray-800 text-blue-500 shadow-sm border border-gray-200 dark:border-gray-700' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
                 >
                   Admin
                 </button>
@@ -129,9 +129,9 @@ export const Login: React.FC = () => {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="p-4 bg-danger/5 text-danger border border-danger/10 rounded-xl text-xs font-medium flex items-center gap-3 overflow-hidden"
+                      className="p-3 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/20 rounded-lg text-[12px] font-medium flex items-center gap-3 overflow-hidden"
                     >
-                      <AlertCircle size={16} className="shrink-0"/> 
+                      <AlertCircle size={14} className="shrink-0"/> 
                       <span>{error}</span>
                     </motion.div>
                   )}
@@ -140,9 +140,9 @@ export const Login: React.FC = () => {
                     <motion.div 
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
-                      className="p-4 bg-success/5 text-success border border-success/10 rounded-xl text-xs font-medium flex items-center gap-3 overflow-hidden"
+                      className="p-3 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/20 rounded-lg text-[12px] font-medium flex items-center gap-3 overflow-hidden"
                     >
-                      <CheckCircle2 size={16} className="shrink-0"/> 
+                      <CheckCircle2 size={14} className="shrink-0"/> 
                       <span>Lien de réinitialisation envoyé !</span>
                     </motion.div>
                   )}
@@ -151,10 +151,10 @@ export const Login: React.FC = () => {
                 {mode === 'class' ? (
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Email</label>
+                      <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Email</label>
                       <div className="relative group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary transition-colors">
-                          <Mail size={18} />
+                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                          <Mail size={16} />
                         </div>
                         <input 
                           type="email"
@@ -162,16 +162,16 @@ export const Login: React.FC = () => {
                           placeholder="votre@email.com"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="input-standard pl-12"
+                          className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2 text-[14px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Mot de passe</label>
+                      <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Mot de passe</label>
                       <div className="relative group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary transition-colors">
-                          <Lock size={18} />
+                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                          <Lock size={16} />
                         </div>
                         <input 
                           type={showPassword ? "text" : "password"}
@@ -179,21 +179,21 @@ export const Login: React.FC = () => {
                           placeholder="••••••••"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="input-standard pl-12 pr-12"
+                          className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-10 py-2 text-[14px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-primary transition-colors"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition-colors"
                         >
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
                       <div className="flex justify-end">
                         <button 
                           type="button"
                           onClick={handleForgotPassword}
-                          className="text-[10px] font-bold text-primary uppercase tracking-wider hover:text-[var(--text-main)] transition-colors"
+                          className="text-[11px] font-semibold text-blue-500 uppercase tracking-wider hover:text-blue-600 transition-colors"
                         >
                           Mot de passe oublié ?
                         </button>
@@ -202,10 +202,10 @@ export const Login: React.FC = () => {
                   </div>
                 ) : (
                   <div className="py-8 text-center space-y-4">
-                    <div className="w-16 h-16 bg-[var(--bg-main)] rounded-2xl flex items-center justify-center mx-auto text-primary border border-[var(--border-main)] shadow-inner">
-                      <ShieldCheck size={32} />
+                    <div className="w-14 h-14 bg-gray-50 dark:bg-gray-900 rounded-xl flex items-center justify-center mx-auto text-blue-500 border border-gray-200 dark:border-gray-800 shadow-inner">
+                      <ShieldCheck size={28} />
                     </div>
-                    <p className="text-xs text-[var(--text-secondary)] font-medium leading-relaxed px-4">
+                    <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed px-4">
                       Accès restreint. Authentification Google requise pour le terminal d'administration.
                     </p>
                   </div>
@@ -214,22 +214,22 @@ export const Login: React.FC = () => {
                 <Button
                   type="submit"
                   isLoading={loading}
-                  className="w-full py-3.5 flex items-center justify-center gap-2 group"
+                  className="w-full py-2.5 flex items-center justify-center gap-2 group"
                 >
-                  <span className="font-bold uppercase tracking-wider text-xs">
+                  <span className="text-[13px] font-medium">
                     {mode === 'class' ? "Se connecter" : "Connexion Google Admin"}
                   </span>
-                  {!loading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform"/>}
+                  {!loading && <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>}
                 </Button>
 
                 {mode === 'class' && (
                   <div className="text-center pt-2">
-                    <p className="text-xs text-[var(--text-secondary)] font-medium">
+                    <p className="text-[13px] text-gray-500 dark:text-gray-400">
                       Pas encore de compte ?{' '}
                       <button 
                         type="button"
                         onClick={() => setMode('register')}
-                        className="text-primary font-bold hover:underline ml-1"
+                        className="text-blue-500 font-semibold hover:underline ml-1"
                       >
                         S'inscrire
                       </button>

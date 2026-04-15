@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 
 interface AppCardProps {
@@ -27,28 +26,24 @@ export const AppCard: React.FC<AppCardProps> = ({
   variant = 'default',
   hover = true
 }) => {
-  const paddingClass = variant === 'compact' ? 'p-4' : 'p-5 md:p-6';
+  const paddingClass = variant === 'compact' ? 'p-3' : 'p-4';
   
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={hover ? { y: -2, transition: { duration: 0.2 } } : {}}
-      whileTap={onClick ? { scale: 0.98 } : {}}
+    <div
       onClick={onClick}
       className={cn(
-        "bg-[var(--bg-card)] border border-[var(--border-card)] rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] overflow-hidden transition-all duration-200",
-        onClick && "cursor-pointer",
+        "bg-white dark:bg-[#1F2937] border border-[#E5E7EB] dark:border-white/10 rounded-[12px] flex flex-col transition-all duration-150",
+        hover && onClick && "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-300 dark:hover:border-white/20",
         className
       )}
     >
       {/* Header */}
       {(header || title || badge) && (
-        <div className={cn("flex items-center justify-between border-b border-[var(--border-card)]/50", paddingClass, "pb-4")}>
+        <div className={cn("flex items-start justify-between gap-3", paddingClass, "pb-2")}>
           {header ? header : (
-            <div className="flex items-center gap-3">
-              {icon && <div className="text-primary">{icon}</div>}
-              {title && <h3 className="text-base md:text-lg font-bold text-[var(--text-main)] tracking-tight">{title}</h3>}
+            <div className="flex items-center gap-2">
+              {icon && <div className="text-gray-500 dark:text-gray-400">{icon}</div>}
+              {title && <h3 className="text-[16px] md:text-[18px] font-semibold text-gray-900 dark:text-gray-100 leading-tight">{title}</h3>}
             </div>
           )}
           {badge && <div className="shrink-0">{badge}</div>}
@@ -56,22 +51,22 @@ export const AppCard: React.FC<AppCardProps> = ({
       )}
 
       {/* Content */}
-      <div className={paddingClass}>
+      <div className={cn("flex-1 text-[13px] md:text-[14px] text-gray-600 dark:text-gray-300 flex flex-col gap-2.5", paddingClass, (header || title || badge) ? "pt-0" : "", footer ? "pb-3" : "")}>
         {children}
       </div>
 
       {/* Footer */}
       {footer && (
-        <div className={cn("border-t border-[var(--border-card)]/50 bg-[var(--bg-main)]/30", paddingClass, "py-4")}>
+        <div className={cn("flex items-center justify-between border-t border-[#E5E7EB] dark:border-white/5 text-[12px] text-gray-500 dark:text-gray-400", paddingClass, "pt-3 mt-auto")}>
           {footer}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 
 export const CardGrid: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6", className)}>
+  <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4", className)}>
     {children}
   </div>
 );
@@ -79,10 +74,10 @@ export const CardGrid: React.FC<{ children: React.ReactNode; className?: string 
 export const AutoGrid: React.FC<{ children: React.ReactNode; className?: string; minWidth?: string }> = ({ 
   children, 
   className,
-  minWidth = "240px" 
+  minWidth = "260px" 
 }) => (
   <div 
-    className={cn("grid gap-4 md:gap-6", className)}
+    className={cn("grid gap-4", className)}
     style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))` }}
   >
     {children}

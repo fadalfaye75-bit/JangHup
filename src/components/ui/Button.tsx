@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, HTMLMotionProps } from 'motion/react';
+import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 
 interface ButtonProps extends Omit<React.AllHTMLAttributes<HTMLElement>, 'as' | 'size'> {
@@ -14,19 +14,19 @@ interface ButtonProps extends Omit<React.AllHTMLAttributes<HTMLElement>, 'as' | 
 
 export const Button = React.forwardRef<any, ButtonProps>(
   ({ className = '', variant = 'primary', size = 'md', isLoading, children, as, ...props }, ref) => {
-    const baseStyles = "btn-standard outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/50 ring-offset-[var(--bg-main)] inline-flex items-center justify-center";
+    const baseStyles = "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none gap-2";
 
     const variants = {
-      primary: "btn-primary",
-      secondary: "btn-secondary",
-      danger: "btn-danger",
-      ghost: "btn-ghost"
+      primary: "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200",
+      secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700",
+      danger: "bg-red-600 text-white hover:bg-red-700",
+      ghost: "bg-transparent text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
     };
 
     const sizes = {
       sm: "px-3 py-1.5 text-xs",
-      md: "px-6 py-2.5 text-sm",
-      lg: "px-8 py-3.5 text-base"
+      md: "px-4 py-2 text-sm",
+      lg: "px-6 py-3 text-base"
     };
 
     const Component = as ? (motion as any)[as] : motion.button;
@@ -34,9 +34,7 @@ export const Button = React.forwardRef<any, ButtonProps>(
     return (
       <Component
         ref={ref}
-        whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         className={cn(baseStyles, variants[variant], sizes[size], className)}
         disabled={isLoading || (props as any).disabled}
         {...props}

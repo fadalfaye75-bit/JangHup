@@ -201,14 +201,7 @@ service cloud.firestore {
                         (request.resource.data.type == 'sticker' && isValidUrl(request.resource.data.stickerUrl)) ||
                         (request.resource.data.type == 'media')
                       );
-      allow update: if isAdmin() || (isAuthenticated() && 
-                      request.resource.data.userId == resource.data.userId &&
-                      request.resource.data.className == resource.data.className &&
-                      request.resource.data.type == resource.data.type &&
-                      request.resource.data.get('text', '') == resource.data.get('text', '') &&
-                      request.resource.data.get('stickerUrl', '') == resource.data.get('stickerUrl', '') &&
-                      request.resource.data.get('mediaUrl', '') == resource.data.get('mediaUrl', '')
-                    );
+      allow update: if isAdmin() || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy', 'reactions']));
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
 

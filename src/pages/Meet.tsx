@@ -78,13 +78,42 @@ export const Meet: React.FC = () => {
         });
 
         if (user?.class_name) {
+          const meetingDate = new Date(formData.time).toLocaleString('fr-FR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const notificationMessage = `Une réunion sur ${formData.platform} est prévue le ${meetingDate}. Lien: ${formData.url}`;
+
           await notificationService.notifyClass(
             user.class_name,
             `Nouvelle réunion: ${formData.title}`,
-            `Une réunion sur ${formData.platform} est prévue le ${new Date(formData.time).toLocaleString()}.`,
+            notificationMessage,
             'info',
-            '/meetings'
+            formData.url // Use the actual meeting URL as the link
           );
+
+          // Also send a message to the Forum
+          try {
+            const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+            const { db } = await import('../firebase');
+            
+            await addDoc(collection(db, 'messages'), {
+              text: `📅 **Nouvelle Réunion Planifiée**\n\n**Sujet:** ${formData.title}\n**Plateforme:** ${formData.platform}\n**Date:** ${meetingDate}\n\n🔗 [Rejoindre la réunion](${formData.url})\n\n${formData.url}`,
+              type: 'text',
+              userId: 'system',
+              userName: 'Système',
+              userAvatar: null,
+              className: user.class_name,
+              createdAt: serverTimestamp(),
+              readBy: [user.id]
+            });
+          } catch (forumErr) {
+            console.error("Error sending meeting message to forum:", forumErr);
+          }
         }
       }
       setIsModalOpen(false);
@@ -187,13 +216,13 @@ export const Meet: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[var(--text-muted)] mb-1">
+          <div className="flex items-center gap-2 text-gray-500 mb-1">
             <Badge variant="info" className="text-[10px] font-bold uppercase tracking-wider">Réunions</Badge>
             <ChevronRight size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{user?.class_name || 'Ma Classe'}</span>
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">Hub de Visioconférence</h1>
-          <p className="text-xs font-medium text-[var(--text-secondary)]">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Hub de Visioconférence</h1>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400">
             Accédez aux cours en ligne et aux réunions de votre classe.
           </p>
         </div>
@@ -204,7 +233,7 @@ export const Meet: React.FC = () => {
             className="flex items-center gap-2"
           >
             <Plus size={18} />
-            <span className="font-bold uppercase tracking-wider text-xs">Nouveau Lien</span>
+            <span className="text-[13px] font-medium">Nouveau Lien</span>
           </Button>
         )}
       </div>
@@ -227,37 +256,34 @@ export const Meet: React.FC = () => {
                 <AppCard 
                   className="h-full flex flex-col"
                   header={
-                    <div className="flex justify-between items-center w-full">
-                      <div className="w-12 h-12 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-card)] flex items-center justify-center p-2.5 shadow-sm group-hover:scale-110 transition-transform">
-                        {getPlatformIcon(meet.platform) ? (
-                          <img src={getPlatformIcon(meet.platform)!} alt={meet.platform} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                        ) : (
-                          <Video className="text-[var(--text-muted)]" size={24} />
-                        )}
+                    <div className="flex justify-between items-start w-full gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center p-1.5">
+                          {getPlatformIcon(meet.platform) ? (
+                            <img src={getPlatformIcon(meet.platform)!} alt={meet.platform} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                          ) : (
+                            <Video className="text-gray-400" size={16} />
+                          )}
+                        </div>
+                        <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight">
+                          {meet.title}
+                        </h3>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleShareWhatsApp(meet)} 
-                          className="p-2 text-[var(--text-muted)] hover:text-[#25D366] transition-colors"
-                          title="Partager sur WhatsApp"
-                        >
-                          <Share2 size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleShareEmail(meet)} 
-                          className="p-2 text-[var(--text-muted)] hover:text-primary transition-colors"
-                          title="Partager par Email"
-                        >
-                          <Mail size={16} />
-                        </button>
+                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(meet)} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]" title="Partager sur WhatsApp">
+                          <Share2 size={14} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleShareEmail(meet)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white" title="Partager par Email">
+                          <Mail size={14} />
+                        </Button>
                         {canManage && (
                           <>
-                            <button onClick={() => handleEdit(meet)} className="p-2 text-[var(--text-muted)] hover:text-primary transition-colors">
-                              <Edit2 size={16} />
-                            </button>
-                            <button onClick={() => handleDelete(meet.id)} className="p-2 text-[var(--text-muted)] hover:text-danger transition-colors">
-                              <Trash2 size={16} />
-                            </button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(meet)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
+                              <Edit2 size={14} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(meet.id)} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
+                              <Trash2 size={14} />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -269,47 +295,52 @@ export const Meet: React.FC = () => {
                       href={meet.url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="w-full flex items-center justify-center gap-2 rounded-xl"
+                      variant="secondary"
+                      size="sm"
+                      className="w-full flex items-center justify-center gap-2"
                     >
-                      <ExternalLink size={16} />
-                      <span className="font-bold uppercase tracking-wider text-xs">Rejoindre</span>
+                      <ExternalLink size={14} />
+                      <span>Rejoindre</span>
                     </Button>
                   }
                 >
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight group-hover:text-primary transition-colors leading-tight">{meet.title}</h3>
-                    
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 text-[var(--text-secondary)] text-sm font-medium">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--bg-main)] flex items-center justify-center text-primary/60 border border-[var(--border-card)]">
-                          <CalendarIcon size={16} />
-                        </div>
-                        <div className="flex flex-col">
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 text-[13px] text-gray-600 dark:text-gray-300">
+                        <CalendarIcon size={14} className="text-gray-400" />
+                        <div className="flex gap-2">
                           {isFormatted ? (
                             <>
-                              <span className="font-bold text-[var(--text-main)] text-[10px] uppercase tracking-wider leading-none mb-1">{timeInfo.day}</span>
-                              <span className="text-[var(--text-muted)] text-xs">{timeInfo.date}</span>
+                              <span className="text-gray-400">{timeInfo.day}</span>
+                              <span className="font-medium">{timeInfo.date}</span>
                             </>
                           ) : (
                             <span>{meet.time}</span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-[var(--text-secondary)] text-sm font-medium">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--bg-main)] flex items-center justify-center text-primary/60 border border-[var(--border-card)]">
-                          <Clock size={16} />
-                        </div>
-                        <div className="flex flex-col">
+                      <div className="flex items-center gap-3 text-[13px] text-gray-600 dark:text-gray-300">
+                        <Clock size={14} className="text-gray-400" />
+                        <div className="flex items-center gap-2">
                           {isFormatted ? (
-                            <span className="font-bold text-[var(--text-main)] text-base tracking-tight leading-none">{timeInfo.time}</span>
+                            <span className="font-medium">{timeInfo.time}</span>
                           ) : (
                             <span>Horaire non défini</span>
                           )}
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"/>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{meet.platform}</span>
-                          </div>
+                          <span className="text-gray-300 dark:text-gray-600">•</span>
+                          <span className="text-gray-500">{meet.platform}</span>
                         </div>
+                      </div>
+                      <div className="flex items-center gap-3 text-[13px] text-gray-600 dark:text-gray-300 pt-1">
+                        <ExternalLink size={14} className="text-gray-400 shrink-0" />
+                        <a 
+                          href={meet.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 dark:text-blue-400 hover:underline truncate font-medium"
+                        >
+                          {meet.url}
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -321,10 +352,10 @@ export const Meet: React.FC = () => {
       </AutoGrid>
 
       {meetings.length === 0 && (
-        <div className="text-center py-16 border-2 border-dashed border-[var(--border-main)] rounded-[32px]">
-          <Video size={48} className="mx-auto text-[var(--text-muted)] mb-4"/>
-          <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight">Aucune réunion</h3>
-          <p className="text-[var(--text-secondary)] font-medium text-sm mt-1">Aucun lien de visioconférence n'a été partagé pour le moment.</p>
+        <div className="text-center py-16 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+          <Video size={40} className="mx-auto text-gray-300 mb-4"/>
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight">Aucune réunion</h3>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400 mt-1">Aucun lien de visioconférence n'a été partagé pour le moment.</p>
         </div>
       )}
 
@@ -336,7 +367,7 @@ export const Meet: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Titre de la réunion</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Titre de la réunion</label>
               <Input 
                 required
                 value={formData.title}
@@ -346,11 +377,11 @@ export const Meet: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Plateforme</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Plateforme</label>
                 <select 
                   value={formData.platform}
                   onChange={(e) => setFormData({ ...formData, platform: e.target.value as any })}
-                  className="input-standard"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
                   <option value="Google Meet">Google Meet</option>
                   <option value="Zoom">Zoom</option>
@@ -359,18 +390,18 @@ export const Meet: React.FC = () => {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Date & Heure</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Date & Heure</label>
                 <input 
                   type="datetime-local"
                   required
                   value={formData.time}
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  className="input-standard"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">URL de la réunion</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">URL de la réunion</label>
               <Input 
                 type="url"
                 required

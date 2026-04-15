@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -9,21 +8,19 @@ interface BadgeProps {
 
 export const Badge: React.FC<BadgeProps> = ({ children, variant = 'primary', className = '' }) => {
   const variants = {
-    primary: 'bg-primary/10 text-primary border-primary/20',
-    success: 'bg-accent/10 text-accent border-accent/20',
-    danger: 'bg-danger/10 text-danger border-danger/20',
-    info: 'bg-info/10 text-info border-info/20',
-    warning: 'bg-warning/10 text-warning border-warning/20',
-    secondary: 'bg-[var(--bg-main)] text-[var(--text-muted)] border-[var(--border-main)]',
+    primary: 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30',
+    success: 'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/30',
+    danger: 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30',
+    info: 'bg-sky-50 text-sky-600 border-sky-200 dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800/30',
+    warning: 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30',
+    secondary: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700',
   };
 
   return (
-    <motion.span
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className={`badge-standard border ${variants[variant]} ${className}`}
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${variants[variant]} ${className}`}
     >
       {children}
-    </motion.span>
+    </span>
   );
 };

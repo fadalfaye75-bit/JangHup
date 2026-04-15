@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { User, UserRole, SchoolClass } from '../types';
-import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input } from '../components/ui';
+import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, Avatar } from '../components/ui';
 import { 
   Users, 
   UserPlus, 
@@ -151,13 +151,13 @@ export const Class: React.FC = () => {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
   if (!user?.class_name) return (
     <div className="max-w-2xl mx-auto text-center py-20 space-y-6">
-      <div className="w-20 h-20 bg-[var(--bg-card)] border border-[var(--border-main)] rounded-full flex items-center justify-center mx-auto text-[var(--text-muted)] shadow-sm">
-        <Users size={40} />
+      <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center mx-auto text-gray-400 shadow-sm">
+        <Users size={32} />
       </div>
-      <h1 className="text-2xl font-bold text-[var(--text-main)]">Vous n'avez pas encore de classe</h1>
-      <p className="text-[var(--text-secondary)]">Rejoignez une classe depuis votre profil pour voir vos camarades.</p>
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Vous n'avez pas encore de classe</h1>
+      <p className="text-[14px] text-gray-500 dark:text-gray-400">Rejoignez une classe depuis votre profil pour voir vos camarades.</p>
       <Link to="/profile">
-        <Button>Aller au profil</Button>
+        <Button variant="secondary">Aller au profil</Button>
       </Link>
     </div>
   );
@@ -233,42 +233,39 @@ export const Class: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98 }}
                 >
-                  <GlassCard className="p-4 group">
+                  <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm group">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         <div className="relative">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden border border-[var(--border-main)] shadow-sm">
-                            <img 
-                              src={member.avatar || `https://ui-avatars.com/api/?name=${member.name}&background=random`} 
-                              alt={member.name} 
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                          </div>
+                          <Avatar 
+                            src={member.avatar} 
+                            name={member.name} 
+                            size="md" 
+                          />
                           {member.role === UserRole.ADMIN && (
-                            <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary text-white rounded-lg flex items-center justify-center border-2 border-[var(--bg-card)] shadow-sm">
-                              <Shield size={10} />
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900">
+                              <Shield size={8} />
                             </div>
                           )}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-[var(--text-main)] text-sm">{member.name} {member.id === user.id && "(Moi)"}</h3>
+                            <h3 className="text-[14px] font-medium text-gray-900 dark:text-white">{member.name} {member.id === user.id && <span className="text-gray-400 font-normal">(Moi)</span>}</h3>
                             <Badge variant={
                               member.role === UserRole.ADMIN ? 'danger' : 
                               member.role === UserRole.DELEGATE ? 'warning' : 'primary'
-                            } className="text-[8px] px-1.5 py-0">
+                            }>
                               {member.role}
                             </Badge>
                           </div>
-                          <p className="text-[10px] font-medium text-[var(--text-muted)] flex items-center gap-1.5 mt-0.5">
-                            <Mail size={12} className="text-primary/50"/>
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-0.5">
+                            <Mail size={12} className="text-gray-400"/>
                             {member.email}
                           </p>
                         </div>
                       </div>
                     </div>
-                  </GlassCard>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -283,22 +280,22 @@ export const Class: React.FC = () => {
 
         {/* Right Column: Class Info & Actions */}
         <div className="space-y-6">
-          <GlassCard className="p-6 space-y-6">
+          <div className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center border border-primary/10">
-                <Key size={20} />
+              <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-md flex items-center justify-center border border-blue-100 dark:border-blue-800/30">
+                <Key size={16} />
               </div>
-              <h2 className="text-lg font-bold text-[var(--text-main)] tracking-tight">Code Délégué</h2>
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight">Code Délégué</h2>
             </div>
             
-            <p className="text-xs text-[var(--text-secondary)] font-medium leading-relaxed">
+            <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
               Le code délégué permet à un étudiant de devenir délégué de la classe et d'accéder aux outils de gestion.
             </p>
 
-            <div className="p-4 bg-[var(--bg-main)] rounded-2xl border border-[var(--border-main)] space-y-4">
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
               <div className="flex flex-col items-center justify-center py-4 space-y-2">
-                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Code Actuel</span>
-                <span className="text-2xl font-mono font-bold text-primary tracking-widest">
+                <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Code Actuel</span>
+                <span className="text-2xl font-mono font-semibold text-gray-900 dark:text-white tracking-widest">
                   {user.role === UserRole.ADMIN || user.role === UserRole.DELEGATE 
                     ? (classSecret?.delegate_code || classInfo?.delegate_code || '----')
                     : '••••-••••'
@@ -310,32 +307,34 @@ export const Class: React.FC = () => {
                 <div className="flex gap-2">
                   <Button 
                     variant="secondary" 
+                    size="sm"
                     onClick={handleCopyCode}
-                    className="flex-1 flex items-center justify-center gap-2 py-2"
+                    className="flex-1 flex items-center justify-center gap-2"
                   >
                     {copied ? <Check size={14} /> : <Copy size={14} />}
-                    <span className="text-[10px] font-bold uppercase tracking-wider">{copied ? 'Copié' : 'Copier'}</span>
+                    <span>{copied ? 'Copié' : 'Copier'}</span>
                   </Button>
                   <Button 
                     variant="secondary" 
+                    size="sm"
                     onClick={handleGenerateNewCode}
-                    className="flex-1 flex items-center justify-center gap-2 py-2"
+                    className="flex-1 flex items-center justify-center gap-2"
                   >
                     <RefreshCw size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Régénérer</span>
+                    <span>Régénérer</span>
                   </Button>
                 </div>
               )}
             </div>
             
             {user.role === UserRole.STUDENT && (
-              <div className="p-4 bg-warning/5 border border-warning/10 rounded-xl">
-                <p className="text-[10px] text-warning font-medium leading-relaxed">
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
+                <p className="text-[12px] text-amber-800 dark:text-amber-400 leading-relaxed">
                   Si vous êtes le délégué, demandez le code à l'administrateur pour activer vos privilèges.
                 </p>
               </div>
             )}
-          </GlassCard>
+          </div>
         </div>
       </div>
 
@@ -346,20 +345,21 @@ export const Class: React.FC = () => {
         title="Inviter des camarades"
       >
         <div className="space-y-6">
-          <div className="p-6 bg-[var(--bg-main)] rounded-2xl border border-[var(--border-main)] text-center space-y-4">
-            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto">
-              <UserPlus size={32} />
+          <div className="p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 text-center space-y-4">
+            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-full flex items-center justify-center mx-auto border border-blue-100 dark:border-blue-800/30">
+              <UserPlus size={24} />
             </div>
             <div className="space-y-1">
-              <h3 className="font-bold text-[var(--text-main)]">Lien d'invitation</h3>
-              <p className="text-xs text-[var(--text-secondary)]">Partagez ce lien pour inviter vos camarades à rejoindre le nexus.</p>
+              <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Lien d'invitation</h3>
+              <p className="text-[13px] text-gray-500 dark:text-gray-400">Partagez ce lien pour inviter vos camarades à rejoindre le nexus.</p>
             </div>
-            <div className="flex items-center gap-2 p-2 bg-[var(--bg-card)] border border-[var(--border-main)] rounded-xl">
-              <code className="flex-1 text-xs text-primary font-mono truncate px-2">
+            <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg">
+              <code className="flex-1 text-[13px] text-blue-500 font-mono truncate px-2">
                 {window.location.origin}/register?class={user.class_name}
               </code>
               <Button 
                 size="sm" 
+                variant="secondary"
                 onClick={() => {
                   navigator.clipboard.writeText(`${window.location.origin}/register?class=${user.class_name}`);
                   setCopied(true);
@@ -371,7 +371,7 @@ export const Class: React.FC = () => {
               </Button>
             </div>
           </div>
-          <Button onClick={() => setIsInviteModalOpen(false)} className="w-full">Fermer</Button>
+          <Button onClick={() => setIsInviteModalOpen(false)} className="w-full" variant="secondary">Fermer</Button>
         </div>
       </Modal>
     </div>

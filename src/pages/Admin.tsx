@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTable, usePaginatedTable, deleteRow, updateRow, insertRow } from '../lib/hooks';
 import { User, SchoolClass, Poll, Announcement, ActivityLog, UserRole } from '../types';
-import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input } from '../components/ui';
+import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, Avatar } from '../components/ui';
 import { 
   Users, 
   Shield, 
@@ -341,26 +341,26 @@ export const Admin: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[var(--text-muted)] mb-1">
+          <div className="flex items-center gap-2 text-gray-400 mb-1">
             <Badge variant="danger" className="text-[10px] font-bold uppercase tracking-wider">Administration</Badge>
             <ChevronRight size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">Nexus Central</span>
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">Panneau de Contrôle</h1>
-          <p className="text-xs font-medium text-[var(--text-secondary)]">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Panneau de Contrôle</h1>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400">
             Gérez les utilisateurs, les classes et le contenu de la plateforme.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="secondary" className="flex items-center gap-2">
-            <Settings size={18} />
-            <span className="font-bold uppercase tracking-wider text-xs">Paramètres</span>
+            <Settings size={16} />
+            <span className="font-medium text-[13px]">Paramètres</span>
           </Button>
         </div>
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-1 bg-[var(--bg-card)] border border-[var(--border-main)] p-1 rounded-2xl shadow-sm overflow-x-auto no-scrollbar">
+      <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-1 rounded-lg shadow-sm overflow-x-auto no-scrollbar">
         {[
           { id: 'overview', label: 'Vue d\'ensemble', icon: LayoutDashboard },
           { id: 'users', label: 'Utilisateurs', icon: Users },
@@ -372,8 +372,8 @@ export const Admin: React.FC = () => {
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
-              activeTab === tab.id ? 'bg-primary text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-main)]'
+              "flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all whitespace-nowrap",
+              activeTab === tab.id ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
             )}
           >
             <tab.icon size={16} />
@@ -392,35 +392,35 @@ export const Admin: React.FC = () => {
             className="space-y-8"
           >
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {statsList.map((stat, i) => (
-                <GlassCard key={i} className="p-6 space-y-4">
+                <div key={i} className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", stat.bg, stat.color)}>
-                      <stat.icon size={24} />
+                    <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", stat.bg, stat.color)}>
+                      <stat.icon size={20} />
                     </div>
-                    <div className="flex items-center gap-1 text-success text-[10px] font-bold">
+                    <div className="flex items-center gap-1 text-green-500 text-[11px] font-medium">
                       <ArrowUpRight size={14} />
                       +12%
                     </div>
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-[var(--text-main)]">{stat.value}</p>
-                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{stat.label}</p>
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stat.value}</p>
+                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">{stat.label}</p>
                   </div>
-                </GlassCard>
+                </div>
               ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Activity Chart */}
-              <GlassCard className="lg:col-span-2 p-6 space-y-6">
+              <div className="lg:col-span-2 p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-                    <TrendingUp size={20} className="text-primary" />
+                  <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <TrendingUp size={18} className="text-gray-400" />
                     Activité du Nexus
                   </h3>
-                  <select className="bg-transparent text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] outline-none">
+                  <select className="bg-transparent text-[12px] font-medium text-gray-500 outline-none">
                     <option>7 derniers jours</option>
                     <option>30 derniers jours</option>
                   </select>
@@ -430,65 +430,66 @@ export const Admin: React.FC = () => {
                     <AreaChart data={chartData}>
                       <defs>
                         <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-main)" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                       <XAxis 
                         dataKey="name" 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{ fontSize: 10, fontWeight: 600, fill: 'var(--text-muted)' }}
+                        tick={{ fontSize: 12, fontWeight: 500, fill: '#6B7280' }}
                       />
                       <YAxis 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{ fontSize: 10, fontWeight: 600, fill: 'var(--text-muted)' }}
+                        tick={{ fontSize: 12, fontWeight: 500, fill: '#6B7280' }}
                       />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: 'var(--bg-card)', 
-                          borderColor: 'var(--border-main)',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: 'bold'
+                          backgroundColor: '#FFFFFF', 
+                          borderColor: '#E5E7EB',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                         }}
                       />
                       <Area 
                         type="monotone" 
                         dataKey="activity" 
-                        stroke="var(--primary)" 
-                        strokeWidth={3}
+                        stroke="#3B82F6" 
+                        strokeWidth={2}
                         fillOpacity={1} 
                         fill="url(#colorActivity)" 
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-              </GlassCard>
+              </div>
 
               {/* Recent Logs Preview */}
-              <GlassCard className="p-6 space-y-6">
-                <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-                  <Activity size={20} className="text-primary" />
+              <div className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-6">
+                <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Activity size={18} className="text-gray-400" />
                   Derniers Événements
                 </h3>
                 <div className="space-y-4">
                   {logs.slice(0, 6).map((log) => (
                     <div key={log.id} className="flex gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                       <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-[var(--text-main)] leading-tight">{log.action}</p>
-                        <p className="text-[10px] text-[var(--text-muted)] font-medium">{fmtDate(log.createdAt)}</p>
+                        <p className="text-[13px] font-medium text-gray-900 dark:text-white leading-tight">{log.action}</p>
+                        <p className="text-[11px] text-gray-500">{fmtDate(log.createdAt)}</p>
                       </div>
                     </div>
                   ))}
-                  <Button variant="secondary" className="w-full text-[10px]" onClick={() => setActiveTab('logs')}>
+                  <Button variant="secondary" className="w-full text-[13px]" onClick={() => setActiveTab('logs')}>
                     Voir tous les logs
                   </Button>
                 </div>
-              </GlassCard>
+              </div>
             </div>
           </motion.div>
         )}
@@ -503,17 +504,17 @@ export const Admin: React.FC = () => {
           >
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input 
                   type="text"
                   placeholder="Rechercher un utilisateur (nom, email, classe)..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="input-standard pl-12 py-3"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 pl-11 pr-4 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
                 />
               </div>
               <Button variant="secondary" className="flex items-center gap-2">
-                <Filter size={18} />
+                <Filter size={16} />
                 <span>Filtres</span>
               </Button>
             </div>
@@ -524,49 +525,51 @@ export const Admin: React.FC = () => {
                 u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 u.class_name?.toLowerCase().includes(searchTerm.toLowerCase())
               ).map((u) => (
-                <GlassCard key={u.id} className="p-4 group">
+                <div key={u.id} className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm group">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-[var(--border-main)]">
-                        <img 
-                          src={u.avatar || `https://ui-avatars.com/api/?name=${u.name}&background=random`} 
-                          alt={u.name} 
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
+                      <Avatar 
+                        src={u.avatar} 
+                        name={u.name} 
+                        size="md" 
+                      />
                       <div>
-                        <h4 className="text-sm font-bold text-[var(--text-main)]">{u.name}</h4>
-                        <p className="text-[10px] text-[var(--text-muted)] font-medium">{u.email}</p>
+                        <h4 className="text-[14px] font-medium text-gray-900 dark:text-white">{u.name}</h4>
+                        <p className="text-[12px] text-gray-500">{u.email}</p>
                       </div>
                     </div>
-                    <Badge variant={u.role === UserRole.ADMIN ? 'danger' : u.role === UserRole.DELEGATE ? 'warning' : 'primary'}>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-md text-[10px] font-medium",
+                      u.role === UserRole.ADMIN ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400" :
+                      u.role === UserRole.DELEGATE ? "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-400" :
+                      "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                    )}>
                       {u.role}
-                    </Badge>
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between pt-4 border-t border-[var(--border-main)]">
-                    <div className="flex items-center gap-2">
-                      <GraduationCap size={14} className="text-primary/60" />
-                      <span className="text-[10px] font-bold text-[var(--text-secondary)]">{u.class_name || 'Aucune classe'}</span>
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <GraduationCap size={14} />
+                      <span className="text-[12px] font-medium">{u.class_name || 'Aucune classe'}</span>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => handleToggleUserRole(u)}
-                        className="p-2 text-[var(--text-muted)] hover:text-primary transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
                         title={u.role === UserRole.ADMIN ? "Rétrograder" : "Promouvoir Admin"}
                       >
-                        {u.role === UserRole.ADMIN ? <UserX size={16} /> : <UserCheck size={16} />}
+                        {u.role === UserRole.ADMIN ? <UserX size={14} /> : <UserCheck size={14} />}
                       </button>
                       <button 
                         onClick={() => handleDeleteUser(u)}
-                        className="p-2 text-[var(--text-muted)] hover:text-danger transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                         title="Supprimer"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
-                </GlassCard>
+                </div>
               ))}
             </div>
             {hasMoreUsers && (
@@ -586,59 +589,59 @@ export const Admin: React.FC = () => {
             className="space-y-6"
           >
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-[var(--text-main)]">Gestion des Classes</h3>
+              <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">Gestion des Classes</h3>
               <Button onClick={() => { setEditingClass(null); setNewClassData({ name: '', delegate_code: generateDelegateCode(''), class_code: generateClassCode(''), color: '#6C63FF', class_email: '', studentCount: 0 }); setIsClassModalOpen(true); }} className="flex items-center gap-2">
-                <Plus size={18} />
+                <Plus size={16} />
                 <span>Nouvelle Classe</span>
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {classes.map((cls) => {
                 const secrets = classSecrets[cls.id] || {};
                 return (
-                  <GlassCard key={cls.id} className="p-6 space-y-6 group">
+                  <div key={cls.id} className="p-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-5 group">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold" style={{ backgroundColor: cls.color || '#6C63FF' }}>
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium text-[14px]" style={{ backgroundColor: cls.color || '#6C63FF' }}>
                           {cls.name?.substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <h4 className="text-base font-bold text-[var(--text-main)]">{cls.name}</h4>
-                          <p className="text-[10px] text-[var(--text-muted)] font-medium">{cls.studentCount || 0} étudiants</p>
+                          <h4 className="text-[14px] font-medium text-gray-900 dark:text-white">{cls.name}</h4>
+                          <p className="text-[12px] text-gray-500">{cls.studentCount || 0} étudiants</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEditClass(cls)} className="p-2 text-[var(--text-muted)] hover:text-primary transition-colors">
-                          <Edit2 size={16} />
+                        <button onClick={() => handleEditClass(cls)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors">
+                          <Edit2 size={14} />
                         </button>
-                        <button onClick={() => handleDeleteContent('classes', cls.id)} className="p-2 text-[var(--text-muted)] hover:text-danger transition-colors">
-                          <Trash2 size={16} />
+                        <button onClick={() => handleDeleteContent('classes', cls.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors">
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="p-3 bg-[var(--bg-main)] rounded-xl border border-[var(--border-main)] flex items-center justify-between">
+                    <div className="space-y-2">
+                      <div className="p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <p className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Code Inscription</p>
-                          <p className="text-sm font-mono font-bold text-primary">{secrets.class_code || '---'}</p>
+                          <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Code Inscription</p>
+                          <p className="text-[13px] font-mono font-medium text-blue-600 dark:text-blue-400">{secrets.class_code || '---'}</p>
                         </div>
-                        <button onClick={() => handleCopyCode(secrets.class_code)} className="p-2 text-[var(--text-muted)] hover:text-primary">
+                        <button onClick={() => handleCopyCode(secrets.class_code)} className="p-1.5 text-gray-400 hover:text-blue-500 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                           <Copy size={14} />
                         </button>
                       </div>
-                      <div className="p-3 bg-[var(--bg-main)] rounded-xl border border-[var(--border-main)] flex items-center justify-between">
+                      <div className="p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <p className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Code Délégué</p>
-                          <p className="text-sm font-mono font-bold text-warning">{secrets.delegate_code || '---'}</p>
+                          <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Code Délégué</p>
+                          <p className="text-[13px] font-mono font-medium text-yellow-600 dark:text-yellow-400">{secrets.delegate_code || '---'}</p>
                         </div>
-                        <button onClick={() => handleCopyCode(secrets.delegate_code)} className="p-2 text-[var(--text-muted)] hover:text-warning">
+                        <button onClick={() => handleCopyCode(secrets.delegate_code)} className="p-1.5 text-gray-400 hover:text-yellow-600 rounded-md hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors">
                           <Copy size={14} />
                         </button>
                       </div>
                     </div>
-                  </GlassCard>
+                  </div>
                 );
               })}
             </div>
@@ -656,8 +659,8 @@ export const Admin: React.FC = () => {
             {/* Polls Management */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-                  <Vote size={20} className="text-success" />
+                <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Vote size={18} className="text-gray-400" />
                   Sondages
                 </h3>
                 <Link to="/sondages">
@@ -666,15 +669,15 @@ export const Admin: React.FC = () => {
               </div>
               <div className="space-y-3">
                 {polls.map((poll) => (
-                  <GlassCard key={poll.id} className="p-4 flex items-center justify-between group">
+                  <div key={poll.id} className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm flex items-center justify-between group">
                     <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-[var(--text-main)] line-clamp-1">{poll.question}</h4>
-                      <p className="text-[10px] text-[var(--text-muted)] font-medium">{poll.totalVotes} votes • {poll.className}</p>
+                      <h4 className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-1">{poll.question}</h4>
+                      <p className="text-[12px] text-gray-500">{poll.totalVotes} votes • {poll.className}</p>
                     </div>
-                    <button onClick={() => handleDeleteContent('polls', poll.id)} className="p-2 text-[var(--text-muted)] hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 size={16} />
+                    <button onClick={() => handleDeleteContent('polls', poll.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md opacity-0 group-hover:opacity-100 transition-all">
+                      <Trash2 size={14} />
                     </button>
-                  </GlassCard>
+                  </div>
                 ))}
               </div>
             </div>
@@ -682,8 +685,8 @@ export const Admin: React.FC = () => {
             {/* Announcements Management */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-                  <Megaphone size={20} className="text-danger" />
+                <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Megaphone size={18} className="text-gray-400" />
                   Annonces
                 </h3>
                 <Link to="/announcements">
@@ -692,15 +695,15 @@ export const Admin: React.FC = () => {
               </div>
               <div className="space-y-3">
                 {announcements.map((ann) => (
-                  <GlassCard key={ann.id} className="p-4 flex items-center justify-between group">
+                  <div key={ann.id} className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm flex items-center justify-between group">
                     <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-[var(--text-main)] line-clamp-1">{ann.title}</h4>
-                      <p className="text-[10px] text-[var(--text-muted)] font-medium">{ann.className} • {fmtDate(ann.createdAt)}</p>
+                      <h4 className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-1">{ann.title}</h4>
+                      <p className="text-[12px] text-gray-500">{ann.className} • {fmtDate(ann.createdAt)}</p>
                     </div>
-                    <button onClick={() => handleDeleteContent('announcements', ann.id)} className="p-2 text-[var(--text-muted)] hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 size={16} />
+                    <button onClick={() => handleDeleteContent('announcements', ann.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md opacity-0 group-hover:opacity-100 transition-all">
+                      <Trash2 size={14} />
                     </button>
-                  </GlassCard>
+                  </div>
                 ))}
               </div>
             </div>
@@ -715,38 +718,42 @@ export const Admin: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-6"
           >
-            <GlassCard className="overflow-hidden border-none shadow-sm">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-[var(--bg-main)]/50 border-b border-[var(--border-main)]">
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Utilisateur</th>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Action</th>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Détails</th>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Date</th>
+                    <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
+                      <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Utilisateur</th>
+                      <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Action</th>
+                      <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Détails</th>
+                      <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--border-main)]">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-[var(--bg-main)]/30 transition-colors">
+                      <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
-                              {log.userName?.substring(0, 2).toUpperCase()}
-                            </div>
+                            <Avatar 
+                              src={log.userAvatar} 
+                              name={log.userName} 
+                              size="sm" 
+                            />
                             <div>
-                              <p className="text-xs font-bold text-[var(--text-main)]">{log.userName}</p>
-                              <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider">{log.userRole}</p>
+                              <p className="text-[13px] font-medium text-gray-900 dark:text-white">{log.userName}</p>
+                              <p className="text-[11px] text-gray-500 uppercase tracking-wider">{log.userRole}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <Badge variant="primary" className="text-[8px]">{log.action}</Badge>
+                          <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md text-[11px] font-medium">
+                            {log.action}
+                          </span>
                         </td>
-                        <td className="px-6 py-4 text-xs text-[var(--text-secondary)] font-medium">
+                        <td className="px-6 py-4 text-[13px] text-gray-600 dark:text-gray-400">
                           {log.details || '---'}
                         </td>
-                        <td className="px-6 py-4 text-[10px] text-[var(--text-muted)] font-bold">
+                        <td className="px-6 py-4 text-[12px] text-gray-500">
                           {fmtDate(log.createdAt)}
                         </td>
                       </tr>
@@ -754,7 +761,7 @@ export const Admin: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-            </GlassCard>
+            </div>
             {hasMoreLogs && (
               <div className="flex justify-center pt-4">
                 <Button variant="secondary" onClick={loadMoreLogs} isLoading={loadingMoreLogs}>Charger plus</Button>
@@ -773,7 +780,7 @@ export const Admin: React.FC = () => {
         <form onSubmit={handleSaveClass} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Nom de la classe</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Nom de la classe</label>
               <Input 
                 required
                 value={newClassData.name}
@@ -787,57 +794,59 @@ export const Admin: React.FC = () => {
                   });
                 }}
                 placeholder="Ex: L3 Informatique"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Code Inscription</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Code Inscription</label>
                 <div className="relative">
                   <Input 
                     required
                     value={newClassData.class_code}
                     onChange={(e) => setNewClassData({ ...newClassData, class_code: e.target.value.toUpperCase() })}
-                    className="font-mono"
+                    className="font-mono text-[13px] bg-gray-50 dark:bg-gray-800/50 w-full border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 outline-none"
                   />
-                  <button type="button" onClick={() => setNewClassData({...newClassData, class_code: generateClassCode(newClassData.name)})} className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
+                  <button type="button" onClick={() => setNewClassData({...newClassData, class_code: generateClassCode(newClassData.name)})} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 hover:text-blue-600 transition-colors">
                     <RefreshCw size={14} />
                   </button>
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Code Délégué</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Code Délégué</label>
                 <div className="relative">
                   <Input 
                     required
                     value={newClassData.delegate_code}
                     onChange={(e) => setNewClassData({ ...newClassData, delegate_code: e.target.value.toUpperCase() })}
-                    className="font-mono"
+                    className="font-mono text-[13px] bg-gray-50 dark:bg-gray-800/50 w-full border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 outline-none"
                   />
-                  <button type="button" onClick={() => setNewClassData({...newClassData, delegate_code: generateDelegateCode(newClassData.name)})} className="absolute right-3 top-1/2 -translate-y-1/2 text-warning">
+                  <button type="button" onClick={() => setNewClassData({...newClassData, delegate_code: generateDelegateCode(newClassData.name)})} className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-600 hover:text-yellow-700 transition-colors">
                     <RefreshCw size={14} />
                   </button>
                 </div>
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Email de la classe (Facultatif)</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Email de la classe (Facultatif)</label>
               <Input 
                 type="email"
                 value={newClassData.class_email}
                 onChange={(e) => setNewClassData({ ...newClassData, class_email: e.target.value })}
                 placeholder="classe@example.com"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Couleur thématique</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Couleur thématique</label>
               <div className="flex items-center gap-3">
                 <input 
                   type="color"
                   value={newClassData.color}
                   onChange={(e) => setNewClassData({ ...newClassData, color: e.target.value })}
-                  className="w-10 h-10 rounded-lg cursor-pointer border-none bg-transparent"
+                  className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
                 />
-                <span className="text-xs font-mono font-bold text-[var(--text-muted)]">{newClassData.color}</span>
+                <span className="text-[13px] font-mono text-gray-500">{newClassData.color}</span>
               </div>
             </div>
           </div>

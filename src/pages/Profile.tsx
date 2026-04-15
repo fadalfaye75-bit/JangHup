@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Badge, Spinner, ErrBox, Modal, Toast, ToastType, GlassCard, Button, Input } from '../components/ui';
+import { Badge, Spinner, ErrBox, Modal, Toast, ToastType, GlassCard, Button, Input, Avatar } from '../components/ui';
 import { 
   User as UserIcon, 
   Mail, 
@@ -246,24 +246,22 @@ export const Profile: React.FC = () => {
       />
 
       {/* Profile Header Card */}
-      <GlassCard className="overflow-hidden p-0 border-none shadow-xl">
-        <div className="h-32 bg-gradient-to-r from-primary/80 to-purple-600/80" />
+      <div className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+        <div className="h-32 bg-gradient-to-r from-blue-500/80 to-purple-500/80" />
         <div className="px-8 pb-8 -mt-12">
           <div className="flex flex-col md:flex-row items-end gap-6">
             <div className="relative group">
-              <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-[var(--bg-card)] shadow-xl bg-[var(--bg-card)]">
-                <img 
-                  src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=random`} 
-                  alt={user?.name} 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
+              <Avatar 
+                src={user?.avatar} 
+                name={user?.name} 
+                size="xl" 
+                className="border-4 border-white dark:border-gray-900 shadow-sm"
+              />
               <label className={cn(
-                "absolute bottom-2 right-2 p-2 bg-primary text-white rounded-xl shadow-lg hover:scale-110 transition-transform cursor-pointer",
+                "absolute bottom-2 right-2 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer",
                 isUploadingAvatar && "opacity-50 cursor-not-allowed"
               )}>
-                {isUploadingAvatar ? <Spinner size={16} className="text-white" /> : <Camera size={16} />}
+                {isUploadingAvatar ? <Spinner size={16} /> : <Camera size={16} />}
                 <input 
                   type="file"
                   accept="image/*"
@@ -275,93 +273,93 @@ export const Profile: React.FC = () => {
             </div>
             <div className="flex-1 space-y-2 mb-2">
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">{user?.name}</h1>
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">{user?.name}</h1>
                 <Badge variant={user?.role === UserRole.ADMIN ? 'danger' : user?.role === UserRole.DELEGATE ? 'warning' : 'primary'}>
                   {user?.role}
                 </Badge>
               </div>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--text-secondary)] font-medium">
+              <div className="flex flex-wrap items-center gap-4 text-[13px] text-gray-500 dark:text-gray-400">
                 <div className="flex items-center gap-1.5">
-                  <Mail size={14} className="text-[var(--text-muted)]" />
+                  <Mail size={14} />
                   {user?.email}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Calendar size={14} className="text-[var(--text-muted)]" />
+                  <Calendar size={14} />
                   Membre depuis {user?.created_at && isValidDate(new Date(user.created_at)) ? new Date(user.created_at).getFullYear() : '2024'}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-3 mb-2">
-              <Button variant="secondary" onClick={() => setIsEditing(true)} className="flex items-center gap-2">
-                <Edit3 size={16} />
+              <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)} className="flex items-center gap-2">
+                <Edit3 size={14} />
                 <span>Modifier</span>
               </Button>
-              <Button variant="danger" onClick={logout} className="flex items-center gap-2">
-                <LogOut size={16} />
+              <Button variant="danger" size="sm" onClick={logout} className="flex items-center gap-2">
+                <LogOut size={14} />
                 <span>Déconnexion</span>
               </Button>
             </div>
           </div>
         </div>
-      </GlassCard>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Stats & Activity */}
         <div className="lg:col-span-2 space-y-8">
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <GlassCard className="p-5 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <BarChart3 size={20} />
+            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-3">
+              <div className="w-8 h-8 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center border border-blue-100 dark:border-blue-800/30">
+                <BarChart3 size={16} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[var(--text-main)]">{stats.pollsVoted}</p>
-                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Sondages votés</p>
+                <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.pollsVoted}</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">Sondages votés</p>
               </div>
-            </GlassCard>
-            <GlassCard className="p-5 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center">
-                <Award size={20} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-[var(--text-main)]">{stats.announcementsRead}</p>
-                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Annonces lues</p>
-              </div>
-            </GlassCard>
-            <GlassCard className="p-5 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center">
-                <Activity size={20} />
+            </div>
+            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-3">
+              <div className="w-8 h-8 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center border border-amber-100 dark:border-amber-800/30">
+                <Award size={16} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[var(--text-main)]">{stats.resourcesAccessed}</p>
-                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Ressources vues</p>
+                <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.announcementsRead}</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">Annonces lues</p>
               </div>
-            </GlassCard>
+            </div>
+            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-3">
+              <div className="w-8 h-8 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-500 flex items-center justify-center border border-purple-100 dark:border-purple-800/30">
+                <Activity size={16} />
+              </div>
+              <div>
+                <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.resourcesAccessed}</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">Ressources vues</p>
+              </div>
+            </div>
           </div>
 
           {/* Activity Log */}
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-[var(--text-main)] flex items-center gap-2">
-              <Activity size={20} className="text-primary" />
+            <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Activity size={18} className="text-gray-400" />
               Activité Récente
             </h2>
             <div className="space-y-3">
               {activities.map((log) => (
-                <div key={log.id} className="flex items-center justify-between p-4 bg-[var(--bg-card)] border border-[var(--border-main)] rounded-xl shadow-sm">
+                <div key={log.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="w-8 h-8 rounded-lg bg-[var(--bg-main)] flex items-center justify-center text-primary">
+                    <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-500">
                       <ChevronRight size={16} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-[var(--text-main)]">{log.action}</p>
-                      <p className="text-[10px] text-[var(--text-muted)] font-medium">{fmtDate(log.createdAt)}</p>
+                      <p className="text-[14px] font-medium text-gray-900 dark:text-white">{log.action}</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(log.createdAt)}</p>
                     </div>
                   </div>
                 </div>
               ))}
               {activities.length === 0 && (
-                <div className="text-center py-10 border-2 border-dashed border-[var(--border-main)] rounded-2xl">
-                  <p className="text-sm text-[var(--text-muted)] font-medium">Aucune activité récente.</p>
+                <div className="text-center py-10 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                  <p className="text-[13px] text-gray-500 dark:text-gray-400">Aucune activité récente.</p>
                 </div>
               )}
             </div>
@@ -369,27 +367,27 @@ export const Profile: React.FC = () => {
         </div>
 
         {/* Right Column: Settings & Security */}
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Security Card */}
-          <GlassCard className="p-6 space-y-6">
+          <div className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Shield size={20} />
+              <div className="w-8 h-8 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center border border-blue-100 dark:border-blue-800/30">
+                <Shield size={16} />
               </div>
-              <h2 className="text-lg font-bold text-[var(--text-main)]">Sécurité</h2>
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">Sécurité</h2>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               <Button 
                 variant="secondary" 
                 onClick={() => setIsChangingPass(true)}
                 className="w-full flex items-center justify-between group"
               >
                 <div className="flex items-center gap-2">
-                  <Lock size={16} className="text-[var(--text-muted)]" />
-                  <span>Changer le mot de passe</span>
+                  <Lock size={16} className="text-gray-400" />
+                  <span className="font-normal">Changer le mot de passe</span>
                 </div>
-                <ChevronRight size={16} className="text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
+                <ChevronRight size={16} className="text-gray-400 group-hover:translate-x-1 transition-transform" />
               </Button>
 
               {user?.role === UserRole.STUDENT && (
@@ -399,29 +397,29 @@ export const Profile: React.FC = () => {
                   className="w-full flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-2">
-                    <Key size={16} className="text-[var(--text-muted)]" />
-                    <span>Devenir Délégué</span>
+                    <Key size={16} className="text-gray-400" />
+                    <span className="font-normal">Devenir Délégué</span>
                   </div>
-                  <ChevronRight size={16} className="text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight size={16} className="text-gray-400 group-hover:translate-x-1 transition-transform" />
                 </Button>
               )}
             </div>
-          </GlassCard>
+          </div>
 
           {/* Preferences Card */}
-          <GlassCard className="p-6 space-y-6">
+          <div className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Bell size={20} />
+              <div className="w-8 h-8 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center border border-amber-100 dark:border-amber-800/30">
+                <Bell size={16} />
               </div>
-              <h2 className="text-lg font-bold text-[var(--text-main)]">Préférences</h2>
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">Préférences</h2>
             </div>
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-[var(--bg-main)] rounded-xl border border-[var(--border-main)]">
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                 <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-[var(--text-main)]">Notifications Push</p>
-                  <p className="text-[10px] text-[var(--text-muted)] font-medium">Alertes en temps réel</p>
+                  <p className="text-[13px] font-medium text-gray-900 dark:text-white">Notifications Push</p>
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400">Alertes en temps réel</p>
                 </div>
                 <Button 
                   size="sm" 
@@ -433,7 +431,7 @@ export const Profile: React.FC = () => {
                 </Button>
               </div>
             </div>
-          </GlassCard>
+          </div>
         </div>
       </div>
 
@@ -442,21 +440,23 @@ export const Profile: React.FC = () => {
         <form onSubmit={handleUpdateProfile} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Nom complet</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Nom complet</label>
               <Input 
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Votre nom"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Classe</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Classe</label>
               <Input 
                 required
                 value={className}
                 onChange={(e) => setClassName(e.target.value)}
                 placeholder="Ex: L3 Informatique"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
           </div>
@@ -472,7 +472,7 @@ export const Profile: React.FC = () => {
         <form onSubmit={handleChangePassword} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Ancien mot de passe</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Ancien mot de passe</label>
               <div className="relative">
                 <Input 
                   type={showOldPassword ? "text" : "password"}
@@ -480,18 +480,19 @@ export const Profile: React.FC = () => {
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   placeholder="••••••••"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
                 />
                 <button 
                   type="button" 
                   onClick={() => setShowOldPassword(!showOldPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-primary transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                 >
-                  {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showOldPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Nouveau mot de passe</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Nouveau mot de passe</label>
               <div className="relative">
                 <Input 
                   type={showNewPassword ? "text" : "password"}
@@ -499,13 +500,14 @@ export const Profile: React.FC = () => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
                 />
                 <button 
                   type="button" 
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-primary transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                 >
-                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -521,20 +523,20 @@ export const Profile: React.FC = () => {
       <Modal isOpen={isClaiming} onClose={() => setIsClaiming(false)} title="Devenir Délégué">
         <form onSubmit={handleClaimDelegate} className="space-y-6">
           <div className="space-y-4">
-            <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl text-center space-y-2">
-              <Key size={32} className="mx-auto text-primary" />
-              <p className="text-xs text-[var(--text-secondary)] font-medium">
-                Saisissez le code fourni par l'administrateur pour activer vos privilèges de délégué pour la classe <span className="font-bold text-primary">{user?.class_name}</span>.
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-xl text-center space-y-2">
+              <Key size={24} className="mx-auto text-blue-500" />
+              <p className="text-[13px] text-gray-600 dark:text-gray-400">
+                Saisissez le code fourni par l'administrateur pour activer vos privilèges de délégué pour la classe <span className="font-semibold text-gray-900 dark:text-white">{user?.class_name}</span>.
               </p>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Code Délégué</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Code Délégué</label>
               <Input 
                 required
                 value={delegateCode}
                 onChange={(e) => setDelegateCode(e.target.value.toUpperCase())}
                 placeholder="EX: ABC-1234"
-                className="text-center font-mono tracking-widest"
+                className="text-center font-mono tracking-widest w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
           </div>

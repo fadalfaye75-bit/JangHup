@@ -61,15 +61,15 @@ export const Register: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     >
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-primary transition-all font-bold text-[10px] uppercase tracking-wider mb-4 group"
+        className="flex items-center gap-2 text-gray-500 hover:text-blue-500 transition-all font-semibold text-[11px] uppercase tracking-wider mb-4 group"
       >
         <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform"/> 
         Retour
       </button>
 
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-[var(--text-main)] tracking-tight">Nouveau Profil</h2>
-        <p className="text-[var(--text-secondary)] font-medium text-xs mt-1">Créez votre compte étudiant</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">Nouveau Profil</h2>
+        <p className="text-[14px] text-gray-500 dark:text-gray-400 mt-1">Créez votre compte étudiant</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -79,9 +79,9 @@ export const Register: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="p-4 bg-danger/5 text-danger border border-danger/10 rounded-xl text-xs font-medium flex items-center gap-3 overflow-hidden"
+              className="p-3 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/20 rounded-lg text-[12px] font-medium flex items-center gap-3 overflow-hidden"
             >
-              <AlertCircle size={16} className="shrink-0"/> 
+              <AlertCircle size={14} className="shrink-0"/> 
               <span>{error}</span>
             </motion.div>
           )}
@@ -89,68 +89,68 @@ export const Register: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Nom Complet</label>
+            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Nom Complet</label>
             <div className="relative group">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary transition-colors" size={18} />
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={16} />
               <input 
                 type="text"
                 required
                 placeholder="Prénom Nom"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="input-standard pl-12"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2 text-[14px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Email</label>
+            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Email</label>
             <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary transition-colors" size={18} />
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={16} />
               <input 
                 type="email"
                 required
                 placeholder="votre@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input-standard pl-12"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2 text-[14px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Code d'Inscription</label>
+            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Code d'Inscription</label>
             <div className="relative group">
-              <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary transition-colors" size={18} />
+              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={16} />
               <input 
                 type="text"
                 required
                 placeholder="Code fourni par votre délégué"
                 value={classCode}
                 onChange={(e) => setClassCode(e.target.value)}
-                className="input-standard pl-12"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2 text-[14px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Mot de passe</label>
+            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Mot de passe</label>
             <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary transition-colors" size={18} />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={16} />
               <input 
                 type={showPassword ? "text" : "password"}
                 required
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input-standard pl-12 pr-12"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-10 py-2 text-[14px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-primary transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition-colors"
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
@@ -159,10 +159,10 @@ export const Register: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <Button
           type="submit"
           isLoading={loading}
-          className="w-full py-3.5 flex items-center justify-center gap-2 group mt-4"
+          className="w-full py-2.5 flex items-center justify-center gap-2 group mt-4"
         >
-          <span className="font-bold uppercase tracking-wider text-xs">Finaliser l'inscription</span>
-          {!loading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform"/>}
+          <span className="text-[13px] font-medium">Finaliser l'inscription</span>
+          {!loading && <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>}
         </Button>
       </form>
     </motion.div>

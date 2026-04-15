@@ -103,6 +103,8 @@ export const generateSmartShare = (type: ShareType, data: ShareData) => {
     summary ? `📌 ${summary}` : null,
     smartDate ? `📅 ${smartDate}` : null,
     data.className ? `🏫 ${data.className}` : null,
+    data.platform ? `💻 ${data.platform}` : null,
+    data.url ? `🔗 ${data.url}` : null,
     "",
     `👉 ${cta}`
   ].filter(line => line !== null);
@@ -118,6 +120,7 @@ export const generateSmartShare = (type: ShareType, data: ShareData) => {
   if (data.room) infoLines.push(`Salle : ${data.room}`);
   if (data.duration) infoLines.push(`Durée : ${data.duration}`);
   if (data.platform) infoLines.push(`Plateforme : ${data.platform}`);
+  if (data.url) infoLines.push(`Lien : ${data.url}`);
   if (data.className) infoLines.push(`Classe : ${data.className}`);
   if (data.classEmail) infoLines.push(`Email Classe : ${data.classEmail}`);
 

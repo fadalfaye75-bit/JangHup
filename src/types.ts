@@ -36,6 +36,7 @@ export interface Announcement {
   title: string;
   content: string;
   author: string;
+  authorAvatar?: string;
   priority: 'normal' | 'important' | 'urgent';
   className: string;
   color: string;
@@ -121,6 +122,7 @@ export interface ActivityLog {
   type: string;
   userName?: string;
   userRole?: string;
+  userAvatar?: string;
   details?: string;
   createdAt: string;
 }
@@ -133,6 +135,7 @@ export interface Resource {
   url: string;
   userId: string;
   author: string;
+  authorAvatar?: string;
   className: string;
   subject: string;
   createdAt: string;

@@ -306,7 +306,8 @@ export const Sondages: React.FC = () => {
   const handleShareWhatsApp = (poll: Poll) => {
     const { whatsapp } = generateSmartShare('sondage', {
       title: poll.question,
-      className: poll.className
+      className: poll.className,
+      url: window.location.origin + '/polls'
     });
     shareToWhatsApp(whatsapp);
   };
@@ -328,13 +329,13 @@ export const Sondages: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[var(--text-muted)] mb-1">
+          <div className="flex items-center gap-2 text-gray-500 mb-1">
             <Badge variant="success" className="text-[10px] font-bold uppercase tracking-wider">Sondages</Badge>
             <ChevronRight size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{user?.class_name || 'Ma Classe'}</span>
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">Prise de Décision</h1>
-          <p className="text-xs font-medium text-[var(--text-secondary)]">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Prise de Décision</h1>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400">
             Participez aux votes et consultez les tendances de votre classe.
           </p>
         </div>
@@ -344,8 +345,8 @@ export const Sondages: React.FC = () => {
             onClick={() => { setEditingPoll(null); setNewQuestion(''); setNewOptions([{ label: '' }, { label: '' }]); setIsModalOpen(true); }}
             className="flex items-center gap-2"
           >
-            <Plus size={18} />
-            <span className="font-bold uppercase tracking-wider text-xs">Nouveau Sondage</span>
+            <Plus size={16} />
+            <span>Nouveau Sondage</span>
           </Button>
         )}
       </div>
@@ -369,28 +370,28 @@ export const Sondages: React.FC = () => {
                 <AppCard 
                   className="h-full flex flex-col"
                   header={
-                    <div className="flex justify-between items-center w-full">
+                    <div className="flex justify-between items-start w-full gap-3">
                       <div className="flex items-center gap-2">
-                        <Badge variant={poll.isActive ? 'success' : 'secondary'} className="text-[8px] px-2 py-0.5 uppercase tracking-wider">
+                        <Badge variant={poll.isActive ? 'success' : 'secondary'}>
                           {poll.isActive ? 'Actif' : 'Clôturé'}
                         </Badge>
-                        {hasVoted && <Badge variant="primary" className="text-[8px] px-2 py-0.5 uppercase tracking-wider">Voté</Badge>}
+                        {hasVoted && <Badge variant="primary">Voté</Badge>}
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleShareWhatsApp(poll)} className="p-2 text-[var(--text-muted)] hover:text-[#25D366] transition-colors">
-                          <Share2 size={16} />
-                        </button>
+                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(poll)} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
+                          <Share2 size={14} />
+                        </Button>
                         {canManage && (
                           <>
-                            <button onClick={() => handleEditPoll(poll)} className="p-2 text-[var(--text-muted)] hover:text-primary transition-colors">
-                              <Edit3 size={16} />
-                            </button>
-                            <button onClick={() => handleToggleStatus(poll)} className="p-2 text-[var(--text-muted)] hover:text-warning transition-colors">
-                              {poll.isActive ? <Lock size={16} /> : <Unlock size={16} />}
-                            </button>
-                            <button onClick={() => handleDeletePoll(poll.id)} className="p-2 text-[var(--text-muted)] hover:text-danger transition-colors">
-                              <Trash2 size={16} />
-                            </button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEditPoll(poll)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
+                              <Edit3 size={14} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(poll)} className={cn("px-2 py-1 h-auto", poll.isActive ? "text-gray-500 hover:text-amber-500" : "text-amber-500")}>
+                              {poll.isActive ? <Lock size={14} /> : <Unlock size={14} />}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeletePoll(poll.id)} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
+                              <Trash2 size={14} />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -399,24 +400,25 @@ export const Sondages: React.FC = () => {
                   footer={
                     <Button 
                       variant="secondary" 
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl"
+                      size="sm"
+                      className="w-full flex items-center justify-center gap-2"
                       onClick={() => setSelectedPollForAnalytics(poll)}
                     >
-                      <PieChart size={16} />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Analyses détaillées</span>
+                      <PieChart size={14} />
+                      <span>Analyses détaillées</span>
                     </Button>
                   }
                 >
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight leading-tight group-hover:text-primary transition-colors">{poll.question}</h3>
-                      <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-2">
-                        <TrendingUp size={12} className="text-primary/60" />
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight">{poll.question}</h3>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <TrendingUp size={12} className="text-gray-400" />
                         {poll.totalVotes} votes au total
                       </p>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {poll.options?.map((option) => {
                         const percentage = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0;
                         const isSelected = myVotes[poll.id] === option.id;
@@ -427,17 +429,17 @@ export const Sondages: React.FC = () => {
                             disabled={!poll.isActive || voting === poll.id}
                             onClick={() => handleVote(poll.id, option.id)}
                             className={cn(
-                              "w-full text-left space-y-2 p-3 rounded-xl transition-all border",
+                              "w-full text-left space-y-1.5 p-2.5 rounded-lg transition-all border",
                               isSelected 
-                                ? "bg-primary/5 border-primary/20 ring-1 ring-primary/10" 
-                                : "bg-[var(--bg-main)]/30 border-[var(--border-card)] hover:border-primary/20"
+                                ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/30 ring-1 ring-blue-500/20" 
+                                : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                             )}
                           >
                             <div className="flex justify-between items-center">
-                              <span className={cn("text-xs font-bold", isSelected ? "text-primary" : "text-[var(--text-main)]")}>
+                              <span className={cn("text-[13px] font-medium", isSelected ? "text-blue-700 dark:text-blue-400" : "text-gray-700 dark:text-gray-300")}>
                                 {option.label}
                               </span>
-                              <span className="text-[10px] font-bold text-[var(--text-muted)]">{percentage}%</span>
+                              <span className="text-[12px] text-gray-500 dark:text-gray-400">{percentage}%</span>
                             </div>
                             <ProgressBar progress={percentage} isSelected={isSelected} />
                           </button>
@@ -453,10 +455,10 @@ export const Sondages: React.FC = () => {
       </AutoGrid>
 
       {pollsWithOptions.length === 0 && (
-        <div className="text-center py-16 border-2 border-dashed border-[var(--border-main)] rounded-[32px]">
-          <BarChart2 size={48} className="mx-auto text-[var(--text-muted)] mb-4"/>
-          <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight">Aucun sondage</h3>
-          <p className="text-[var(--text-secondary)] font-medium text-sm mt-1">Aucun sondage n'a été créé pour le moment.</p>
+        <div className="text-center py-16 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+          <BarChart2 size={32} className="mx-auto text-gray-400 mb-4"/>
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight">Aucun sondage</h3>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">Aucun sondage n'a été créé pour le moment.</p>
         </div>
       )}
 
@@ -477,16 +479,17 @@ export const Sondages: React.FC = () => {
         <form onSubmit={handleCreatePoll} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Question du sondage</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Question du sondage</label>
               <Input 
                 required
                 value={newQuestion}
                 onChange={(e) => setNewQuestion(e.target.value)}
                 placeholder="Ex: Quelle date pour le prochain examen ?"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="space-y-3">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Options de réponse</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Options de réponse</label>
               {newOptions.map((opt, i) => (
                 <div key={i} className="flex gap-2">
                   <Input 
@@ -498,12 +501,13 @@ export const Sondages: React.FC = () => {
                       setNewOptions(updated);
                     }}
                     placeholder={`Option ${i + 1}`}
+                    className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
                   />
                   {newOptions.length > 2 && (
                     <button 
                       type="button" 
                       onClick={() => setNewOptions(newOptions.filter((_, idx) => idx !== i))}
-                      className="p-2 text-[var(--text-muted)] hover:text-danger"
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                     >
                       <X size={18} />
                     </button>

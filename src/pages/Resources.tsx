@@ -106,6 +106,7 @@ export const Resources: React.FC = () => {
           ...formData,
           userId: user?.id,
           author: user?.name,
+          authorAvatar: user?.avatar || null,
           className: user?.class_name
         });
 
@@ -157,6 +158,7 @@ export const Resources: React.FC = () => {
       description: res.description,
       subject: res.subject,
       className: res.className,
+      url: res.url,
       date: res.createdAt,
       classEmail: classInfo?.class_email
     });
@@ -169,6 +171,7 @@ export const Resources: React.FC = () => {
       description: res.description,
       subject: res.subject,
       className: res.className,
+      url: res.url,
       date: res.createdAt,
       classEmail: classInfo?.class_email
     });
@@ -202,13 +205,13 @@ export const Resources: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[var(--text-muted)] mb-1">
+          <div className="flex items-center gap-2 text-gray-500 mb-1">
             <Badge variant="primary" className="text-[10px] font-bold uppercase tracking-wider">Ressources</Badge>
             <ChevronRight size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{user?.class_name || 'Ma Classe'}</span>
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">Base de Connaissances</h1>
-          <p className="text-xs font-medium text-[var(--text-secondary)]">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Base de Connaissances</h1>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400">
             Accédez aux supports de cours, exercices et liens utiles partagés par votre classe.
           </p>
         </div>
@@ -218,30 +221,30 @@ export const Resources: React.FC = () => {
             onClick={() => { setEditingResource(null); setFormData({ title: '', description: '', type: 'pdf', url: '', subject: '' }); setIsModalOpen(true); }}
             className="flex items-center gap-2"
           >
-            <Plus size={18} />
-            <span className="font-bold uppercase tracking-wider text-xs">Nouvelle Ressource</span>
+            <Plus size={16} />
+            <span>Nouvelle Ressource</span>
           </Button>
         )}
       </div>
 
       {/* Filters & Search */}
-      <GlassCard className="p-4">
+      <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input 
               type="text"
               placeholder="Rechercher une ressource..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-standard pl-12 py-3"
+              className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
             />
           </div>
           <div className="flex gap-2">
             <select 
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as any)}
-              className="input-standard py-3 text-xs font-bold uppercase tracking-wider"
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
             >
               <option value="all">Tous les types</option>
               <option value="pdf">PDF / Documents</option>
@@ -253,7 +256,7 @@ export const Resources: React.FC = () => {
             <select 
               value={filterSubject}
               onChange={(e) => setFilterSubject(e.target.value)}
-              className="input-standard py-3 text-xs font-bold uppercase tracking-wider"
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
             >
               <option value="all">Toutes les matières</option>
               {subjects.map(s => (
@@ -262,7 +265,7 @@ export const Resources: React.FC = () => {
             </select>
           </div>
         </div>
-      </GlassCard>
+      </div>
 
       {/* Resources Grid */}
       <AutoGrid minWidth="280px">
@@ -284,22 +287,27 @@ export const Resources: React.FC = () => {
                 <AppCard 
                   className="flex flex-col h-full"
                   header={
-                    <div className="flex justify-between items-center w-full">
-                      <div className="w-12 h-12 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-card)] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                        {getTypeIcon(res.type)}
+                    <div className="flex justify-between items-start w-full gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center p-1.5">
+                          {getTypeIcon(res.type)}
+                        </div>
+                        <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight line-clamp-1">
+                          {res.title}
+                        </h3>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleShareWhatsApp(res)} className="p-2 text-[var(--text-muted)] hover:text-[#25D366] transition-colors">
-                          <Share2 size={16} />
-                        </button>
+                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(res)} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
+                          <Share2 size={14} />
+                        </Button>
                         {canManage && (
                           <>
-                            <button onClick={() => handleEdit(res)} className="p-2 text-[var(--text-muted)] hover:text-primary transition-colors">
-                              <Edit3 size={16} />
-                            </button>
-                            <button onClick={() => handleDelete(res.id)} className="p-2 text-[var(--text-muted)] hover:text-danger transition-colors">
-                              <Trash2 size={16} />
-                            </button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(res)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
+                              <Edit3 size={14} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(res.id)} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
+                              <Trash2 size={14} />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -312,24 +320,20 @@ export const Resources: React.FC = () => {
                       target="_blank" 
                       rel="noopener noreferrer"
                       variant="secondary"
-                      className="w-full flex items-center justify-center gap-2 rounded-xl"
+                      size="sm"
+                      className="w-full flex items-center justify-center gap-2"
                     >
-                      {res.type === 'link' ? <ExternalLink size={16} /> : <Download size={16} />}
-                      <span className="font-bold uppercase tracking-wider text-xs">
-                        {res.type === 'link' ? 'Ouvrir le lien' : 'Télécharger'}
-                      </span>
+                      {res.type === 'link' ? <ExternalLink size={14} /> : <Download size={14} />}
+                      <span>{res.type === 'link' ? 'Ouvrir le lien' : 'Télécharger'}</span>
                     </Button>
                   }
                 >
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="primary" className="text-[8px] px-2 py-0.5 uppercase tracking-wider">{res.subject}</Badge>
-                        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{fmtDate(res.createdAt)}</span>
-                      </div>
-                      <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight line-clamp-1 group-hover:text-primary transition-colors leading-tight">{res.title}</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="primary">{res.subject}</Badge>
+                      <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(res.createdAt)}</span>
                     </div>
-                    <p className="text-sm text-[var(--text-secondary)] font-medium line-clamp-2 leading-relaxed">
+                    <p className="text-[13px] text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
                       {res.description || "Aucune description fournie."}
                     </p>
                   </div>
@@ -341,10 +345,10 @@ export const Resources: React.FC = () => {
       </AutoGrid>
 
       {filteredResources.length === 0 && !loading && (
-        <div className="text-center py-16 border-2 border-dashed border-[var(--border-main)] rounded-[32px]">
-          <BookOpen size={48} className="mx-auto text-[var(--text-muted)] mb-4"/>
-          <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight">Aucune ressource</h3>
-          <p className="text-[var(--text-secondary)] font-medium text-sm mt-1">Aucun document n'a été partagé avec ces critères.</p>
+        <div className="text-center py-16 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+          <BookOpen size={32} className="mx-auto text-gray-400 mb-4"/>
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight">Aucune ressource</h3>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">Aucun document n'a été partagé avec ces critères.</p>
         </div>
       )}
 
@@ -357,30 +361,32 @@ export const Resources: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Titre de la ressource</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Titre de la ressource</label>
               <Input 
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Ex: Cours Chapitre 1 - Algèbre"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Matière</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Matière</label>
                 <Input 
                   required
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                   placeholder="Ex: Mathématiques"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Type de fichier</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Type de fichier</label>
                 <select 
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                  className="input-standard"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                 >
                   <option value="pdf">PDF / Document</option>
                   <option value="link">Lien externe</option>
@@ -391,22 +397,23 @@ export const Resources: React.FC = () => {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">URL de la ressource</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">URL de la ressource</label>
               <Input 
                 type="url"
                 required
                 value={formData.url}
                 onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                 placeholder="https://..."
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Description (Facultatif)</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Description (Facultatif)</label>
               <textarea 
                 rows={3}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="input-standard resize-none py-3"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400 resize-none"
                 placeholder="Brève description du contenu..."
               />
             </div>

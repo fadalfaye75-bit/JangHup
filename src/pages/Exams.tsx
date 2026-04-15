@@ -132,6 +132,7 @@ export const Exams: React.FC = () => {
       duration: exam.duration,
       className: exam.className,
       content: exam.notes,
+      url: window.location.origin + '/exams',
       classEmail: classInfo?.class_email
     });
     shareToWhatsApp(whatsapp);
@@ -145,6 +146,7 @@ export const Exams: React.FC = () => {
       duration: exam.duration,
       className: exam.className,
       content: exam.notes,
+      url: window.location.origin + '/exams',
       classEmail: classInfo?.class_email
     });
     shareToEmail(emailSubject, emailBody, classEmail);
@@ -167,13 +169,13 @@ export const Exams: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[var(--text-muted)] mb-1">
+          <div className="flex items-center gap-2 text-gray-500 mb-1">
             <Badge variant="warning" className="text-[10px] font-bold uppercase tracking-wider">Examens</Badge>
             <ChevronRight size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{user?.class_name || 'Ma Classe'}</span>
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">Calendrier des Examens</h1>
-          <p className="text-xs font-medium text-[var(--text-secondary)]">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Calendrier des Examens</h1>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400">
             Consultez et partagez les dates importantes de vos évaluations.
           </p>
         </div>
@@ -183,8 +185,8 @@ export const Exams: React.FC = () => {
               onClick={() => { setEditingExam(null); setFormData({ subject: '', date: '', duration: '', room: '', notes: '' }); setIsModalOpen(true); }}
               className="flex items-center gap-2"
             >
-              <Plus size={18} />
-              <span className="font-bold uppercase tracking-wider text-xs">Ajouter un examen</span>
+              <Plus size={16} />
+              <span>Ajouter un examen</span>
             </Button>
           )}
         </div>
@@ -208,45 +210,50 @@ export const Exams: React.FC = () => {
                 <AppCard 
                   className={cn("h-full flex flex-col", isPast && "opacity-60")}
                   header={
-                    <div className="flex justify-between items-center w-full">
-                      <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center border transition-transform group-hover:scale-110",
-                        isPast ? "bg-[var(--bg-main)] text-[var(--text-muted)] border-[var(--border-main)]" : 
-                        left <= 2 ? "bg-danger/10 text-danger border-danger/10" : "bg-warning/10 text-warning border-warning/10"
-                      )}>
-                        <GraduationCap size={24} />
+                    <div className="flex justify-between items-start w-full gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-8 h-8 rounded-md flex items-center justify-center border",
+                          isPast ? "bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-800 dark:border-gray-700" : 
+                          left <= 2 ? "bg-red-50 text-red-500 border-red-100 dark:bg-red-900/20 dark:border-red-800/30" : "bg-amber-50 text-amber-500 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800/30"
+                        )}>
+                          <GraduationCap size={16} />
+                        </div>
+                        <h3 className={cn("text-[16px] font-semibold leading-tight", isPast ? "text-gray-500 dark:text-gray-400" : "text-gray-900 dark:text-white")}>
+                          {exam.subject}
+                        </h3>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleShareWhatsApp(exam)} className="p-2 text-[var(--text-muted)] hover:text-[#25D366] transition-colors">
-                          <Share2 size={16} />
-                        </button>
+                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(exam)} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
+                          <Share2 size={14} />
+                        </Button>
                         {canManage && !isPast && (
                           <>
-                            <button onClick={() => handleEdit(exam)} className="p-2 text-[var(--text-muted)] hover:text-primary transition-colors">
-                              <Edit2 size={16} />
-                            </button>
-                            <button onClick={() => handleDelete(exam.id)} className="p-2 text-[var(--text-muted)] hover:text-danger transition-colors">
-                              <Trash2 size={16} />
-                            </button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(exam)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
+                              <Edit2 size={14} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(exam.id)} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
+                              <Trash2 size={14} />
+                            </Button>
                           </>
                         )}
                       </div>
                     </div>
                   }
                   footer={
-                    <div className="space-y-3">
+                    <div className="flex flex-col w-full gap-3">
                       {!isPast && (
-                        <div className="w-full h-1.5 bg-[var(--bg-main)] rounded-full overflow-hidden">
+                        <div className="w-full h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                           <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.max(5, Math.min(100, (14 - left) * 7))}%` }}
-                            className={cn("h-full transition-all", left <= 2 ? "bg-danger" : "bg-warning")}
+                            className={cn("h-full transition-all", left <= 2 ? "bg-red-500" : "bg-amber-500")}
                           />
                         </div>
                       )}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{fmtDate(exam.date)}</span>
-                        <Badge variant={isPast ? 'secondary' : left <= 2 ? 'danger' : 'warning'} className="text-[8px] px-2 py-0.5 uppercase">
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(exam.date)}</span>
+                        <Badge variant={isPast ? 'secondary' : left <= 2 ? 'danger' : 'warning'}>
                           {isPast ? 'Terminé' : `J-${left}`}
                         </Badge>
                       </div>
@@ -254,32 +261,26 @@ export const Exams: React.FC = () => {
                   }
                 >
                   <div className="space-y-4">
-                    <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight group-hover:text-primary transition-colors leading-tight">{exam.subject}</h3>
-                    
                     <div className="space-y-3">
-                      <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)] font-medium">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--bg-main)] flex items-center justify-center text-[var(--text-muted)] border border-[var(--border-card)]">
-                          <Clock size={14} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-bold uppercase text-[var(--text-muted)]">Durée</span>
-                          <span>{exam.duration}</span>
+                      <div className="flex items-center gap-3 text-[13px] text-gray-600 dark:text-gray-300">
+                        <Clock size={14} className="text-gray-400" />
+                        <div className="flex gap-2">
+                          <span className="text-gray-400">Durée:</span>
+                          <span className="font-medium">{exam.duration}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)] font-medium">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--bg-main)] flex items-center justify-center text-[var(--text-muted)] border border-[var(--border-card)]">
-                          <MapPin size={14} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-bold uppercase text-[var(--text-muted)]">Salle</span>
-                          <span>{exam.room}</span>
+                      <div className="flex items-center gap-3 text-[13px] text-gray-600 dark:text-gray-300">
+                        <MapPin size={14} className="text-gray-400" />
+                        <div className="flex gap-2">
+                          <span className="text-gray-400">Salle:</span>
+                          <span className="font-medium">{exam.room}</span>
                         </div>
                       </div>
                     </div>
 
                     {exam.notes && (
-                      <div className="p-3 rounded-xl bg-primary/5 text-[11px] text-[var(--text-secondary)] font-medium leading-relaxed border border-primary/10 flex gap-2">
-                        <FileText size={14} className="shrink-0 text-primary/40 mt-0.5"/>
+                      <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed border border-gray-100 dark:border-gray-800 flex gap-2">
+                        <FileText size={14} className="shrink-0 text-gray-400 mt-0.5"/>
                         <p className="line-clamp-3">{exam.notes}</p>
                       </div>
                     )}
@@ -292,10 +293,10 @@ export const Exams: React.FC = () => {
       </AutoGrid>
 
       {sortedExams.length === 0 && (
-        <div className="text-center py-16 border-2 border-dashed border-[var(--border-main)] rounded-[32px]">
-          <Calendar size={48} className="mx-auto text-[var(--text-muted)] mb-4"/>
-          <h3 className="text-lg font-bold text-[var(--text-main)] tracking-tight">Aucun examen</h3>
-          <p className="text-[var(--text-secondary)] font-medium text-sm mt-1">Aucun examen n'a été planifié pour le moment.</p>
+        <div className="text-center py-16 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+          <Calendar size={32} className="mx-auto text-gray-400 mb-4"/>
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight">Aucun examen</h3>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">Aucun examen n'a été planifié pour le moment.</p>
         </div>
       )}
 
@@ -308,50 +309,54 @@ export const Exams: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Matière</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Matière</label>
               <Input 
                 required
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                 placeholder="Ex: Mathématiques"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Date</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Date</label>
                 <Input 
                   type="date"
                   required
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Durée</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Durée</label>
                 <Input 
                   required
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                   placeholder="Ex: 2h00"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Salle / Lieu</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Salle / Lieu</label>
               <Input 
                 required
                 value={formData.room}
                 onChange={(e) => setFormData({ ...formData, room: e.target.value })}
                 placeholder="Ex: Amphi A"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Notes (Facultatif)</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Notes (Facultatif)</label>
               <textarea 
                 rows={3}
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="input-standard resize-none py-3"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400 resize-none"
                 placeholder="Précisions sur le programme..."
               />
             </div>
