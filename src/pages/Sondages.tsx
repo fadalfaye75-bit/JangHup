@@ -46,14 +46,14 @@ import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
 const ProgressBar: React.FC<{ progress: number; isSelected?: boolean }> = ({ progress, isSelected }) => (
-  <div className="w-full h-2.5 bg-[var(--bg-main)] rounded-full overflow-hidden relative border border-[var(--border-main)]">
+  <div className="w-full h-2.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden relative border border-transparent dark:border-gray-700/50">
     <motion.div 
       initial={{ width: 0 }}
       animate={{ width: `${progress}%` }}
-      transition={{ duration: 1, ease: "easeOut" }}
+      transition={{ type: "spring", stiffness: 100, damping: 15, mass: 1 }}
       className={cn(
-        "h-full rounded-full transition-all",
-        isSelected ? 'bg-primary shadow-sm' : 'bg-[var(--text-muted)]/20'
+        "h-full rounded-full transition-colors duration-500 ease-in-out",
+        isSelected ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-gray-400 dark:bg-gray-600'
       )}
     />
   </div>
@@ -498,25 +498,47 @@ export const Sondages: React.FC = () => {
                         const isSelected = myVotes[poll.id] === option.id;
 
                         return (
-                          <button
+                          <motion.button
+                            layout
+                            whileHover={{ scale: poll.isActive && voting !== poll.id ? 1.01 : 1 }}
+                            whileTap={{ scale: poll.isActive && voting !== poll.id ? 0.98 : 1 }}
                             key={option.id}
                             disabled={!poll.isActive || voting === poll.id}
                             onClick={() => handleVote(poll.id, option.id)}
                             className={cn(
-                              "w-full text-left space-y-1.5 p-2.5 rounded-lg transition-all border",
+                              "w-full text-left space-y-1.5 p-3 rounded-lg transition-all border outline-none",
                               isSelected 
-                                ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/30 ring-1 ring-blue-500/20" 
-                                : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                ? "bg-blue-50/80 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700/50 ring-2 ring-blue-500/20" 
+                                : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 focus-visible:ring-2 focus-visible:ring-gray-300"
                             )}
                           >
                             <div className="flex justify-between items-center">
-                              <span className={cn("text-[13px] font-medium", isSelected ? "text-blue-700 dark:text-blue-400" : "text-gray-700 dark:text-gray-300")}>
+                              <span className={cn("text-[13px] font-medium flex items-center gap-2", isSelected ? "text-blue-700 dark:text-blue-400" : "text-gray-700 dark:text-gray-300")}>
                                 {option.label}
+                                <AnimatePresence>
+                                  {isSelected && (
+                                    <motion.div
+                                      initial={{ scale: 0, opacity: 0 }}
+                                      animate={{ scale: 1, opacity: 1 }}
+                                      exit={{ scale: 0, opacity: 0 }}
+                                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                    >
+                                      <Check size={14} className="text-blue-500 font-bold" />
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </span>
-                              <span className="text-[12px] text-gray-500 dark:text-gray-400">{percentage}%</span>
+                              <motion.span 
+                                key={percentage}
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={cn("text-[12px] font-medium transition-colors duration-300", isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400")}
+                              >
+                                {percentage}%
+                              </motion.span>
                             </div>
                             <ProgressBar progress={percentage} isSelected={isSelected} />
-                          </button>
+                          </motion.button>
                         );
                       })}
                     </div>
