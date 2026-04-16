@@ -16,6 +16,7 @@ export interface ShareData {
   url?: string;
   author?: string;
   totalVotes?: number;
+  options?: { label: string; votes: number }[];
   description?: string;
   classEmail?: string;
 }
@@ -94,22 +95,37 @@ export const generateSmartShare = (type: ShareType, data: ShareData) => {
   }
 
   const title = data.title || data.subject || "Nouveau contenu";
-  const displayTitle = data.priority === 'urgent' ? `URGENT : ${title}` : title;
+  const displayTitle = data.priority === 'urgent' ? `[URGENT] ${title}` : title;
 
   // WhatsApp Format
   const waLines = [
-    `${emoji} ${summarize(displayTitle, 40)}`,
+    `*${summarize(displayTitle.toUpperCase(), 50)}*`,
     "",
-    summary ? `📌 ${summary}` : null,
-    smartDate ? `📅 ${smartDate}` : null,
-    data.className ? `🏫 ${data.className}` : null,
-    data.platform ? `💻 ${data.platform}` : null,
-    data.url ? `🔗 ${data.url}` : null,
-    "",
-    `👉 ${cta}`
-  ].filter(line => line !== null);
+    summary ? `_Note : ${summary}_` : null,
+    smartDate ? `- *Date* : ${smartDate}` : null,
+    data.room ? `- *Salle* : ${data.room}` : null,
+    data.subject && type !== 'examen' ? `- *Matière* : ${data.subject}` : null,
+    data.className ? `- *Classe* : ${data.className}` : null,
+    data.platform ? `- *Plateforme* : ${data.platform}` : null,
+  ];
 
-  const whatsapp = waLines.join('\n').trim();
+  if (type === 'sondage' && data.options && data.options.length > 0) {
+    waLines.push("");
+    waLines.push("*RÉSULTATS DU SONDAGE :*");
+    data.options.forEach(opt => {
+      const percentage = data.totalVotes && data.totalVotes > 0 
+        ? Math.round((opt.votes / data.totalVotes) * 100) 
+        : 0;
+      waLines.push(`- ${opt.label} : *${opt.votes}* (${percentage}%)`);
+    });
+    waLines.push(`\n_Participant(s) : ${data.totalVotes || 0}_`);
+  }
+
+  waLines.push("");
+  if (data.url) waLines.push(`Lien : ${data.url}`);
+  waLines.push(`\n*${cta.toUpperCase()}*`);
+
+  const whatsapp = waLines.filter(line => line !== null).join('\n').trim();
 
   // Email Format
   const emailSubject = `${emoji} ${displayTitle}`;

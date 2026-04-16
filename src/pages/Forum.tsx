@@ -523,6 +523,27 @@ export const Forum: React.FC = () => {
     return () => unsubscribe();
   }, [activeRoom]);
 
+  // Auto-delete expired messages (older than 7 days)
+  useEffect(() => {
+    if (!messages.length || !user) return;
+    const now = Date.now();
+    const EXPIRE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    messages.forEach(msg => {
+      if (msg.createdAt) {
+        const msgTime = typeof msg.createdAt.toMillis === 'function' 
+          ? msg.createdAt.toMillis() 
+          : (msg.createdAt.seconds ? msg.createdAt.seconds * 1000 : null);
+          
+        if (msgTime && (msgTime + EXPIRE_MS < now)) {
+          if (user.role === UserRole.ADMIN || user.id === msg.userId) {
+            deleteDoc(doc(db, 'messages', msg.id)).catch(console.error);
+          }
+        }
+      }
+    });
+  }, [messages, user]);
+
   // Listen for typing users
   useEffect(() => {
     if (!activeRoom || !user) return;

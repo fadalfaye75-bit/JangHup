@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTable, insertRow, updateRow, deleteRow } from '../lib/hooks';
 import { Exam, UserRole } from '../types';
@@ -65,6 +65,20 @@ export const Exams: React.FC = () => {
   });
 
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.DELEGATE;
+
+  useEffect(() => {
+    if (!exams || !user) return;
+    const now = new Date().getTime();
+    // Consider exam expired 24 hours after its scheduled date
+    const EXPIRE_MS = 24 * 60 * 60 * 1000;
+    exams.forEach(exam => {
+      if (exam.date && new Date(exam.date).getTime() + EXPIRE_MS < now) {
+        if (user.role === UserRole.ADMIN || user.id === exam.userId) {
+          deleteRow('exams', exam.id).catch(console.error);
+        }
+      }
+    });
+  }, [exams, user]);
 
   const sortedExams = [...exams].sort((a, b) => {
     const timeA = new Date(a.date).getTime();

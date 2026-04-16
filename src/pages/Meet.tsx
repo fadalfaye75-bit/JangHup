@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTable, insertRow, updateRow, deleteRow } from '../lib/hooks';
 import { MeetLink, UserRole } from '../types';
@@ -65,6 +65,20 @@ export const Meet: React.FC = () => {
   });
 
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.DELEGATE;
+
+  useEffect(() => {
+    if (!meetings || !user) return;
+    const now = new Date().getTime();
+    // Consider meeting expired 12 hours after its scheduled time
+    const EXPIRE_MS = 12 * 60 * 60 * 1000;
+    meetings.forEach(meet => {
+      if (meet.time && new Date(meet.time).getTime() + EXPIRE_MS < now) {
+        if (user.role === UserRole.ADMIN || user.id === meet.userId) {
+          deleteRow('meetings', meet.id).catch(console.error);
+        }
+      }
+    });
+  }, [meetings, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

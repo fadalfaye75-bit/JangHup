@@ -35,7 +35,8 @@ import {
   Mail, 
   Loader2,
   Filter,
-  TrendingUp
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { PollAnalytics } from '../components/PollAnalytics';
@@ -84,6 +85,7 @@ export const Sondages: React.FC = () => {
     { label: '' },
     { label: '' }
   ]);
+  const [newEndDate, setNewEndDate] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -110,10 +112,40 @@ export const Sondages: React.FC = () => {
     !!user?.class_name || user?.role === UserRole.ADMIN
   );
 
+  const performDeletePoll = async (id: string) => {
+    const batch = writeBatch(db);
+    const optionsSnap = await getDocs(query(collection(db, 'poll_options'), where('pollId', '==', id)));
+    optionsSnap.docs.forEach(d => batch.delete(d.ref));
+    const votesSnap = await getDocs(query(collection(db, 'poll_votes'), where('pollId', '==', id)));
+    votesSnap.docs.forEach(d => batch.delete(d.ref));
+    batch.delete(doc(db, 'polls', id));
+    await batch.commit();
+  };
+
   useEffect(() => {
     if (polls.length === 0) {
       setPollsWithOptions([]);
       return;
+    }
+
+    // Auto-deactivate or delete expired polls
+    if (user) {
+      const now = new Date().getTime();
+      const EXPIRE_MS = 24 * 60 * 60 * 1000; // 24 hours
+      polls.forEach(poll => {
+        if (poll.endDate) {
+          const endTime = new Date(poll.endDate).getTime();
+          if (now > endTime + EXPIRE_MS) {
+            if (user.role === UserRole.ADMIN || user.id === poll.userId) {
+              performDeletePoll(poll.id).catch(console.error);
+            }
+          } else if (now > endTime && poll.isActive) {
+            if (user.role === UserRole.ADMIN || user.id === poll.userId) {
+              updateDoc(doc(db, 'polls', poll.id), { isActive: false }).catch(console.error);
+            }
+          }
+        }
+      });
     }
 
     const pollIds = polls.map(p => p.id);
@@ -212,6 +244,7 @@ export const Sondages: React.FC = () => {
       if (editingPoll) {
         await updateDoc(doc(db, 'polls', editingPoll.id), {
           question: newQuestion,
+          endDate: newEndDate || null,
           updatedAt: serverTimestamp()
         });
 
@@ -239,6 +272,7 @@ export const Sondages: React.FC = () => {
           className: className,
           isActive: true,
           totalVotes: 0,
+          endDate: newEndDate || null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
@@ -262,6 +296,7 @@ export const Sondages: React.FC = () => {
         setEditingPoll(pollRef as any); // Temporary set for background tasks if needed
         setNewQuestion('');
         setNewOptions([{ label: '' }, { label: '' }]);
+        setNewEndDate('');
         setSubmitting(false);
 
         // Run notifications in background
@@ -280,6 +315,7 @@ export const Sondages: React.FC = () => {
       setEditingPoll(null);
       setNewQuestion('');
       setNewOptions([{ label: '' }, { label: '' }]);
+      setNewEndDate('');
       setSubmitting(false);
       refetch();
     } catch (error: any) {
@@ -297,13 +333,7 @@ export const Sondages: React.FC = () => {
       type: 'danger',
       onConfirm: async () => {
         try {
-          const batch = writeBatch(db);
-          const optionsSnap = await getDocs(query(collection(db, 'poll_options'), where('pollId', '==', id)));
-          optionsSnap.docs.forEach(d => batch.delete(d.ref));
-          const votesSnap = await getDocs(query(collection(db, 'poll_votes'), where('pollId', '==', id)));
-          votesSnap.docs.forEach(d => batch.delete(d.ref));
-          batch.delete(doc(db, 'polls', id));
-          await batch.commit();
+          await performDeletePoll(id);
           refetch();
         } catch (err) {
           console.error(err);
@@ -327,6 +357,7 @@ export const Sondages: React.FC = () => {
   const handleEditPoll = (poll: Poll) => {
     setEditingPoll(poll);
     setNewQuestion(poll.question);
+    setNewEndDate(poll.endDate || '');
     setNewOptions(poll.options?.map(o => ({ id: o.id, label: o.label })) || [{ label: '' }, { label: '' }]);
     setIsModalOpen(true);
   };
@@ -335,6 +366,8 @@ export const Sondages: React.FC = () => {
     const { whatsapp } = generateSmartShare('sondage', {
       title: poll.question,
       className: poll.className,
+      totalVotes: poll.totalVotes,
+      options: poll.options?.map(o => ({ label: o.label, votes: o.votes })),
       url: window.location.origin + '/polls'
     });
     shareToWhatsApp(whatsapp);
@@ -445,10 +478,18 @@ export const Sondages: React.FC = () => {
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight">{poll.question}</h3>
-                      <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                        <TrendingUp size={12} className="text-gray-400" />
-                        {poll.totalVotes} votes au total
-                      </p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                          <TrendingUp size={12} className="text-gray-400" />
+                          {poll.totalVotes} votes au total
+                        </p>
+                        {poll.endDate && (
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                            <Clock size={12} className="text-amber-500" />
+                            Jusqu'au {new Date(poll.endDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -558,6 +599,17 @@ export const Sondages: React.FC = () => {
                   <Plus size={14} className="mr-1" /> Ajouter une option
                 </Button>
               )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Date de fin (Optionnel)</label>
+              <Input 
+                type="datetime-local"
+                value={newEndDate}
+                onChange={(e) => setNewEndDate(e.target.value)}
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+              />
+              <p className="text-[11px] text-gray-400 ml-1">Le sondage sera automatiquement clôturé après cette date, puis supprimé 24h plus tard.</p>
             </div>
           </div>
           <div className="flex gap-3 pt-2">

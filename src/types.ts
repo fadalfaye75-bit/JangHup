@@ -93,6 +93,7 @@ export interface Poll {
   totalVotes: number;
   authorAvatar?: string;
   createdAt: string;
+  endDate?: string;
   options?: PollOption[];
   userVoteOptionId?: string;
 }
