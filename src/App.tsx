@@ -22,6 +22,7 @@ import { Sondages as Polls } from './pages/Sondages';
 import { Resources } from './pages/Resources';
 import { Forum } from './pages/Forum';
 import { Notifications } from './pages/Notifications';
+import { PollAnalyticsPage } from './pages/PollAnalyticsPage';
 
 const ProtectedLayout: React.FC = () => {
   const { user, loading } = useAuth();
@@ -81,6 +82,7 @@ const AnimatedRoutes = () => {
           <Route path="/forum" element={<Forum />} />
           <Route path="/meetings" element={<Meet />} />
           <Route path="/polls" element={<Polls />} />
+          <Route path="/polls/:id/analytics" element={<PollAnalyticsPage />} />
           <Route path="/class" element={<Class />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/profile" element={<Profile />} />

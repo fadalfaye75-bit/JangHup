@@ -21,6 +21,7 @@ import { where, orderBy } from 'firebase/firestore';
 import { format, parseISO, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { notificationService } from '../services/notificationService';
+import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
 export const Meet: React.FC = () => {
@@ -54,6 +55,7 @@ export const Meet: React.FC = () => {
     onConfirm: () => {},
   });
   const [editingMeet, setEditingMeet] = useState<MeetLink | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -66,6 +68,9 @@ export const Meet: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
+    setSubmitting(true);
     try {
       if (editingMeet) {
         await updateRow('meetings', editingMeet.id, formData);
@@ -78,6 +83,12 @@ export const Meet: React.FC = () => {
           createdAt: new Date().toISOString()
         });
 
+        // Close modal immediately after DB write
+        setIsModalOpen(false);
+        setEditingMeet(null);
+        setFormData({ title: '', platform: 'Google Meet' as any, url: '', time: '' });
+        setSubmitting(false);
+
         if (user?.class_name) {
           const meetingDate = new Date(formData.time).toLocaleString('fr-FR', {
             weekday: 'long',
@@ -89,39 +100,54 @@ export const Meet: React.FC = () => {
 
           const notificationMessage = `Une réunion sur ${formData.platform} est prévue le ${meetingDate}. Lien: ${formData.url}`;
 
-          await notificationService.notifyClass(
+          notificationService.notifyClass(
             user.class_name,
             `Nouvelle réunion: ${formData.title}`,
             notificationMessage,
             'info',
             formData.url // Use the actual meeting URL as the link
-          );
+          ).catch(err => console.error("Notification error:", err));
 
-          // Also send a message to the Forum
-          try {
-            const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
-            const { db } = await import('../firebase');
-            
-            await addDoc(collection(db, 'messages'), {
-              text: `📅 **Nouvelle Réunion Planifiée**\n\n**Sujet:** ${formData.title}\n**Plateforme:** ${formData.platform}\n**Date:** ${meetingDate}\n\n🔗 [Rejoindre la réunion](${formData.url})\n\n${formData.url}`,
-              type: 'text',
-              userId: 'system',
-              userName: 'Système',
-              userAvatar: null,
-              className: user.class_name,
-              createdAt: serverTimestamp(),
-              readBy: [user.id]
-            });
-          } catch (forumErr) {
-            console.error("Error sending meeting message to forum:", forumErr);
-          }
+          // Also send a message to the Forum in background
+          (async () => {
+            try {
+              const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+              const { db } = await import('../firebase');
+              
+              await addDoc(collection(db, 'messages'), {
+                text: `📅 **Nouvelle Réunion Planifiée**\n\n**Sujet:** ${formData.title}\n**Plateforme:** ${formData.platform}\n**Date:** ${meetingDate}\n\n🔗 [Rejoindre la réunion](${formData.url})\n\n${formData.url}`,
+                type: 'text',
+                userId: 'system',
+                userName: 'Système',
+                userAvatar: null,
+                className: user.class_name,
+                createdAt: serverTimestamp(),
+                readBy: ['system']
+              });
+            } catch (forumErr) {
+              console.error("Error sending meeting message to forum:", forumErr);
+            }
+          })();
         }
+
+        if (user) {
+          activityService.logActivity(
+            user,
+            `A organisé une réunion: ${formData.title}`,
+            'new_meeting',
+            'meeting_create'
+          ).catch(err => console.error("Activity log error:", err));
+        }
+        
+        return; // Exit early as we already closed the modal
       }
       setIsModalOpen(false);
       setEditingMeet(null);
       setFormData({ title: '', platform: 'Google Meet', url: '', time: '' });
+      setSubmitting(false);
     } catch (err) {
       console.error(err);
+      setSubmitting(false);
     }
   };
 
@@ -423,12 +449,14 @@ export const Meet: React.FC = () => {
               variant="secondary"
               onClick={() => setIsModalOpen(false)}
               className="flex-1"
+              disabled={submitting}
             >
               Annuler
             </Button>
             <Button 
               type="submit"
               className="flex-1"
+              isLoading={submitting}
             >
               {editingMeet ? "Mettre à jour" : "Enregistrer"}
             </Button>

@@ -29,6 +29,7 @@ import { fmtDate } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { where, orderBy } from 'firebase/firestore';
 import { notificationService } from '../services/notificationService';
+import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
 export const Resources: React.FC = () => {
@@ -39,6 +40,7 @@ export const Resources: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -93,8 +95,9 @@ export const Resources: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.url.trim()) return;
+    if (!formData.title.trim() || !formData.url.trim() || submitting) return;
 
+    setSubmitting(true);
     try {
       if (editingResource) {
         await updateRow('resources', editingResource.id, {
@@ -110,21 +113,31 @@ export const Resources: React.FC = () => {
           className: user?.class_name
         });
 
+        // Close modal immediately after DB write
+        setIsModalOpen(false);
+        setEditingResource(null);
+        setFormData({ title: '', description: '', type: 'pdf', url: '', subject: '' });
+        setSubmitting(false);
+
         if (user?.class_name) {
-          await notificationService.notifyClass(
+          notificationService.notifyClass(
             user.class_name,
             `Nouvelle ressource: ${formData.title}`,
             `Une nouvelle ressource en ${formData.subject} a été ajoutée par ${user.name}.`,
             'info',
             '/resources'
-          );
+          ).catch(err => console.error("Notification error:", err));
         }
+        
+        return; // Exit early as we already closed the modal
       }
       setIsModalOpen(false);
       setEditingResource(null);
       setFormData({ title: '', description: '', type: 'pdf', url: '', subject: '' });
+      setSubmitting(false);
     } catch (err) {
       console.error(err);
+      setSubmitting(false);
     }
   };
 
@@ -187,6 +200,16 @@ export const Resources: React.FC = () => {
       case 'doc': return <FileEdit className="text-blue-500" size={24} />;
       default: return <BookOpen className="text-[var(--text-muted)]" size={24} />;
     }
+  };
+
+  const handleLogResourceAccess = async (res: Resource) => {
+    if (!user) return;
+    await activityService.logActivity(
+      user,
+      `A consulté la ressource: ${res.title}`,
+      res.id,
+      'resource_access'
+    );
   };
 
   if (error) return <div className="max-w-5xl mx-auto px-4 py-12"><ErrBox message={error} /></div>;
@@ -322,6 +345,7 @@ export const Resources: React.FC = () => {
                       variant="secondary"
                       size="sm"
                       className="w-full flex items-center justify-center gap-2"
+                      onClick={() => handleLogResourceAccess(res)}
                     >
                       {res.type === 'link' ? <ExternalLink size={14} /> : <Download size={14} />}
                       <span>{res.type === 'link' ? 'Ouvrir le lien' : 'Télécharger'}</span>
@@ -429,8 +453,8 @@ export const Resources: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1">Annuler</Button>
-            <Button type="submit" className="flex-1">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1" disabled={submitting}>Annuler</Button>
+            <Button type="submit" className="flex-1" isLoading={submitting}>
               {editingResource ? "Mettre à jour" : "Partager"}
             </Button>
           </div>

@@ -29,7 +29,7 @@ import { UserRole } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationBell } from './NotificationBell';
-import { Badge } from './ui';
+import { Badge, Avatar, ConfirmModal } from './ui';
 import { useTheme } from '../theme/theme';
 import { cn } from '../lib/utils';
 
@@ -45,6 +45,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
@@ -146,7 +147,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         <div className="p-4 border-t border-[var(--border-main)]">
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-[var(--text-secondary)] hover:text-danger hover:bg-danger/5 transition-all duration-200 group"
             title={isSidebarCollapsed ? "Déconnexion" : undefined}
           >
@@ -215,9 +216,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <p className="text-sm font-bold leading-none mb-1 text-[var(--text-main)]">{user?.name}</p>
                 <Badge variant="primary" className="text-[10px] px-1.5 py-0">{user?.role}</Badge>
               </div>
-              <div className="w-9 h-9 rounded-full bg-[var(--bg-main)] border border-[var(--border-main)] overflow-hidden cursor-pointer">
-                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} alt="User" className="w-full h-full object-cover" />
-              </div>
+              <Avatar 
+                src={user?.avatar} 
+                name={user?.name} 
+                size="sm" 
+                className="cursor-pointer"
+                onClick={() => navigate('/profile')}
+              />
             </div>
           </div>
         </motion.header>
@@ -315,7 +320,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               </nav>
               <div className="p-4 border-t border-[var(--border-main)]">
                 <button
-                  onClick={handleLogout}
+                  onClick={() => setShowLogoutConfirm(true)}
                   className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-danger hover:bg-danger/5 transition-all duration-200"
                 >
                   <LogOut size={20} />
@@ -328,6 +333,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </AnimatePresence>
 
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        title="Déconnexion"
+        message="Êtes-vous sûr de vouloir vous déconnecter ? Vous devrez vous reconnecter pour accéder à votre espace."
+        confirmText="Se déconnecter"
+        cancelText="Rester connecté"
+        type="danger"
+      />
     </div>
   );
 };

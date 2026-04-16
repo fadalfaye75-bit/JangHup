@@ -38,6 +38,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { notificationService } from '../services/notificationService';
+import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
 export const Announcements: React.FC = () => {
@@ -119,6 +120,7 @@ export const Announcements: React.FC = () => {
     e.preventDefault();
     if (!user) return;
 
+    setLoading(true);
     try {
       if (editingAnn) {
         await updateDoc(doc(db, 'announcements', editingAnn.id), {
@@ -136,19 +138,30 @@ export const Announcements: React.FC = () => {
           createdAt: new Date().toISOString()
         });
 
-        await notificationService.notifyClass(
+        // Close modal immediately
+        setIsModalOpen(false);
+        setEditingAnn(null);
+        setFormData({ title: '', content: '', priority: 'normal', link: '', isPinned: false });
+        setLoading(false);
+
+        // Run notifications in background
+        notificationService.notifyClass(
           user.class_name,
           `Nouvelle annonce: ${formData.title}`,
           formData.content.substring(0, 100) + (formData.content.length > 100 ? '...' : ''),
           formData.priority === 'urgent' ? 'danger' : 'info',
           '/announcements'
-        );
+        ).catch(err => console.error("Notification error:", err));
+
+        return;
       }
       setIsModalOpen(false);
       setEditingAnn(null);
       setFormData({ title: '', content: '', priority: 'normal', link: '', isPinned: false });
+      setLoading(false);
     } catch (err) {
       console.error(err);
+      setLoading(false);
     }
   };
 
@@ -203,6 +216,17 @@ export const Announcements: React.FC = () => {
         announcementId: annId,
         readAt: new Date().toISOString()
       });
+
+      // Log activity
+      const ann = announcements.find(a => a.id === annId);
+      if (ann) {
+        await activityService.logActivity(
+          user,
+          `A lu l'annonce: ${ann.title}`,
+          annId,
+          'announcement_read'
+        );
+      }
     } catch (err) {
       console.error(err);
     }

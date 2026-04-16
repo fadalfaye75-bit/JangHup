@@ -56,6 +56,7 @@ import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { notificationService } from '../services/notificationService';
+import { activityService } from '../services/activityService';
 
 // --- Constants ---
 
@@ -692,6 +693,14 @@ export const Forum: React.FC = () => {
       }
 
       scrollToBottom();
+
+      // Log activity in background
+      activityService.logActivity(
+        user,
+        `A envoyé un message dans ${activeRoom.name}`,
+        activeRoom.name,
+        'chat_message'
+      ).catch(err => console.error("Activity log error:", err));
     } catch (err) {
       console.error("Error sending message:", err);
     }
@@ -713,6 +722,14 @@ export const Forum: React.FC = () => {
       });
       setShowStickerPicker(false);
       scrollToBottom();
+
+      // Log activity
+      await activityService.logActivity(
+        user,
+        `A envoyé un sticker dans ${activeRoom.name}`,
+        activeRoom.name,
+        'chat_sticker'
+      );
     } catch (err) {
       console.error("Error sending sticker:", err);
     }

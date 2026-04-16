@@ -6,9 +6,10 @@ interface AvatarProps {
   name?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  onClick?: () => void;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ src, name = '?', size = 'md', className }) => {
+export const Avatar: React.FC<AvatarProps> = ({ src, name = '?', size = 'md', className, onClick }) => {
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -46,24 +47,26 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name = '?', size = 'md', cl
     return colors[Math.abs(hash) % colors.length];
   };
 
+  const [imageError, setImageError] = React.useState(false);
+
   return (
-    <div className={cn(
-      "relative flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center font-semibold text-white shadow-sm border border-white/10",
-      sizeClasses[size],
-      !src && getBgColor(name),
-      className
-    )}>
-      {src ? (
+    <div 
+      onClick={onClick}
+      className={cn(
+        "relative flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center font-semibold text-white shadow-sm border border-white/10",
+        sizeClasses[size],
+        (!src || imageError) && getBgColor(name),
+        onClick && "cursor-pointer hover:opacity-90 transition-opacity",
+        className
+      )}
+    >
+      {src && !imageError ? (
         <img 
           src={src} 
           alt={name} 
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            // Fallback if image fails to load
-            (e.target as HTMLImageElement).style.display = 'none';
-            (e.target as HTMLImageElement).parentElement!.classList.add(getBgColor(name));
-          }}
+          onError={() => setImageError(true)}
         />
       ) : (
         <span>{initials}</span>

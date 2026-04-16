@@ -20,7 +20,7 @@ import {
   Bell
 } from 'lucide-react';
 import { db, auth as firebaseAuth } from '../firebase';
-import { doc, updateDoc, query, collection, where, limit, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, query, collection, where, limit, orderBy, onSnapshot, writeBatch, getCountFromServer } from 'firebase/firestore';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { UserRole, ActivityLog } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -70,6 +70,31 @@ export const Profile: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
+    // Fetch total stats
+    const fetchStats = async () => {
+      try {
+        const pollsQ = query(collection(db, 'poll_votes'), where('userId', '==', user.id));
+        const annQ = query(collection(db, 'announcement_read_statuses'), where('userId', '==', user.id));
+        const resQ = query(collection(db, 'activity_logs'), where('userId', '==', user.id), where('type', '==', 'resource_access'));
+
+        const [pollsSnap, annSnap, resSnap] = await Promise.all([
+          getCountFromServer(pollsQ),
+          getCountFromServer(annQ),
+          getCountFromServer(resQ)
+        ]);
+
+        setStats({
+          pollsVoted: pollsSnap.data().count,
+          announcementsRead: annSnap.data().count,
+          resourcesAccessed: resSnap.data().count
+        });
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    };
+
+    fetchStats();
+
     // Fetch recent activity
     const activityQ = query(
       collection(db, 'activity_logs'),
@@ -81,12 +106,7 @@ export const Profile: React.FC = () => {
     const unsubscribe = onSnapshot(activityQ, (snapshot) => {
       const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
       setActivities(logs);
-      
-      setStats({
-        pollsVoted: logs.filter(l => l.action.includes('vote')).length,
-        announcementsRead: logs.filter(l => l.action.includes('annonce')).length,
-        resourcesAccessed: logs.filter(l => l.action.includes('ressource')).length
-      });
+      fetchStats();
     });
 
     return () => unsubscribe();
@@ -195,10 +215,20 @@ export const Profile: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
-        await updateDoc(doc(db, 'users', user.id), {
+        const batch = writeBatch(db);
+        const userRef = doc(db, 'users', user.id);
+        const publicRef = doc(db, 'users_public', user.id);
+        
+        const updateData = {
           avatar: base64String,
-          updatedAt: new Date().toISOString()
-        });
+          updated_at: new Date().toISOString()
+        };
+
+        batch.update(userRef, updateData);
+        batch.set(publicRef, updateData, { merge: true });
+
+        await batch.commit();
+        
         setSuccess("Photo de profil mise à jour !");
         setToastType('success');
         setIsUploadingAvatar(false);

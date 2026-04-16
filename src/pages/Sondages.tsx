@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePaginatedTable, insertRow, updateRow, deleteRow } from '../lib/hooks';
 import { 
@@ -40,6 +41,7 @@ import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareU
 import { PollAnalytics } from '../components/PollAnalytics';
 import { ConfirmModal, Spinner, ErrBox, GlassCard, Button, Input, Badge, Modal, AppCard, AutoGrid, Avatar } from '../components/ui';
 import { notificationService } from '../services/notificationService';
+import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
 const ProgressBar: React.FC<{ progress: number; isSelected?: boolean }> = ({ progress, isSelected }) => (
@@ -58,6 +60,7 @@ const ProgressBar: React.FC<{ progress: number; isSelected?: boolean }> = ({ pro
 
 export const Sondages: React.FC = () => {
   const { user, classInfo } = useAuth();
+  const navigate = useNavigate();
   const [pollsWithOptions, setPollsWithOptions] = useState<Poll[]>([]);
   const [myVotes, setMyVotes] = useState<Record<string, string>>({});
   const [voting, setVoting] = useState<string | null>(null);
@@ -75,7 +78,6 @@ export const Sondages: React.FC = () => {
     message: '',
     onConfirm: () => {},
   });
-  const [selectedPollForAnalytics, setSelectedPollForAnalytics] = useState<Poll | null>(null);
 
   const [newQuestion, setNewQuestion] = useState('');
   const [newOptions, setNewOptions] = useState<{ id?: string; label: string }[]>([
@@ -83,6 +85,7 @@ export const Sondages: React.FC = () => {
     { label: '' }
   ]);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const pollConstraints = React.useMemo(() => {
     const constraints: any[] = [orderBy('createdAt', 'desc')];
@@ -179,6 +182,17 @@ export const Sondages: React.FC = () => {
       }
 
       await batch.commit();
+
+      // Log activity
+      const poll = pollsWithOptions.find(p => p.id === pollId);
+      if (poll) {
+        await activityService.logActivity(
+          user,
+          `A voté au sondage: ${poll.question}`,
+          pollId,
+          'poll_vote'
+        );
+      }
     } catch (error) {
       console.error("Erreur lors du vote:", error);
     } finally {
@@ -193,6 +207,7 @@ export const Sondages: React.FC = () => {
 
     const className = user.class_name || 'GENERAL';
 
+    setSubmitting(true);
     try {
       if (editingPoll) {
         await updateDoc(doc(db, 'polls', editingPoll.id), {
@@ -242,23 +257,35 @@ export const Sondages: React.FC = () => {
         });
         await batch.commit();
 
-        await notificationService.notifyClass(
+        // Close modal immediately after DB operations
+        setIsModalOpen(false);
+        setEditingPoll(pollRef as any); // Temporary set for background tasks if needed
+        setNewQuestion('');
+        setNewOptions([{ label: '' }, { label: '' }]);
+        setSubmitting(false);
+
+        // Run notifications in background
+        notificationService.notifyClass(
           className,
           `Nouveau sondage: ${newQuestion}`,
           `Un nouveau sondage est disponible. Votre avis compte !`,
           'info',
           '/polls'
-        );
+        ).catch(err => console.error("Notification error:", err));
+        
+        return; // Exit early as we already closed the modal
       }
 
       setIsModalOpen(false);
       setEditingPoll(null);
       setNewQuestion('');
       setNewOptions([{ label: '' }, { label: '' }]);
+      setSubmitting(false);
       refetch();
     } catch (error: any) {
       console.error(error);
       setError(error.message || "Erreur lors de la création du sondage.");
+      setSubmitting(false);
     }
   };
 
@@ -408,7 +435,7 @@ export const Sondages: React.FC = () => {
                       variant="secondary" 
                       size="sm"
                       className="w-full flex items-center justify-center gap-2"
-                      onClick={() => setSelectedPollForAnalytics(poll)}
+                      onClick={() => navigate(`/polls/${poll.id}/analytics`)}
                     >
                       <PieChart size={14} />
                       <span>Analyses détaillées</span>
@@ -540,17 +567,6 @@ export const Sondages: React.FC = () => {
             </Button>
           </div>
         </form>
-      </Modal>
-
-      {/* Analytics Modal */}
-      <Modal 
-        isOpen={!!selectedPollForAnalytics} 
-        onClose={() => setSelectedPollForAnalytics(null)} 
-        title="Analyses du Sondage"
-      >
-        {selectedPollForAnalytics && (
-          <PollAnalytics poll={selectedPollForAnalytics} />
-        )}
       </Modal>
     </div>
   );

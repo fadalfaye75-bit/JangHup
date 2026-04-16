@@ -20,6 +20,7 @@ import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareU
 import { fmtDate, daysLeft, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService } from '../services/notificationService';
+import { activityService } from '../services/activityService';
 import { where, orderBy } from 'firebase/firestore';
 
 export const Exams: React.FC = () => {
@@ -53,6 +54,7 @@ export const Exams: React.FC = () => {
     onConfirm: () => {},
   });
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     subject: '',
@@ -72,6 +74,7 @@ export const Exams: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       if (editingExam) {
         await updateRow('exams', editingExam.id, formData);
@@ -83,21 +86,40 @@ export const Exams: React.FC = () => {
           className: user?.class_name
         });
 
+        // Close modal immediately
+        setIsModalOpen(false);
+        setEditingExam(null);
+        setFormData({ subject: '', date: '', duration: '', room: '', notes: '' });
+        setSubmitting(false);
+
         if (user?.class_name) {
-          await notificationService.notifyClass(
+          notificationService.notifyClass(
             user.class_name,
             `Nouvel examen: ${formData.subject}`,
             `Un examen de ${formData.subject} est prévu le ${new Date(formData.date).toLocaleDateString()}.`,
             'warning',
             '/exams'
-          );
+          ).catch(err => console.error("Notification error:", err));
         }
+
+        if (user) {
+          activityService.logActivity(
+            user,
+            `A ajouté un examen: ${formData.subject}`,
+            'new_exam',
+            'exam_create'
+          ).catch(err => console.error("Activity log error:", err));
+        }
+        
+        return;
       }
       setIsModalOpen(false);
       setEditingExam(null);
       setFormData({ subject: '', date: '', duration: '', room: '', notes: '' });
+      setSubmitting(false);
     } catch (err) {
       console.error(err);
+      setSubmitting(false);
     }
   };
 
