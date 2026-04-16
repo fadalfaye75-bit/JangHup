@@ -561,8 +561,8 @@ export const Sondages: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1">Annuler</Button>
-            <Button type="submit" className="flex-1">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1" disabled={submitting}>Annuler</Button>
+            <Button type="submit" className="flex-1" isLoading={submitting}>
               {editingPoll ? "Mettre à jour" : "Lancer le sondage"}
             </Button>
           </div>

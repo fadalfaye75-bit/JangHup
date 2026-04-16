@@ -228,8 +228,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </motion.header>
 
         {/* Page Content */}
-        <div id="scroll-container" className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
-          <div className="max-w-[1400px] mx-auto pb-24 md:pb-0">
+        <div 
+          id="scroll-container" 
+          className={cn(
+            "flex-1 custom-scrollbar",
+            location.pathname === '/forum' ? "p-0 overflow-hidden" : "p-4 lg:p-8 overflow-y-auto"
+          )}
+        >
+          <div className={cn(
+            "mx-auto",
+            location.pathname === '/forum' ? "max-w-full h-full pb-16 md:pb-0" : "max-w-full pb-24 md:pb-0"
+          )}>
             {children}
           </div>
         </div>

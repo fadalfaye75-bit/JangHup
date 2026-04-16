@@ -50,6 +50,7 @@ export const Announcements: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnn, setEditingAnn] = useState<Announcement | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -118,9 +119,9 @@ export const Announcements: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || submitting) return;
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       if (editingAnn) {
         await updateDoc(doc(db, 'announcements', editingAnn.id), {
@@ -142,7 +143,7 @@ export const Announcements: React.FC = () => {
         setIsModalOpen(false);
         setEditingAnn(null);
         setFormData({ title: '', content: '', priority: 'normal', link: '', isPinned: false });
-        setLoading(false);
+        setSubmitting(false);
 
         // Run notifications in background
         notificationService.notifyClass(
@@ -158,10 +159,10 @@ export const Announcements: React.FC = () => {
       setIsModalOpen(false);
       setEditingAnn(null);
       setFormData({ title: '', content: '', priority: 'normal', link: '', isPinned: false });
-      setLoading(false);
+      setSubmitting(false);
     } catch (err) {
       console.error(err);
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -529,8 +530,8 @@ export const Announcements: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1">Annuler</Button>
-            <Button type="submit" className="flex-1">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1" disabled={submitting}>Annuler</Button>
+            <Button type="submit" className="flex-1" isLoading={submitting}>
               {editingAnn ? "Mettre à jour" : "Publier l'annonce"}
             </Button>
           </div>

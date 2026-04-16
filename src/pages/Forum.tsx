@@ -173,7 +173,7 @@ const MessageBubble: React.FC<{
       )}
     >
       <div className={cn(
-        "flex max-w-[85%] md:max-w-[75%] items-end gap-2",
+        "flex max-w-[95%] md:max-w-[90%] items-end gap-2",
         isMe ? "flex-row-reverse" : "flex-row"
       )}>
         {!isMe && (
@@ -723,13 +723,13 @@ export const Forum: React.FC = () => {
       setShowStickerPicker(false);
       scrollToBottom();
 
-      // Log activity
-      await activityService.logActivity(
+      // Log activity in background
+      activityService.logActivity(
         user,
         `A envoyé un sticker dans ${activeRoom.name}`,
         activeRoom.name,
         'chat_sticker'
-      );
+      ).catch(err => console.error("Activity log error:", err));
     } catch (err) {
       console.error("Error sending sticker:", err);
     }
@@ -780,7 +780,7 @@ export const Forum: React.FC = () => {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
 
   return (
-    <div className="h-[calc(100vh-120px)] max-w-7xl mx-auto flex overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm">
+    <div className="h-full w-full flex overflow-hidden bg-white dark:bg-gray-900">
       
       {/* Sidebar */}
       <AnimatePresence mode="wait">
@@ -790,7 +790,7 @@ export const Forum: React.FC = () => {
             animate={{ x: 0 }}
             exit={{ x: -300 }}
             className={cn(
-              "w-full md:w-80 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 z-20",
+              "w-full md:w-72 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 z-20",
               isMobileView ? "absolute inset-0" : "relative"
             )}
           >
@@ -908,7 +908,7 @@ export const Forum: React.FC = () => {
             <div 
               ref={chatContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col relative"
+              className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col relative"
               style={{ 
                 backgroundImage: document.documentElement.classList.contains('dark') ? DARK_MINIMAL_WALLPAPER : MINIMAL_WALLPAPER,
                 backgroundSize: '24px 24px',
@@ -966,7 +966,7 @@ export const Forum: React.FC = () => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 md:p-6 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 relative z-20">
+            <div className="p-3 md:p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 relative z-20">
               {/* Reply Preview */}
               <AnimatePresence>
                 {replyingTo && (
@@ -1171,7 +1171,7 @@ export const Forum: React.FC = () => {
               initial={{ x: 300, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 300, opacity: 0 }}
-              className="w-full md:w-80 border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 z-30 flex flex-col absolute inset-y-0 right-0 md:relative"
+              className="w-full md:w-72 border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 z-30 flex flex-col absolute inset-y-0 right-0 md:relative"
             >
               <div className="h-14 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
                 <button onClick={() => setShowGroupInfo(false)} className="mr-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">

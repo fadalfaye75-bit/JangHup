@@ -392,8 +392,8 @@ export const Exams: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1">Annuler</Button>
-            <Button type="submit" className="flex-1">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1" disabled={submitting}>Annuler</Button>
+            <Button type="submit" className="flex-1" isLoading={submitting}>
               {editingExam ? "Mettre à jour" : "Ajouter au calendrier"}
             </Button>
           </div>
