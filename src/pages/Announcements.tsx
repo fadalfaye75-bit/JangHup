@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Announcement, UserRole } from '../types';
-import { VList } from 'virtua';
 import { useDebounce } from '../hooks/useDebounce';
 import { firestoreService } from '../services/firestoreService';
 import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, Avatar } from '../components/ui';
@@ -90,20 +89,20 @@ const AnnouncementCard = React.memo<{
                 {ann.title}
               </h3>
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onShareWhatsApp(ann); }} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
-                <Share2 size={14} />
+            <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onShareWhatsApp(ann); }} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-[#25D366]">
+                <Share2 size={16} />
               </Button>
               {canManage && (
                 <>
-                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onTogglePin(ann); }} className={cn("px-2 py-1 h-auto", ann.isPinned ? "text-amber-500" : "text-gray-500 hover:text-amber-500")}>
-                    <Pin size={14} />
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onTogglePin(ann); }} className={cn("p-2 h-auto", ann.isPinned ? "text-amber-500" : "text-gray-600 dark:text-gray-400 hover:text-amber-500")}>
+                    <Pin size={16} />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(ann); }} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
-                    <MoreHorizontal size={14} />
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(ann); }} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-blue-500">
+                    <MoreHorizontal size={16} />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(ann.id); }} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
-                    <Trash2 size={14} />
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(ann.id); }} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-danger">
+                    <Trash2 size={16} />
                   </Button>
                 </>
               )}
@@ -480,9 +479,9 @@ export const Announcements: React.FC = () => {
       </div>
 
       {/* Announcements List */}
-      <div className="flex-1 min-h-[500px]">
+      <div className="space-y-4">
         {filteredAnnouncements.length > 0 ? (
-          <VList className="custom-scrollbar pr-2 h-full">
+          <AnimatePresence mode="popLayout" initial={false}>
             {filteredAnnouncements.map((ann) => (
               <AnnouncementCard
                 key={ann.id}
@@ -496,26 +495,26 @@ export const Announcements: React.FC = () => {
                 onDelete={handleDelete}
               />
             ))}
-            
-            {hasMore && (
-              <div className="py-8 flex justify-center">
-                <Button 
-                  variant="secondary" 
-                  onClick={() => fetchAnnouncements(true)}
-                  isLoading={loadingMore}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw size={16} />
-                  <span>Charger plus</span>
-                </Button>
-              </div>
-            )}
-          </VList>
+          </AnimatePresence>
         ) : (
           <div className="text-center py-16 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
             <Megaphone size={32} className="mx-auto text-gray-400 mb-4"/>
             <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight">Aucune annonce</h3>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">Il n'y a aucune annonce correspondant à votre recherche.</p>
+          </div>
+        )}
+
+        {hasMore && (
+          <div className="py-8 flex justify-center">
+            <Button 
+              variant="secondary" 
+              onClick={() => fetchAnnouncements(true)}
+              isLoading={loadingMore}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              <span>Charger plus</span>
+            </Button>
           </div>
         )}
       </div>

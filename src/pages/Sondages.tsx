@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { usePaginatedTable, insertRow, updateRow, deleteRow } from '../lib/hooks';
+import { useTable, insertRow, updateRow, deleteRow } from '../lib/hooks';
 import { 
   collection, 
   query, 
@@ -46,16 +46,16 @@ import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
 const ProgressBar: React.FC<{ progress: number; isSelected?: boolean }> = ({ progress, isSelected }) => (
-  <div className="w-full h-3 bg-gray-100 dark:bg-gray-800/80 rounded-full overflow-hidden relative shadow-inner">
+  <div className="w-full h-2.5 bg-gray-100 dark:bg-black/10 rounded-full overflow-hidden relative border border-gray-200/50 dark:border-white/5">
     <motion.div 
       initial={{ width: 0 }}
       animate={{ width: `${progress}%` }}
-      transition={{ type: "spring", stiffness: 60, damping: 15, mass: 1 }}
+      transition={{ type: "spring", bounce: 0, duration: 1.5 }}
       className={cn(
-        "h-full rounded-full transition-all duration-700 ease-out relative",
+        "h-full rounded-full transition-all relative overflow-hidden",
         isSelected 
-          ? 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.4)]' 
-          : 'bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-600'
+          ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+          : 'bg-gray-300 dark:bg-gray-700'
       )}
     >
       {isSelected && (
@@ -109,17 +109,13 @@ export const Sondages: React.FC = () => {
 
   const { 
     data: polls, 
-    loading: pollsLoading, 
-    hasMore, 
-    loadMore, 
-    loadingMore,
-    error: fetchError,
-    refetch
-  } = usePaginatedTable<Poll>(
+    loading: pollsLoading,
+    error: fetchError
+  } = useTable<Poll>(
     'polls',
     pollConstraints,
-    10,
-    !!user?.class_name || user?.role === UserRole.ADMIN
+    30,
+    !!user?.class_name || (user?.role?.toUpperCase() === 'ADMIN')
   );
 
   const performDeletePoll = async (id: string) => {
@@ -237,6 +233,7 @@ export const Sondages: React.FC = () => {
       }
     } catch (error) {
       console.error("Erreur lors du vote:", error);
+      notificationService.notifyUser(user.id, "Erreur", "Impossible d'enregistrer votre vote. Veuillez réessayer.", 'danger', '/polls');
     } finally {
       setVoting(null);
     }
@@ -327,7 +324,6 @@ export const Sondages: React.FC = () => {
       setNewOptions([{ label: '' }, { label: '' }]);
       setNewEndDate('');
       setSubmitting(false);
-      refetch();
     } catch (error: any) {
       console.error(error);
       setError(error.message || "Erreur lors de la création du sondage.");
@@ -344,7 +340,6 @@ export const Sondages: React.FC = () => {
       onConfirm: async () => {
         try {
           await performDeletePoll(id);
-          refetch();
         } catch (err) {
           console.error(err);
         }
@@ -358,7 +353,6 @@ export const Sondages: React.FC = () => {
         isActive: !poll.isActive,
         updatedAt: serverTimestamp()
       });
-      refetch();
     } catch (err) {
       console.error(err);
     }
@@ -423,7 +417,7 @@ export const Sondages: React.FC = () => {
       </div>
 
       {/* Polls Grid */}
-      <AutoGrid minWidth="320px">
+      <AutoGrid minWidth="280px">
         <AnimatePresence mode="popLayout" initial={false}>
           {pollsWithOptions.map((poll) => {
             const hasVoted = !!myVotes[poll.id];
@@ -461,20 +455,20 @@ export const Sondages: React.FC = () => {
                         </Badge>
                         {hasVoted && <Badge variant="primary">Voté</Badge>}
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(poll)} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
-                          <Share2 size={14} />
+                      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(poll)} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-[#25D366]">
+                          <Share2 size={16} />
                         </Button>
                         {canManage && (
                           <>
-                            <Button variant="ghost" size="sm" onClick={() => handleEditPoll(poll)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
-                              <Edit3 size={14} />
+                            <Button variant="ghost" size="sm" onClick={() => handleEditPoll(poll)} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-blue-500">
+                              <Edit3 size={16} />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(poll)} className={cn("px-2 py-1 h-auto", poll.isActive ? "text-gray-500 hover:text-amber-500" : "text-amber-500")}>
-                              {poll.isActive ? <Lock size={14} /> : <Unlock size={14} />}
+                            <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(poll)} className={cn("p-2 h-auto", poll.isActive ? "text-gray-600 dark:text-gray-400 hover:text-amber-500" : "text-amber-500")}>
+                              {poll.isActive ? <Lock size={16} /> : <Unlock size={16} />}
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeletePoll(poll.id)} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
-                              <Trash2 size={14} />
+                            <Button variant="ghost" size="sm" onClick={() => handleDeletePoll(poll.id)} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-danger text-sm">
+                              <Trash2 size={16} />
                             </Button>
                           </>
                         )}
@@ -493,24 +487,26 @@ export const Sondages: React.FC = () => {
                     </Button>
                   }
                 >
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight">{poll.question}</h3>
-                      <div className="flex items-center gap-3">
-                        <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <h3 className="text-[18px] font-bold text-gray-900 dark:text-white leading-tight tracking-tight">{poll.question}</h3>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
                           <TrendingUp size={12} className="text-gray-400" />
-                          {poll.totalVotes} votes au total
-                        </p>
+                          <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">{poll.totalVotes} votes</span>
+                        </div>
                         {poll.endDate && (
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20">
                             <Clock size={12} className="text-amber-500" />
-                            Jusqu'au {new Date(poll.endDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                            <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                              Finit le {new Date(poll.endDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {poll.options?.map((option) => {
                         const percentage = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0;
                         const isSelected = myVotes[poll.id] === option.id;
@@ -576,13 +572,6 @@ export const Sondages: React.FC = () => {
         </div>
       )}
 
-      {hasMore && (
-        <div className="flex justify-center pt-4">
-          <Button variant="secondary" onClick={loadMore} isLoading={loadingMore} className="px-8">
-            Charger plus
-          </Button>
-        </div>
-      )}
 
       {/* New/Edit Poll Modal */}
       <Modal 

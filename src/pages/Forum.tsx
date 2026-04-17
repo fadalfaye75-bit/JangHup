@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PullToRefresh } from '../components/PullToRefresh';
-import { VList } from 'virtua';
 import { useDebounce } from '../hooks/useDebounce';
 import { 
   collection, 
@@ -63,9 +61,6 @@ import { notificationService } from '../services/notificationService';
 import { activityService } from '../services/activityService';
 
 // --- Constants ---
-
-const MINIMAL_WALLPAPER = "radial-gradient(#e5e7eb 0.5px, transparent 0.5px)";
-const DARK_MINIMAL_WALLPAPER = "radial-gradient(#374151 0.5px, transparent 0.5px)";
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/2584/2584602.png',
@@ -979,63 +974,46 @@ export const Forum: React.FC = () => {
               )}
             </AnimatePresence>
 
-            <PullToRefresh onRefresh={async () => {
-              await new Promise(r => setTimeout(r, 1000));
-            }}>
-              <div 
-                ref={chatContainerRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col relative h-full"
-                style={{ 
-                  backgroundImage: document.documentElement.classList.contains('dark') ? DARK_MINIMAL_WALLPAPER : MINIMAL_WALLPAPER,
-                  backgroundSize: '24px 24px',
-                  backgroundColor: 'var(--bg-main)'
-                }}
-              >
-                {/* Overlay for readability */}
-                <div className="absolute inset-0 bg-white/85 dark:bg-gray-900/85 pointer-events-none" />
-                
-                <div className="relative z-10 flex-1 flex flex-col h-full">
-                  <VList
-                    className="flex-1 custom-scrollbar"
-                    style={{ height: '100%' }}
-                  >
-                    {virtualData.map((item, idx) => (
-                      <div key={item.type === 'divider' ? `divider-${item.date}` : `msg-${item.data.id}`}>
-                        {item.type === 'divider' ? (
-                          renderDateDivider(item.date)
-                        ) : (
-                          <MessageBubble 
-                            message={item.data} 
-                            isMe={item.data.userId === user?.id}
-                            showAvatar={item.showAvatar}
-                            onReply={setReplyingTo}
-                            onDelete={handleDeleteMessage}
-                            onReaction={handleReaction}
-                          />
-                        )}
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </VList>
-                </div>
-
-                {/* Scroll to Bottom Button */}
-                <AnimatePresence>
-                  {showScrollButton && (
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.5, y: 20 }}
-                      onClick={scrollToBottom}
-                      className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center text-gray-500 z-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <ChevronDown size={14} />
-                    </motion.button>
-                  )}
-                </AnimatePresence>
+            <div 
+              ref={chatContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col relative"
+            >
+              <div className="flex-1 flex flex-col min-h-full">
+                {virtualData.map((item, idx) => (
+                  <div key={item.type === 'divider' ? `divider-${item.date}` : `msg-${item.data.id}`}>
+                    {item.type === 'divider' ? (
+                      renderDateDivider(item.date)
+                    ) : (
+                      <MessageBubble 
+                        message={item.data} 
+                        isMe={item.data.userId === user?.id}
+                        showAvatar={item.showAvatar}
+                        onReply={setReplyingTo}
+                        onDelete={handleDeleteMessage}
+                        onReaction={handleReaction}
+                      />
+                    )}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
               </div>
-            </PullToRefresh>
+
+              {/* Scroll to Bottom Button */}
+              <AnimatePresence>
+                {showScrollButton && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.5, y: 20 }}
+                    onClick={scrollToBottom}
+                    className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center text-gray-500 z-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <ChevronDown size={14} />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Input Area */}
             <div className="p-3 md:p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 relative z-20 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">

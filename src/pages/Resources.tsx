@@ -327,17 +327,17 @@ export const Resources: React.FC = () => {
                           {res.title}
                         </h3>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(res)} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
-                          <Share2 size={14} />
+                      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(res)} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-[#25D366]">
+                          <Share2 size={16} />
                         </Button>
                         {canManage && (
                           <>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(res)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
-                              <Edit3 size={14} />
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(res)} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-blue-500">
+                              <Edit3 size={16} />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(res.id)} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
-                              <Trash2 size={14} />
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(res.id)} className="p-2 h-auto text-gray-600 dark:text-gray-400 hover:text-danger">
+                              <Trash2 size={16} />
                             </Button>
                           </>
                         )}

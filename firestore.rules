@@ -35,21 +35,21 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(path) ? get(path).data : null;
+      let path = request.auth != null ? /databases/$(database)/documents/users/$(request.auth.uid) : null;
+      return path != null && exists(path) ? get(path).data : null;
     }
 
     function isAdmin() {
       let data = getUserData();
       return isAuthenticated() && (
-        (data != null && data.role == 'admin') ||
+        (data != null && (data.role == 'admin' || data.role == 'ADMIN')) ||
         (request.auth.token.email == "fadalfaye75@gmail.com" && request.auth.token.email_verified == true)
       );
     }
 
     function isDelegate() {
       let data = getUserData();
-      return isAuthenticated() && data != null && data.role == 'delegate';
+      return isAuthenticated() && data != null && (data.role == 'delegate' || data.role == 'DELEGATE');
     }
 
     function sameClass(className) {
@@ -62,7 +62,7 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'email', 'class_name', 'role']) &&
              data.name is string && data.name.size() < 100 &&
              data.email is string &&
-             data.role in ['student', 'delegate', 'admin'] &&
+             data.role in ['student', 'delegate', 'admin', 'STUDENT', 'DELEGATE', 'ADMIN'] &&
              data.class_name is string;
     }
 
@@ -142,17 +142,34 @@ service cloud.firestore {
 
     match /polls/{pollId} {
       allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
-      allow write: if isAdmin() || isDelegate();
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        isDelegate() || 
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalVotes', 'updatedAt']) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalVotes', 'updatedAt', 'options', 'totalVotes']) &&
+          (request.resource.data.totalVotes == resource.data.totalVotes + 1 || request.resource.data.totalVotes == resource.data.totalVotes)
+        )
+      );
+      allow create, delete: if isAdmin() || isDelegate();
     }
 
     match /poll_options/{optId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() || isDelegate();
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        isDelegate() || 
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes']) &&
+          (request.resource.data.votes == resource.data.votes + 1 || request.resource.data.votes == resource.data.votes - 1)
+        )
+      );
+      allow create, delete: if isAdmin() || isDelegate();
     }
 
     match /poll_votes/{voteId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid && voteId == request.auth.uid + "_" + request.resource.data.pollId;
       allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
@@ -174,11 +191,13 @@ service cloud.firestore {
     }
 
     match /registration_codes/{codeId} {
-      allow read, write: if isAdmin();
+      allow get: if true;
+      allow list, write: if isAdmin();
     }
 
     match /delegate_codes/{codeId} {
-      allow read, write: if isAdmin();
+      allow get: if isAuthenticated();
+      allow list, write: if isAdmin();
     }
 
     // Default deny

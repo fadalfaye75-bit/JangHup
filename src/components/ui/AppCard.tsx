@@ -37,7 +37,7 @@ export const AppCard: React.FC<AppCardProps> = ({
       whileTap={hover && onClick ? { scale: 0.98, y: 0 } : {}}
       transition={{ type: "spring", stiffness: 400, damping: 20 }}
       className={cn(
-        "bg-white dark:bg-[#1F2937] border border-[#E5E7EB] dark:border-white/10 rounded-[16px] flex flex-col transition-all duration-300 shadow-sm",
+        "bg-[var(--bg-card)] border border-[var(--border-card)] rounded-[16px] flex flex-col transition-all duration-300 shadow-sm",
         hover && onClick && "cursor-pointer hover:border-blue-500/30 dark:hover:border-blue-400/30",
         className
       )}

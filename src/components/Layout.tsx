@@ -171,7 +171,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <motion.header 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="h-16 px-6 lg:px-8 bg-[var(--bg-card)] border-b border-[var(--border-main)] flex items-center justify-between z-40"
+          className="h-16 px-6 lg:px-8 bg-[var(--bg-card)]/80 backdrop-blur-xl border-b border-[var(--border-main)] flex items-center justify-between z-40 sticky top-0"
         >
           <div className="flex items-center gap-4 flex-1">
             <button 
@@ -238,7 +238,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         >
           <div className={cn(
             "mx-auto",
-            location.pathname === '/forum' ? "max-w-full h-full pb-16 md:pb-0" : "max-w-full pb-24 md:pb-0"
+            location.pathname === '/forum' ? "max-w-full h-full pb-32 md:pb-0" : "max-w-full pb-32 md:pb-0"
           )}>
             {children}
           </div>
@@ -248,7 +248,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <motion.nav 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="md:hidden fixed bottom-0 left-0 right-0 h-auto bg-[var(--bg-card)] border-t border-[var(--border-main)] flex items-center justify-around px-4 z-50 pb-[env(safe-area-inset-bottom)]"
+          className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-16 bg-[var(--bg-card)]/90 backdrop-blur-xl border border-[var(--border-main)] rounded-2xl flex items-center justify-around px-2 z-50 shadow-2xl safe-area-bottom"
         >
           {menuItems.slice(0, 4).map((item) => {
             const isActive = location.pathname === item.path;
@@ -258,21 +258,25 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center justify-center min-h-[56px] min-w-[56px] gap-1 transition-all duration-200 active:scale-95",
-                  isActive ? "text-primary" : "text-[var(--text-secondary)]"
+                  "relative flex flex-col items-center justify-center h-12 w-12 rounded-xl transition-all duration-300 active:scale-90",
+                  isActive ? "text-primary bg-primary/10 shadow-sm" : "text-[var(--text-secondary)] hover:bg-[var(--bg-main)]"
                 )}
               >
-                <Icon size={20} />
-                <span className="text-[10px] font-medium">{item.label.split(' ')[0]}</span>
+                <Icon size={22} className={cn("transition-transform", isActive && "scale-110")} />
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeTab"
+                    className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]"
+                  />
+                )}
               </Link>
             );
           })}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-col items-center justify-center min-h-[56px] min-w-[56px] gap-1 text-[var(--text-secondary)] active:scale-95 transition-transform"
+            className="flex flex-col items-center justify-center h-12 w-12 text-[var(--text-secondary)] active:scale-90 transition-all rounded-xl hover:bg-[var(--bg-main)]"
           >
-            <Menu size={20} />
-            <span className="text-[10px] font-medium">Menu</span>
+            <Menu size={22} />
           </button>
         </motion.nav>
       </main>
