@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { PullToRefresh } from '../components/PullToRefresh';
+import { VList } from 'virtua';
+import { useDebounce } from '../hooks/useDebounce';
 import { 
   collection, 
   query, 
@@ -30,6 +33,7 @@ import {
   MessageSquare,
   Paperclip,
   Smile,
+  Sticker,
   Check,
   CheckCheck,
   X,
@@ -80,14 +84,14 @@ const STICKERS = [
 
 // --- Sub-components ---
 
-const MessageBubble: React.FC<{ 
+const MessageBubble = React.memo<{ 
   message: ChatMessage; 
   isMe: boolean;
   showAvatar?: boolean;
   onReply?: (msg: ChatMessage) => void;
   onDelete?: (id: string) => void;
   onReaction?: (msgId: string, emoji: string) => void;
-}> = ({ message, isMe, showAvatar = true, onReply, onDelete, onReaction }) => {
+}>(({ message, isMe, showAvatar = true, onReply, onDelete, onReaction }) => {
   const { user } = useAuth();
   const [showActions, setShowActions] = React.useState(false);
   const time = message.createdAt?.toDate ? message.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -165,7 +169,6 @@ const MessageBubble: React.FC<{
     <motion.div 
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      whileHover={{ y: -1 }}
       className={cn(
         "flex w-full mb-1 group relative",
         isMe ? "justify-end" : "justify-start",
@@ -198,7 +201,16 @@ const MessageBubble: React.FC<{
             </span>
           )}
           
-          <div 
+          <motion.div 
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.1}
+            whileTap={{ scale: 0.98 }}
+            onDragEnd={(e, { offset }) => {
+              if (Math.abs(offset.x) > 60 && onReply) {
+                onReply(message);
+              }
+            }}
             onClick={() => setShowActions(!showActions)}
             className={cn(
             "px-4 py-3 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] relative group/bubble transition-all cursor-pointer",
@@ -221,18 +233,25 @@ const MessageBubble: React.FC<{
 
             {message.type === 'sticker' ? (
               <motion.img 
-                whileHover={{ scale: 1.1 }}
+                whileHover={{ scale: 1.15, rotate: [0, -2, 2, 0] }}
+                whileTap={{ scale: 0.9 }}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                 src={message.stickerUrl} 
                 alt="sticker" 
-                className="w-32 h-32 object-contain"
+                className="w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-lg"
                 referrerPolicy="no-referrer"
               />
             ) : message.type === 'media' && message.mediaType === 'image' ? (
-              <div className="rounded-xl overflow-hidden mb-1.5 border border-black/5">
-                <img src={message.mediaUrl} alt="media" className="max-w-full max-h-72 object-cover" referrerPolicy="no-referrer" />
-              </div>
+              <motion.div 
+                whileHover={{ scale: 1.01 }}
+                className="rounded-2xl overflow-hidden mb-1.5 border border-black/5 shadow-sm"
+              >
+                <img src={message.mediaUrl} alt="media" className="max-w-full max-h-80 object-cover" referrerPolicy="no-referrer" />
+              </motion.div>
             ) : (
-              <div className="text-[14.5px] leading-[1.6] break-words">
+              <div className="text-[14.5px] md:text-[15px] leading-[1.6] break-words">
                 {renderText(message.text || '')}
               </div>
             )}
@@ -335,62 +354,71 @@ const MessageBubble: React.FC<{
                 </button>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </motion.div>
   );
-};
+});
 
-const ChatSidebarItem: React.FC<{
+const ChatSidebarItem = React.memo<{
   room: ChatRoom;
   isActive: boolean;
   onClick: () => void;
-}> = ({ room, isActive, onClick }) => {
+}>(({ room, isActive, onClick }) => {
   return (
-    <button
+    <motion.button
+      whileHover={{ x: 4, backgroundColor: 'rgba(59, 130, 246, 0.03)' }}
+      whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-3 transition-all",
+        "w-full flex items-center gap-3 px-4 py-3 transition-colors relative group",
         isActive 
-          ? "bg-white dark:bg-gray-800" 
-          : "hover:bg-white/50 dark:hover:bg-gray-800/50"
+          ? "bg-blue-50/50 dark:bg-blue-500/10 border-l-4 border-blue-500" 
+          : "bg-transparent border-l-4 border-transparent hover:bg-gray-100/50 dark:hover:bg-gray-800/50 cursor-pointer"
       )}
     >
       <div className={cn(
-        "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+        "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 shadow-sm",
         room.color || "bg-blue-50 dark:bg-blue-900/20 text-blue-500"
       )}>
-        <Hash size={18} />
+        <Hash size={20} />
       </div>
       
       <div className="flex-1 text-left min-w-0">
         <div className="flex justify-between items-center mb-0.5">
           <h3 className={cn(
-            "text-[14px] font-medium truncate",
-            isActive ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"
+            "text-[14px] font-bold truncate tracking-tight",
+            isActive ? "text-gray-900 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
           )}>
             {room.name}
           </h3>
           {room.lastMessageTime && (
-            <span className="text-[11px] text-gray-400">
+            <span className="text-[10px] font-medium text-gray-400">
               {room.lastMessageTime}
             </span>
           )}
         </div>
-        <p className="text-[12px] text-gray-500 truncate">
+        <p className={cn(
+          "text-[12px] truncate",
+          isActive ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"
+        )}>
           {room.lastMessage || "Aucun message"}
         </p>
       </div>
       
       {room.unreadCount ? (
-        <div className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-medium flex items-center justify-center">
+        <motion.div 
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-blue-500/20"
+        >
           {room.unreadCount}
-        </div>
+        </motion.div>
       ) : null}
-    </button>
+    </motion.button>
   );
-};
+});
 
 // --- Main Component ---
 
@@ -410,6 +438,7 @@ export const Forum: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [chatSearch, setChatSearch] = useState('');
+  const debouncedChatSearch = useDebounce(chatSearch, 300);
   const [showChatSearch, setShowChatSearch] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
@@ -590,6 +619,31 @@ export const Forum: React.FC = () => {
       setShowScrollButton(false);
     }, 100);
   };
+
+  // Scalable Message Processing: Flattening for virtualization
+  const virtualData = useMemo(() => {
+    const filtered = messages.filter(m => 
+      !debouncedChatSearch || m.text?.toLowerCase().includes(debouncedChatSearch.toLowerCase())
+    );
+    
+    const flattened: any[] = [];
+    let lastDate = '';
+    
+    filtered.forEach((msg, idx) => {
+      const date = msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleDateString() : 'Aujourd\'hui';
+      if (date !== lastDate) {
+        flattened.push({ type: 'divider', date });
+        lastDate = date;
+      }
+      
+      const prevMsg = filtered[idx - 1];
+      const showAvatar = !prevMsg || prevMsg.userId !== msg.userId || (prevMsg.createdAt?.toDate?.().toLocaleDateString() !== date);
+      
+      flattened.push({ type: 'message', data: msg, showAvatar });
+    });
+    
+    return flattened;
+  }, [messages, debouncedChatSearch]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -925,69 +979,66 @@ export const Forum: React.FC = () => {
               )}
             </AnimatePresence>
 
-            {/* Messages Area with Wallpaper */}
-            <div 
-              ref={chatContainerRef}
-              onScroll={handleScroll}
-              className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col relative"
-              style={{ 
-                backgroundImage: document.documentElement.classList.contains('dark') ? DARK_MINIMAL_WALLPAPER : MINIMAL_WALLPAPER,
-                backgroundSize: '24px 24px',
-                backgroundColor: 'var(--bg-main)'
-              }}
-            >
-              {/* Overlay for readability */}
-              <div className="absolute inset-0 bg-white/85 dark:bg-gray-900/85 pointer-events-none" />
-              
-              <div className="relative z-10 flex-1 flex flex-col">
-                <div className="flex-1" />
-                <div className="space-y-1">
-                  {groupMessagesByDate(messages.filter(m => 
-                    !chatSearch || m.text?.toLowerCase().includes(chatSearch.toLowerCase())
-                  )).map((group, gIdx) => (
-                    <React.Fragment key={group.date}>
-                      {renderDateDivider(group.date)}
-                      {group.messages.map((msg, idx) => {
-                        const isMe = msg.userId === user?.id;
-                        const prevMsg = group.messages[idx - 1];
-                        const showAvatar = !prevMsg || prevMsg.userId !== msg.userId;
-                        
-                        return (
-                            <MessageBubble 
-                              key={msg.id} 
-                              message={msg} 
-                              isMe={isMe}
-                              showAvatar={showAvatar}
-                              onReply={setReplyingTo}
-                              onDelete={handleDeleteMessage}
-                              onReaction={handleReaction}
-                            />
-                        );
-                      })}
-                    </React.Fragment>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-              </div>
-
-              {/* Scroll to Bottom Button */}
-              <AnimatePresence>
-                {showScrollButton && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.5, y: 20 }}
-                    onClick={scrollToBottom}
-                    className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center text-gray-500 z-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            <PullToRefresh onRefresh={async () => {
+              await new Promise(r => setTimeout(r, 1000));
+            }}>
+              <div 
+                ref={chatContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col relative h-full"
+                style={{ 
+                  backgroundImage: document.documentElement.classList.contains('dark') ? DARK_MINIMAL_WALLPAPER : MINIMAL_WALLPAPER,
+                  backgroundSize: '24px 24px',
+                  backgroundColor: 'var(--bg-main)'
+                }}
+              >
+                {/* Overlay for readability */}
+                <div className="absolute inset-0 bg-white/85 dark:bg-gray-900/85 pointer-events-none" />
+                
+                <div className="relative z-10 flex-1 flex flex-col h-full">
+                  <VList
+                    className="flex-1 custom-scrollbar"
+                    style={{ height: '100%' }}
                   >
-                    <ChevronDown size={16} />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-            </div>
+                    {virtualData.map((item, idx) => (
+                      <div key={item.type === 'divider' ? `divider-${item.date}` : `msg-${item.data.id}`}>
+                        {item.type === 'divider' ? (
+                          renderDateDivider(item.date)
+                        ) : (
+                          <MessageBubble 
+                            message={item.data} 
+                            isMe={item.data.userId === user?.id}
+                            showAvatar={item.showAvatar}
+                            onReply={setReplyingTo}
+                            onDelete={handleDeleteMessage}
+                            onReaction={handleReaction}
+                          />
+                        )}
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </VList>
+                </div>
+
+                {/* Scroll to Bottom Button */}
+                <AnimatePresence>
+                  {showScrollButton && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.5, y: 20 }}
+                      onClick={scrollToBottom}
+                      className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center text-gray-500 z-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <ChevronDown size={14} />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
+            </PullToRefresh>
 
             {/* Input Area */}
-            <div className="p-3 md:p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 relative z-20">
+            <div className="p-3 md:p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 relative z-20 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
               {/* Reply Preview */}
               <AnimatePresence>
                 {replyingTo && (
@@ -1043,39 +1094,40 @@ export const Forum: React.FC = () => {
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                    className="absolute bottom-full left-20 mb-4 z-30 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl p-4"
+                    className="absolute bottom-full left-6 w-[280px] mb-4 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-4 overflow-hidden"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Guide Markdown</span>
-                      <button onClick={() => setShowMarkdownGuide(false)} className="text-gray-400 hover:text-gray-600">
+                    <div className="flex items-center justify-between mb-4 px-1">
+                      <div className="flex items-center gap-2 text-blue-500">
+                        <FileText size={16} />
+                        <span className="text-[12px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">Formatage Markdown</span>
+                      </div>
+                      <button onClick={() => setShowMarkdownGuide(false)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
                         <X size={14} />
                       </button>
                     </div>
-                    <div className="space-y-2 text-[12px]">
-                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
-                        <span className="text-gray-500">Gras</span>
-                        <code className="text-blue-500">**texte**</code>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
-                        <span className="text-gray-500">Italique</span>
-                        <code className="text-blue-500">*texte*</code>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
-                        <span className="text-gray-500">Code</span>
-                        <code className="text-blue-500">`code`</code>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
-                        <span className="text-gray-500">Bloc Code</span>
-                        <code className="text-blue-500">```bloc```</code>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
-                        <span className="text-gray-500">Liste</span>
-                        <code className="text-blue-500">- item</code>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Citation</span>
-                        <code className="text-blue-500">&gt; texte</code>
-                      </div>
+                    
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {[
+                        { label: 'Gras', syntax: '**texte**', example: 'Bold Text' },
+                        { label: 'Italique', syntax: '*texte*', example: 'Italic Text' },
+                        { label: 'Code', syntax: '`code`', example: 'console.log()' },
+                        { label: 'Citation', syntax: '> texte', example: 'Inspiring quote' },
+                        { label: 'Liste', syntax: '- item', example: 'Points list' },
+                        { label: 'Lien', syntax: '[nom](url)', example: 'Link to web' }
+                      ].map((item, idx) => (
+                        <div 
+                          key={idx}
+                          className="group p-2 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-900/30 hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-all flex items-center justify-between"
+                        >
+                          <div className="flex flex-col">
+                            <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">{item.label}</span>
+                            <code className="text-[12px] text-blue-600 dark:text-blue-400 font-mono">{item.syntax}</code>
+                          </div>
+                          <div className="opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all font-mono text-[10px] text-gray-400 italic">
+                            ex: {item.example}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </motion.div>
                 )}
@@ -1085,26 +1137,39 @@ export const Forum: React.FC = () => {
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                    className="absolute bottom-full left-6 right-6 mb-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-4 z-30"
+                    className="absolute bottom-full left-6 right-6 mb-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-5 z-40"
                   >
-                    <div className="flex items-center justify-between mb-4 px-2">
-                      <h4 className="text-[14px] font-semibold text-gray-900 dark:text-white">Stickers</h4>
+                    <div className="flex items-center justify-between mb-5 px-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-500 flex items-center justify-center">
+                          <Sticker size={18} />
+                        </div>
+                        <h4 className="text-[14px] font-bold text-gray-900 dark:text-white tracking-tight">Pack de Stickers Officiels</h4>
+                      </div>
                       <button 
                         onClick={() => setShowStickerPicker(false)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors"
                       >
-                        <X size={16} />
+                        <X size={18} />
                       </button>
                     </div>
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-2">
+                    
+                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4 max-h-[320px] overflow-y-auto custom-scrollbar pr-2">
                       {STICKERS.map((url, idx) => (
-                        <button 
+                        <motion.button 
                           key={idx}
+                          whileHover={{ scale: 1.15, rotate: [0, -5, 5, 0] }}
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => handleSendSticker(url)}
-                          className="aspect-square rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 p-2 transition-all hover:scale-105"
+                          className="aspect-square rounded-2xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 border-2 border-transparent hover:border-orange-200 dark:hover:border-orange-900/30 p-2.5 shadow-sm hover:shadow-md transition-all flex items-center justify-center overflow-hidden group"
                         >
-                          <img src={url} alt="sticker" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                        </button>
+                          <img 
+                            src={url} 
+                            alt={`sticker-${idx}`} 
+                            className="w-full h-full object-contain filter drop-shadow-sm group-hover:drop-shadow-md transition-all" 
+                            referrerPolicy="no-referrer" 
+                          />
+                        </motion.button>
                       ))}
                     </div>
                   </motion.div>
@@ -1113,7 +1178,7 @@ export const Forum: React.FC = () => {
 
               <form 
                 onSubmit={handleSendMessage}
-                className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 pl-4 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all"
+                className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[16px] p-2 pl-4 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all"
               >
                 <div className="flex items-center gap-2">
                   <button 
@@ -1157,18 +1222,19 @@ export const Forum: React.FC = () => {
                     setShowStickerPicker(false);
                   }}
                   placeholder="Écrivez votre message..."
-                  className="flex-1 bg-transparent border-none outline-none text-[14px] py-1.5 text-gray-900 dark:text-white placeholder:text-gray-400"
+                  className="flex-1 bg-transparent border-none outline-none text-[15px] py-2 text-gray-900 dark:text-white placeholder:text-gray-400"
                 />
                 
                 {inputText.trim() ? (
-                  <button 
+                  <motion.button 
+                    whileTap={{ scale: 0.90 }}
                     type="submit"
-                    className="w-8 h-8 rounded-md flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                    className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-sm"
                   >
-                    <Send size={14} />
-                  </button>
+                    <Send size={16} className="ml-0.5" />
+                  </motion.button>
                 ) : (
-                  <div className="w-8 h-8" />
+                  <div className="w-10 h-10" />
                 )}
               </form>
             </div>

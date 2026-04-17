@@ -230,7 +230,7 @@ export const Exams: React.FC = () => {
       </div>
 
       <AutoGrid minWidth="280px">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="popLayout" initial={false}>
           {sortedExams.map((exam) => {
             const left = daysLeft(exam.date);
             const isPast = left < 0;
@@ -239,13 +239,21 @@ export const Exams: React.FC = () => {
               <motion.div
                 key={exam.id}
                 layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="group h-full"
+                initial={{ opacity: 0, scale: 0.98, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 400, 
+                  damping: 25,
+                  mass: 0.8
+                }}
+                className={cn("group transform-gpu", isPast && "opacity-60")}
               >
                 <AppCard 
-                  className={cn("h-full flex flex-col", isPast && "opacity-60")}
+                  className="h-full flex flex-col transition-all duration-300"
                   header={
                     <div className="flex justify-between items-start w-full gap-3">
                       <div className="flex items-center gap-2">

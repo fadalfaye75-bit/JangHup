@@ -281,7 +281,7 @@ export const Dashboard: React.FC = () => {
             { icon: Clock, label: 'Prochain Cours', value: nextMeeting ? nextMeeting.title : 'Aucun', unit: nextMeeting ? fmtDate(nextMeeting.time) : 'Planifié', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
             { icon: Users, label: 'Ma Classe', value: studentCount, unit: 'étudiants', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20' }
           ].map((stat, i) => (
-            <AppCard key={stat.label} variant="compact" className="group">
+            <AppCard key={stat.label} variant="compact" className="group active:scale-[0.98] transition-transform cursor-pointer">
               <div className="flex items-center justify-between mb-4">
                 <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 border border-transparent dark:border-white/5", stat.bg, stat.color)}>
                   <stat.icon size={20} />
@@ -321,10 +321,11 @@ export const Dashboard: React.FC = () => {
               {announcements.map(ann => {
                 const isRead = readStatuses[ann.id];
                 return (
-                  <AppCard 
-                    key={ann.id} 
-                    title={ann.title}
-                    icon={!isRead ? <div className="w-2 h-2 rounded-full bg-blue-500" /> : <Megaphone size={16} className="text-gray-400" />}
+                  <Link key={ann.id} to="/announcements">
+                    <AppCard 
+                      title={ann.title}
+                      icon={!isRead ? <div className="w-2 h-2 rounded-full bg-blue-500" /> : <Megaphone size={16} className="text-gray-400" />}
+                      className="active:scale-[0.98] transition-transform cursor-pointer"
                     badge={
                       <Badge variant={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'primary'}>
                         {ann.priority}
@@ -348,6 +349,7 @@ export const Dashboard: React.FC = () => {
                       {ann.content}
                     </p>
                   </AppCard>
+                  </Link>
                 );
               })}
               {announcements.length === 0 && (
@@ -373,11 +375,12 @@ export const Dashboard: React.FC = () => {
               {exams.map(exam => {
                 const days = daysLeft(exam.date);
                 return (
-                  <AppCard 
-                    key={exam.id}
-                    variant="compact"
-                    title={exam.subject}
-                    badge={
+                  <Link key={exam.id} to="/exams">
+                    <AppCard 
+                      variant="compact"
+                      title={exam.subject}
+                      className="active:scale-[0.98] transition-transform cursor-pointer"
+                      badge={
                       <Badge variant={days <= 3 ? 'danger' : 'warning'}>
                         {days === 0 ? "Aujourd'hui" : days === 1 ? "Demain" : `J-${days}`}
                       </Badge>
@@ -396,6 +399,7 @@ export const Dashboard: React.FC = () => {
                       </div>
                     </div>
                   </AppCard>
+                  </Link>
                 );
               })}
               {exams.length === 0 && (
@@ -419,11 +423,11 @@ export const Dashboard: React.FC = () => {
               {[
                 { to: '/forum', icon: MessageSquare, label: 'Forum', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
                 { to: '/resources', icon: BookOpen, label: 'Cours', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-                { to: '/meet', icon: ExternalLink, label: 'Meet', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+                { to: '/meetings', icon: ExternalLink, label: 'Meet', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
                 { to: '/class', icon: Shield, label: 'Classe', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' }
               ].map((link, i) => (
                 <Link key={i} to={link.to}>
-                  <AppCard variant="compact" className="flex flex-col items-center gap-3 hover:border-gray-300 dark:hover:border-gray-600 transition-all text-center group">
+                  <AppCard variant="compact" className="flex flex-col items-center gap-3 active:scale-[0.98] cursor-pointer hover:shadow-lg transition-all text-center group">
                     <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 border border-transparent dark:border-white/5", link.bg, link.color)}>
                       <link.icon size={20} />
                     </div>
@@ -442,7 +446,13 @@ export const Dashboard: React.FC = () => {
             </h2>
             <div className="space-y-3">
               {activities.slice(0, 5).map(log => (
-                <div key={log.id} className="flex gap-3 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+                <motion.div 
+                  key={log.id} 
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className="flex gap-3 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm cursor-pointer"
+                >
                   <Avatar 
                     src={log.userAvatar} 
                     name={log.userName || log.actor} 
@@ -453,7 +463,7 @@ export const Dashboard: React.FC = () => {
                     <p className="text-[13px] font-medium text-gray-900 dark:text-white leading-tight">{log.action}</p>
                     <p className="text-[11px] text-gray-500">{fmtDate(log.createdAt)}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
               {activities.length === 0 && (
                 <div className="p-8 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">

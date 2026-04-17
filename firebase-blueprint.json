@@ -1,135 +1,96 @@
 {
   "entities": {
-    "User": {
+    "user": {
       "title": "User Profile",
-      "description": "User information and roles",
+      "description": "Information about a user",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "Firebase Auth UID" },
-        "name": { "type": "string", "description": "Full name" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["ADMIN", "DELEGATE", "STUDENT"] },
-        "class_name": { "type": "string", "description": "Class name (e.g., GI3)" },
-        "is_class_account": { "type": "boolean" },
-        "password_changed": { "type": "boolean" },
         "avatar": { "type": "string", "format": "uri" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "updated_at": { "type": "string", "format": "date-time" }
+        "role": { "type": "string", "enum": ["admin", "delegate", "student"] },
+        "class_name": { "type": "string" },
+        "points": { "type": "number" },
+        "badge": { "type": "string" }
       },
       "required": ["id", "name", "email", "role", "class_name"]
     },
-    "Announcement": {
-      "title": "Announcement",
-      "description": "Class news and updates",
+    "meeting": {
+      "title": "Meeting",
+      "description": "Visioconférence session",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
+        "id": { "type": "string" },
         "title": { "type": "string" },
-        "content": { "type": "string" },
-        "author": { "type": "string" },
-        "priority": { "type": "string", "enum": ["normal", "important", "urgent"] },
+        "platform": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "time": { "type": "string", "format": "date-time" },
         "className": { "type": "string" },
-        "link": { "type": "string", "format": "uri" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "userId": { "type": "string" }
       },
-      "required": ["title", "content", "priority", "className"]
+      "required": ["title", "platform", "url", "time", "className", "userId"]
     },
-    "SchoolClass": {
-      "title": "School Class",
-      "description": "Class definition and access codes",
+    "chat_room": {
+      "title": "Chat Room",
+      "description": "A group for chatting",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
         "name": { "type": "string" },
-        "class_email": { "type": "string", "format": "email" },
-        "password": { "type": "string" },
-        "delegate_code": { "type": "string" },
-        "created_by": { "type": "string" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "studentCount": { "type": "number" },
-        "color": { "type": "string" }
-      },
-      "required": ["name", "class_email", "delegate_code"]
+        "className": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastMessageTime": { "type": "string" }
+      }
     },
-    "Post": {
-      "title": "Forum Post",
-      "description": "A post in the forum",
+    "message": {
+      "title": "Chat Message",
+      "description": "A message within a chat room",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
+        "roomId": { "type": "string" },
+        "userId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["text", "sticker", "media"] },
+        "class_name": { "type": "string" }
+      }
+    },
+    "announcement": {
+      "title": "Announcement",
+      "description": "A class-wide notice",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
         "title": { "type": "string" },
         "content": { "type": "string" },
-        "userId": { "type": "string" },
-        "authorName": { "type": "string" },
         "className": { "type": "string" },
-        "votesScore": { "type": "number" },
-        "commentsCount": { "type": "number" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["title", "content", "userId", "authorName", "className"]
-    },
-    "Comment": {
-      "title": "Forum Comment",
-      "description": "A comment on a post or another comment",
-      "type": "object",
-      "properties": {
-        "postId": { "type": "string" },
-        "parentId": { "type": "string" },
-        "userId": { "type": "string" },
-        "authorName": { "type": "string" },
-        "content": { "type": "string" },
-        "votesScore": { "type": "number" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["postId", "userId", "authorName", "content"]
-    },
-    "ChatMessage": {
-      "title": "Chat Message",
-      "description": "A real-time chat message",
-      "type": "object",
-      "properties": {
-        "text": { "type": "string" },
-        "stickerUrl": { "type": "string", "format": "uri" },
-        "type": { "type": "string", "enum": ["text", "sticker"] },
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "userAvatar": { "type": "string", "format": "uri" },
-        "className": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["type", "userId", "userName", "className"]
+        "priority": { "type": "string", "enum": ["normal", "important", "urgent"] },
+        "createdAt": { "type": "string" }
+      }
     }
   },
   "firestore": {
     "/users/{userId}": {
-      "schema": "User",
-      "description": "User documents"
+      "schema": "user",
+      "description": "User profiles"
+    },
+    "/chat_rooms/{roomId}": {
+      "schema": "chat_room",
+      "description": "Metadata for chat channels"
+    },
+    "/chat_rooms/{roomId}/messages/{messageId}": {
+      "schema": "message",
+      "description": "Individual messages in a room"
     },
     "/announcements/{annId}": {
-      "schema": "Announcement",
+      "schema": "announcement",
       "description": "Class announcements"
     },
-    "/classes/{classId}": {
-      "schema": "SchoolClass",
-      "description": "Class metadata"
-    },
-    "/posts/{postId}": {
-      "schema": "Post",
-      "description": "Forum posts"
-    },
-    "/comments/{commentId}": {
-      "schema": "Comment",
-      "description": "Forum comments"
-    },
-    "/votes/{voteId}": {
-      "schema": "Vote",
-      "description": "User votes on posts and comments"
-    },
-    "/notifications/{notifId}": {
-      "schema": "ForumNotification",
-      "description": "User notifications"
-    },
-    "/messages/{messageId}": {
-      "schema": "ChatMessage",
-      "description": "Real-time chat messages"
+    "/meetings/{meetId}": {
+      "schema": "meeting",
+      "description": "Virtual meeting links"
     }
   }
 }

@@ -200,9 +200,14 @@ export const StoryPolls: React.FC<{ onClose: () => void }> = ({ onClose }) => {
  <motion.button
  key={option.id}
  whileHover={!hasVoted ? { scale: 1.02 } : {}}
- whileTap={!hasVoted ? { scale: 0.98 } : {}}
+ whileTap={!hasVoted ? { scale: 0.95 } : {}}
  disabled={hasVoted}
- onClick={() => handleVote(currentPoll.id, option.id)}
+ onClick={() => {
+   handleVote(currentPoll.id, option.id);
+   setTimeout(() => {
+     nextPoll();
+   }, 2000); // Auto go next after vote animation (2s)
+ }}
  style={{
  width: '100%',
  padding: '20px',

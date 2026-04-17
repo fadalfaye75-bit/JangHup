@@ -52,9 +52,17 @@ export const Spinner: React.FC<{ size?: number; className?: string }> = ({ size 
   <Loader2 className={cn("animate-spin text-primary", className)} size={size} />
 );
 
-export const Skeleton: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={cn("animate-pulse bg-slate-200/50 dark:bg-white/5 rounded-xl", className)} />
+export const Shimmer: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={cn("relative overflow-hidden bg-slate-200 dark:bg-slate-800 rounded-xl", className)}>
+    <motion.div
+      animate={{ x: ['-100%', '200%'] }}
+      transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 dark:via-white/5 to-transparent skew-x-12"
+    />
+  </div>
 );
+
+export const Skeleton: React.FC<{ className?: string }> = ({ className }) => <Shimmer className={className} />;
 
 export const ErrBox: React.FC<{ message: string }> = ({ message }) => (
   <motion.div 
@@ -93,7 +101,16 @@ export const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: stri
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="bg-[var(--bg-card)] border border-[var(--border-card)] rounded-[24px] shadow-2xl w-full max-w-lg overflow-hidden relative z-10"
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, { offset, velocity }) => {
+              if (offset.y > 100 || velocity.y > 500) {
+                onClose();
+              }
+            }}
+            className="bg-[var(--bg-card)] border border-[var(--border-card)] rounded-[24px] shadow-2xl w-full max-w-lg overflow-hidden relative z-10 touch-pan-x"
           >
             <div className="px-6 py-4 border-b border-[var(--border-card)] flex items-center justify-between">
               <h3 className="text-lg font-bold">{title}</h3>
@@ -188,38 +205,52 @@ export const Toast: React.FC<{
   }, [isVisible, duration, onClose]);
 
   const icons = {
-    success: <CheckCircle2 size={18} className="text-success" />,
-    error: <AlertCircle size={18} className="text-danger" />,
-    info: <Info size={18} className="text-info" />
+    success: <CheckCircle2 size={18} className="text-emerald-500" />,
+    error: <AlertCircle size={18} className="text-rose-500" />,
+    info: <Info size={18} className="text-blue-500" />
   };
 
-  const styles = {
-    success: 'border-success/20',
-    error: 'border-danger/20',
-    info: 'border-info/20'
+  const bgStyles = {
+    success: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200/50 dark:border-emerald-800/50',
+    error: 'bg-rose-50 dark:bg-rose-950/30 border-rose-200/50 dark:border-rose-800/50',
+    info: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200/50 dark:border-blue-800/50'
   };
 
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="fixed bottom-6 right-6 z-[200]"
+          initial={{ opacity: 0, y: 50, scale: 0.9, filter: 'blur(8px)' }}
+          animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 }, filter: 'blur(8px)' }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-[200]"
         >
           <div className={cn(
-            "bg-[var(--bg-card)] border border-[var(--border-card)] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl",
-            styles[type]
+            "flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl backdrop-blur-md border",
+            bgStyles[type]
           )}>
-            {icons[type]}
-            <p className="text-sm font-bold">{message}</p>
+            <div className="shrink-0">{icons[type]}</div>
+            <p className="text-[14px] font-bold text-[var(--text-main)] pr-2">{message}</p>
             <button 
               onClick={onClose}
-              className="ml-2 p-1 rounded-lg hover:bg-[var(--bg-main)] transition-colors"
+              className="ml-auto p-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-[var(--text-muted)] hover:text-[var(--text-main)]"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
+            
+            {/* Progress line */}
+            {duration > 0 && (
+              <motion.div 
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: duration / 1000, ease: 'linear' }}
+                className={cn(
+                  "absolute bottom-0 left-0 h-1 rounded-full opacity-40",
+                  type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-rose-500' : 'bg-blue-500'
+                )}
+              />
+            )}
           </div>
         </motion.div>
       )}

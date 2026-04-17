@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Announcement, UserRole } from '../types';
+import { VList } from 'virtua';
+import { useDebounce } from '../hooks/useDebounce';
+import { firestoreService } from '../services/firestoreService';
 import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, AppCard, Avatar } from '../components/ui';
 import { 
   Plus, 
@@ -17,7 +20,8 @@ import {
   Mail,
   User as UserIcon,
   ChevronRight,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { generateSmartShare, shareToWhatsApp, shareToEmail } from '../lib/shareUtils';
 import { fmtDate } from '../lib/utils';
@@ -34,20 +38,139 @@ import {
   doc, 
   setDoc,
   writeBatch,
-  getDocs
+  getDocs,
+  limit,
+  startAfter,
+  DocumentSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { notificationService } from '../services/notificationService';
 import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
+// Senior Architecture: Memoized Card component to prevent re-renders in large lists
+const AnnouncementCard = React.memo<{
+  ann: Announcement;
+  isRead: boolean;
+  canManage: boolean;
+  onMarkAsRead: (id: string) => void;
+  onShareWhatsApp: (ann: Announcement) => void;
+  onTogglePin: (ann: Announcement) => void;
+  onEdit: (ann: Announcement) => void;
+  onDelete: (id: string) => void;
+}>(({ 
+  ann, 
+  isRead, 
+  canManage, 
+  onMarkAsRead, 
+  onShareWhatsApp, 
+  onTogglePin, 
+  onEdit, 
+  onDelete 
+}) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      onViewportEnter={() => onMarkAsRead(ann.id)}
+      className="group transform-gpu cursor-pointer mb-4"
+    >
+      <AppCard 
+        className={cn(
+          "transition-all duration-300",
+          !isRead && "border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-900/10",
+          ann.isPinned && "border-amber-200 dark:border-amber-900/50"
+        )}
+        header={
+          <div className="flex justify-between items-start w-full gap-3">
+            <div className="flex items-center gap-2">
+              {ann.isPinned ? <Pin size={16} className="text-amber-500 fill-amber-500" /> : <Megaphone size={16} className={cn(!isRead ? "text-blue-500" : "text-gray-400")} />}
+              <h3 className={cn("text-[16px] font-semibold leading-tight", !isRead ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-200")}>
+                {ann.title}
+              </h3>
+            </div>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onShareWhatsApp(ann); }} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
+                <Share2 size={14} />
+              </Button>
+              {canManage && (
+                <>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onTogglePin(ann); }} className={cn("px-2 py-1 h-auto", ann.isPinned ? "text-amber-500" : "text-gray-500 hover:text-amber-500")}>
+                    <Pin size={14} />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(ann); }} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
+                    <MoreHorizontal size={14} />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(ann.id); }} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
+                    <Trash2 size={14} />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        }
+        footer={
+          <>
+            <div className="flex items-center gap-2">
+              <Avatar 
+                src={ann.authorAvatar} 
+                name={ann.author} 
+                size="xs" 
+              />
+              <span className="text-[12px] text-gray-500 dark:text-gray-400">{ann.author}</span>
+              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(ann.createdAt)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {isRead && (
+                <div className="flex items-center gap-1 text-green-600 text-[12px]">
+                  <CheckCircle2 size={12} /> Lu
+                </div>
+              )}
+              <Badge variant={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'secondary'}>
+                {ann.priority}
+              </Badge>
+            </div>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-[14px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+            {ann.content}
+          </p>
+
+          {ann.link && (
+            <Button 
+              as="a" 
+              href={ann.link} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              variant="secondary"
+              size="sm"
+              className="w-full justify-between"
+            >
+              <span>Voir la ressource</span>
+              <ExternalLink size={14} />
+            </Button>
+          )}
+        </div>
+      </AppCard>
+    </motion.div>
+  );
+});
+
 export const Announcements: React.FC = () => {
   const { user, classInfo } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [readStatuses, setReadStatuses] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnn, setEditingAnn] = useState<Announcement | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -73,29 +196,45 @@ export const Announcements: React.FC = () => {
 
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.DELEGATE;
 
+  // Senior Architecture: Paginated Data Fetching
+  const fetchAnnouncements = useCallback(async (isLoadMore: boolean = false) => {
+    if (!user) return;
+    if (isLoadMore) setLoadingMore(true);
+    else setLoading(true);
+
+    try {
+      const constraints: any[] = [orderBy('createdAt', 'desc')];
+      if (user.role !== UserRole.ADMIN) {
+        constraints.unshift(where('className', '==', user.class_name || ''));
+      }
+
+      const result = await firestoreService.getPaginated<Announcement>(
+        'announcements',
+        10,
+        isLoadMore ? lastDoc : null,
+        constraints as any[]
+      );
+
+      setAnnouncements(prev => isLoadMore ? [...prev, ...result.data] : result.data);
+      setLastDoc(result.lastDoc);
+      setHasMore(result.hasMore);
+      setError(null);
+    } catch (err: any) {
+      console.error("Announcements Fetch Error:", err);
+      setError("Erreur lors du chargement des annonces");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [user, lastDoc]);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [user]);
+
+  // Real-time listener for READ STATUSES ONLY (keeps data lightweight)
   useEffect(() => {
     if (!user) return;
-
-    const constraints: any[] = [orderBy('createdAt', 'desc')];
-    if (user.role !== UserRole.ADMIN) {
-      constraints.unshift(where('className', '==', user.class_name || ''));
-    }
-    
-    const q = query(
-      collection(db, 'announcements'),
-      ...constraints
-    );
-
-    const unsubscribeAnn = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
-      setAnnouncements(data);
-      setLoading(false);
-    }, (err) => {
-      console.error("Announcements Error:", err);
-      setError("Erreur lors du chargement des annonces");
-      setLoading(false);
-    });
-
     const statusQ = query(
       collection(db, 'announcement_read_statuses'),
       where('userId', '==', user.id)
@@ -107,15 +246,17 @@ export const Announcements: React.FC = () => {
         statuses[doc.data().announcementId] = true;
       });
       setReadStatuses(statuses);
-    }, (err) => {
-      console.error("Announcement Status Error:", err);
     });
 
-    return () => {
-      unsubscribeAnn();
-      unsubscribeStatus();
-    };
+    return () => unsubscribeStatus();
   }, [user]);
+
+  const filteredAnnouncements = useMemo(() => {
+    return announcements.filter(ann => 
+      ann.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      ann.content.toLowerCase().includes(debouncedSearch.toLowerCase())
+    );
+  }, [announcements, debouncedSearch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,19 +420,6 @@ export const Announcements: React.FC = () => {
     shareToEmail(emailSubject, emailBody, classEmail);
   };
 
-  const filteredAnnouncements = announcements
-    .filter(ann => 
-      ann.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      ann.content.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      const timeA = new Date(a.createdAt).getTime();
-      const timeB = new Date(b.createdAt).getTime();
-      return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
-    });
-
   const unreadCount = announcements.filter(ann => !readStatuses[ann.id]).length;
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
@@ -352,112 +480,45 @@ export const Announcements: React.FC = () => {
       </div>
 
       {/* Announcements List */}
-      <div className="space-y-4">
-        <AnimatePresence mode="popLayout">
-          {filteredAnnouncements.map((ann) => {
-            const isRead = readStatuses[ann.id];
-            return (
-              <motion.div
+      <div className="flex-1 min-h-[500px]">
+        {filteredAnnouncements.length > 0 ? (
+          <VList className="custom-scrollbar pr-2 h-full">
+            {filteredAnnouncements.map((ann) => (
+              <AnnouncementCard
                 key={ann.id}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                onViewportEnter={() => handleMarkAsRead(ann.id)}
-                className="group"
-              >
-                <AppCard 
-                  header={
-                    <div className="flex justify-between items-start w-full gap-3">
-                      <div className="flex items-center gap-2">
-                        {ann.isPinned ? <Pin size={16} className="text-amber-500 fill-amber-500" /> : <Megaphone size={16} className={cn(!isRead ? "text-blue-500" : "text-gray-400")} />}
-                        <h3 className={cn("text-[16px] font-semibold leading-tight", !isRead ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-200")}>
-                          {ann.title}
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm" onClick={() => handleShareWhatsApp(ann)} className="px-2 py-1 h-auto text-gray-500 hover:text-[#25D366]">
-                          <Share2 size={14} />
-                        </Button>
-                        {canManage && (
-                          <>
-                            <Button variant="ghost" size="sm" onClick={() => handleTogglePin(ann)} className={cn("px-2 py-1 h-auto", ann.isPinned ? "text-amber-500" : "text-gray-500 hover:text-amber-500")}>
-                              <Pin size={14} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(ann)} className="px-2 py-1 h-auto text-gray-500 hover:text-gray-900 dark:hover:text-white">
-                              <MoreHorizontal size={14} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(ann.id)} className="px-2 py-1 h-auto text-gray-500 hover:text-red-500">
-                              <Trash2 size={14} />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  }
-                  footer={
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Avatar 
-                          src={ann.authorAvatar} 
-                          name={ann.author} 
-                          size="xs" 
-                        />
-                        <span className="text-[12px] text-gray-500 dark:text-gray-400">{ann.author}</span>
-                        <span className="text-gray-300 dark:text-gray-600">•</span>
-                        <span className="text-[12px] text-gray-500 dark:text-gray-400">{fmtDate(ann.createdAt)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isRead && (
-                          <div className="flex items-center gap-1 text-green-600 text-[12px]">
-                            <CheckCircle2 size={12} /> Lu
-                          </div>
-                        )}
-                        <Badge variant={ann.priority === 'urgent' ? 'danger' : ann.priority === 'important' ? 'warning' : 'secondary'}>
-                          {ann.priority}
-                        </Badge>
-                      </div>
-                    </>
-                  }
-                  className={cn(
-                    !isRead && "border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-900/10",
-                    ann.isPinned && "border-amber-200 dark:border-amber-900/50"
-                  )}
+                ann={ann}
+                isRead={!!readStatuses[ann.id]}
+                canManage={canManage}
+                onMarkAsRead={handleMarkAsRead}
+                onShareWhatsApp={handleShareWhatsApp}
+                onTogglePin={handleTogglePin}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ))}
+            
+            {hasMore && (
+              <div className="py-8 flex justify-center">
+                <Button 
+                  variant="secondary" 
+                  onClick={() => fetchAnnouncements(true)}
+                  isLoading={loadingMore}
+                  className="flex items-center gap-2"
                 >
-                  <div className="space-y-3">
-                    <p className="text-[14px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                      {ann.content}
-                    </p>
-
-                    {ann.link && (
-                      <Button 
-                        as="a" 
-                        href={ann.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        variant="secondary"
-                        size="sm"
-                        className="flex items-center gap-2 w-fit mt-2"
-                      >
-                        <ExternalLink size={14} />
-                        <span>En savoir plus</span>
-                      </Button>
-                    )}
-                  </div>
-                </AppCard>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                  <RefreshCw size={16} />
+                  <span>Charger plus</span>
+                </Button>
+              </div>
+            )}
+          </VList>
+        ) : (
+          <div className="text-center py-16 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+            <Megaphone size={32} className="mx-auto text-gray-400 mb-4"/>
+            <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight">Aucune annonce</h3>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">Il n'y a aucune annonce correspondant à votre recherche.</p>
+          </div>
+        )}
       </div>
-
-      {filteredAnnouncements.length === 0 && (
-        <div className="text-center py-16 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-          <Megaphone size={32} className="mx-auto text-gray-400 mb-4"/>
-          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight">Aucune annonce</h3>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">Il n'y a aucune annonce correspondant à votre recherche.</p>
-        </div>
-      )}
 
       {/* New/Edit Announcement Modal */}
       <Modal 

@@ -93,9 +93,28 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: {
+            staggerChildren: 0.1
+          }
+        }
+      }}
+      className="flex flex-col gap-8"
+    >
       {/* Header Info */}
-      <div className="flex flex-col gap-2">
+      <motion.div 
+        variants={{
+          hidden: { opacity: 0, y: 10 },
+          visible: { opacity: 1, y: 0 }
+        }}
+        className="flex flex-col gap-2"
+      >
         <div className="flex items-center gap-2">
           <Badge variant={poll.isActive ? 'success' : 'secondary'}>
             {poll.isActive ? 'Sondage Actif' : 'Sondage Clôturé'}
@@ -108,27 +127,45 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
         <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
           {poll.question}
         </h2>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+      <motion.div 
+        variants={{
+          hidden: { opacity: 0, y: 20 },
+          visible: { opacity: 1, y: 0 }
+        }}
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+      >
+        <motion.div 
+          whileHover={{ scale: 1.02, translateY: -4 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 shadow-sm"
+        >
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
             <Users size={20} />
           </div>
           <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{poll.totalVotes}</p>
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Total Participants</p>
-        </div>
+        </motion.div>
         
-        <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+        <motion.div 
+          whileHover={{ scale: 1.02, translateY: -4 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 shadow-sm"
+        >
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4">
             <Award size={20} />
           </div>
           <p className="text-xl font-black text-slate-900 dark:text-white truncate tracking-tight">{winner?.label || 'N/A'}</p>
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Option en tête</p>
-        </div>
+        </motion.div>
 
-        <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+        <motion.div 
+          whileHover={{ scale: 1.02, translateY: -4 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 shadow-sm"
+        >
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-4">
             <TrendingUp size={20} />
           </div>
@@ -136,12 +173,18 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
             {loading ? '...' : `${participationRate}%`}
           </p>
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Taux de participation</p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <motion.div 
+        variants={{
+          hidden: { opacity: 0, y: 20 },
+          visible: { opacity: 1, y: 0 }
+        }}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+      >
         {/* Bar Chart */}
-        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm">
+        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
           <h4 className="text-[11px] font-bold text-slate-400 mb-8 uppercase tracking-widest flex items-center gap-2">
             <CheckCircle2 size={14} />
             Répartition des votes
@@ -159,7 +202,13 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
                   width={100}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)', radius: 8 }} />
-                <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={24}>
+                <Bar 
+                  dataKey="value" 
+                  radius={[0, 8, 8, 0]} 
+                  barSize={24}
+                  animationBegin={200}
+                  animationDuration={1500}
+                >
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -170,7 +219,7 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
         </div>
 
         {/* Pie Chart */}
-        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center">
+        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center transition-all hover:shadow-md">
           <h4 className="text-[11px] font-bold text-slate-400 mb-8 uppercase tracking-widest self-start flex items-center gap-2">
             <PieChartIcon size={14} />
             Distribution relative
@@ -186,8 +235,8 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
                   outerRadius={100}
                   paddingAngle={8}
                   dataKey="value"
-                  animationBegin={0}
-                  animationDuration={1000}
+                  animationBegin={400}
+                  animationDuration={1500}
                   stroke="transparent"
                 >
                   {chartData.map((entry, index) => (
@@ -198,22 +247,33 @@ export const PollAnalytics: React.FC<PollAnalyticsProps> = ({ poll }) => {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
+              <motion.p 
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.8, type: "spring" }}
+                className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter"
+              >
                 {poll.totalVotes}
-              </p>
+              </motion.p>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Votes</p>
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-3 justify-center">
             {options.map((opt, idx) => (
-              <div key={opt.id} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700/50">
+              <motion.div 
+                key={opt.id} 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1 + (idx * 0.1) }}
+                className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700/50"
+              >
                 <div className="w-2 h-2 rounded-full" style={{ background: COLORS[idx % COLORS.length] }} />
                 <span className="text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">{opt.label}</span>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

@@ -33,12 +33,12 @@ export const AppCard: React.FC<AppCardProps> = ({
   return (
     <motion.div
       onClick={onClick}
-      whileHover={hover && onClick ? { y: -4, scale: 1.01 } : {}}
-      whileTap={hover && onClick ? { scale: 0.98 } : {}}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      whileHover={hover && onClick ? { y: -4, scale: 1.015, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" } : {}}
+      whileTap={hover && onClick ? { scale: 0.98, y: 0 } : {}}
+      transition={{ type: "spring", stiffness: 400, damping: 20 }}
       className={cn(
-        "bg-white dark:bg-[#1F2937] border border-[#E5E7EB] dark:border-white/10 rounded-[12px] flex flex-col transition-shadow",
-        hover && onClick && "cursor-pointer hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:border-gray-300 dark:hover:border-white/20",
+        "bg-white dark:bg-[#1F2937] border border-[#E5E7EB] dark:border-white/10 rounded-[16px] flex flex-col transition-all duration-300 shadow-sm",
+        hover && onClick && "cursor-pointer hover:border-blue-500/30 dark:hover:border-blue-400/30",
         className
       )}
       {...props as any}

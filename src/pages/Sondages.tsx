@@ -46,16 +46,26 @@ import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
 const ProgressBar: React.FC<{ progress: number; isSelected?: boolean }> = ({ progress, isSelected }) => (
-  <div className="w-full h-2.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden relative border border-transparent dark:border-gray-700/50">
+  <div className="w-full h-3 bg-gray-100 dark:bg-gray-800/80 rounded-full overflow-hidden relative shadow-inner">
     <motion.div 
       initial={{ width: 0 }}
       animate={{ width: `${progress}%` }}
-      transition={{ type: "spring", stiffness: 100, damping: 15, mass: 1 }}
+      transition={{ type: "spring", stiffness: 60, damping: 15, mass: 1 }}
       className={cn(
-        "h-full rounded-full transition-colors duration-500 ease-in-out",
-        isSelected ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-gray-400 dark:bg-gray-600'
+        "h-full rounded-full transition-all duration-700 ease-out relative",
+        isSelected 
+          ? 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.4)]' 
+          : 'bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-600'
       )}
-    />
+    >
+      {isSelected && (
+        <motion.div 
+          animate={{ x: ['-200%', '300%'] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-full skew-x-12"
+        />
+      )}
+    </motion.div>
   </div>
 );
 
@@ -414,7 +424,7 @@ export const Sondages: React.FC = () => {
 
       {/* Polls Grid */}
       <AutoGrid minWidth="320px">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="popLayout" initial={false}>
           {pollsWithOptions.map((poll) => {
             const hasVoted = !!myVotes[poll.id];
             const canManage = user?.role === UserRole.ADMIN || (user?.role === UserRole.DELEGATE && user.id === poll.userId);
@@ -423,13 +433,21 @@ export const Sondages: React.FC = () => {
               <motion.div
                 key={poll.id}
                 layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="group h-full"
+                initial={{ opacity: 0, scale: 0.98, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 400, 
+                  damping: 25,
+                  mass: 0.8
+                }}
+                className="group transform-gpu"
               >
                 <AppCard 
-                  className="h-full flex flex-col"
+                  className="h-full flex flex-col transition-all duration-300"
                   header={
                     <div className="flex justify-between items-start w-full gap-3">
                       <div className="flex items-center gap-2">

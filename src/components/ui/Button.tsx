@@ -24,9 +24,9 @@ export const Button = React.forwardRef<any, ButtonProps>(
     };
 
     const sizes = {
-      sm: "px-3 py-1.5 text-xs",
-      md: "px-4 py-2 text-sm",
-      lg: "px-6 py-3 text-base"
+      sm: "px-3 py-1.5 text-xs min-h-[36px]",
+      md: "px-4 py-2 text-sm min-h-[44px]",
+      lg: "px-6 py-3 text-base min-h-[52px]"
     };
 
     const Component = as ? (motion as any)[as] : motion.button;
@@ -34,7 +34,9 @@ export const Button = React.forwardRef<any, ButtonProps>(
     return (
       <Component
         ref={ref}
-        whileTap={{ scale: 0.98 }}
+        whileHover={!isLoading && !(props as any).disabled ? { scale: 1.02 } : {}}
+        whileTap={!isLoading && !(props as any).disabled ? { scale: 0.96 } : {}}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         className={cn(baseStyles, variants[variant], sizes[size], className)}
         disabled={isLoading || (props as any).disabled}
         {...props}

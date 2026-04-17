@@ -92,7 +92,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg-main)] transition-colors duration-300 overflow-hidden">
+    <div className="flex h-[100dvh] bg-[var(--bg-main)] transition-colors duration-300 overflow-hidden hide-scrollbar">
       {/* Sidebar - Desktop */}
       <motion.aside 
         initial={{ x: -20, opacity: 0 }}
@@ -248,7 +248,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <motion.nav 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--bg-card)] border-t border-[var(--border-main)] flex items-center justify-around px-4 z-50"
+          className="md:hidden fixed bottom-0 left-0 right-0 h-auto bg-[var(--bg-card)] border-t border-[var(--border-main)] flex items-center justify-around px-4 z-50 pb-[env(safe-area-inset-bottom)]"
         >
           {menuItems.slice(0, 4).map((item) => {
             const isActive = location.pathname === item.path;
@@ -258,7 +258,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center gap-1 transition-all duration-200 active:scale-90",
+                  "flex flex-col items-center justify-center min-h-[56px] min-w-[56px] gap-1 transition-all duration-200 active:scale-95",
                   isActive ? "text-primary" : "text-[var(--text-secondary)]"
                 )}
               >
@@ -269,7 +269,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           })}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-col items-center gap-1 text-[var(--text-secondary)] active:scale-90 transition-transform"
+            className="flex flex-col items-center justify-center min-h-[56px] min-w-[56px] gap-1 text-[var(--text-secondary)] active:scale-95 transition-transform"
           >
             <Menu size={20} />
             <span className="text-[10px] font-medium">Menu</span>
@@ -293,6 +293,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              drag="x"
+              dragConstraints={{ left: -100, right: 0 }}
+              dragElastic={0.1}
+              onDragEnd={(e, { offset, velocity }) => {
+                if (offset.x < -50 || velocity.x < -500) {
+                  setIsMobileMenuOpen(false);
+                }
+              }}
               className="fixed inset-y-0 left-0 w-72 bg-[var(--bg-card)] z-[70] md:hidden flex flex-col shadow-xl"
             >
               <div className="p-6 flex items-center justify-between border-b border-[var(--border-main)]">

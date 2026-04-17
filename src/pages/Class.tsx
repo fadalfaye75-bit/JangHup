@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useDebounce } from '../hooks/useDebounce';
 import { Link } from 'react-router-dom';
 import { User, UserRole, SchoolClass } from '../types';
 import { Badge, Spinner, ErrBox, Modal, ConfirmModal, GlassCard, Button, Input, Avatar } from '../components/ui';
@@ -39,6 +40,7 @@ export const Class: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [copied, setCopied] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isConfirmLeaveOpen, setIsConfirmLeaveOpen] = useState(false);
@@ -143,10 +145,12 @@ export const Class: React.FC = () => {
     }
   };
 
-  const filteredMembers = members.filter(m => 
-    m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMembers = useMemo(() => {
+    return members.filter(m => 
+      m.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      m.email.toLowerCase().includes(debouncedSearch.toLowerCase())
+    );
+  }, [members, debouncedSearch]);
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
   if (!user?.class_name) return (
@@ -224,18 +228,21 @@ export const Class: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
+            <AnimatePresence mode="popLayout" initial={false}>
               {filteredMembers.map((member) => (
                 <motion.div 
                   key={member.id}
                   layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
+                  initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm cursor-pointer transform-gpu"
                 >
-                  <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm group">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
                         <div className="relative">
                           <Avatar 
                             src={member.avatar} 
@@ -265,8 +272,7 @@ export const Class: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
               ))}
             </AnimatePresence>
             {filteredMembers.length === 0 && (

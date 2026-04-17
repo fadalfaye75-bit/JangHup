@@ -280,7 +280,7 @@ export const Meet: React.FC = () => {
       </div>
 
       <AutoGrid minWidth="280px">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="popLayout" initial={false}>
           {meetings.map((meet) => {
             const timeInfo = formatMeetingTime(meet.time);
             const isFormatted = typeof timeInfo === 'object';
@@ -289,13 +289,21 @@ export const Meet: React.FC = () => {
               <motion.div
                 key={meet.id}
                 layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="group h-full"
+                initial={{ opacity: 0, scale: 0.98, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 400, 
+                  damping: 25,
+                  mass: 0.8
+                }}
+                className="group transform-gpu"
               >
                 <AppCard 
-                  className="h-full flex flex-col"
+                  className="h-full flex flex-col transition-all duration-300"
                   header={
                     <div className="flex justify-between items-start w-full gap-3">
                       <div className="flex items-center gap-2">

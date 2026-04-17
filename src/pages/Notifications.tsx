@@ -22,16 +22,24 @@ const NotificationItem = React.memo<{
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="mb-3"
+      initial={{ opacity: 0, scale: 0.98, y: 15 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 400, 
+        damping: 25,
+        mass: 0.8
+      }}
+      className="mb-3 transform-gpu"
     >
       <div className={cn(
-        "flex gap-4 p-4 rounded-xl border transition-all group bg-white dark:bg-gray-900",
+        "flex gap-4 p-4 rounded-xl border transition-all duration-300 group bg-white dark:bg-gray-900 cursor-pointer shadow-sm hover:shadow-md",
         notif.isRead 
-          ? 'border-gray-200 dark:border-gray-800 opacity-70' 
-          : 'border-blue-200 dark:border-blue-900/50 shadow-sm'
+          ? 'border-gray-200 dark:border-gray-800 opacity-60' 
+          : 'border-blue-200 dark:border-blue-900/50'
       )}>
         <div className={cn(
           "w-10 h-10 rounded-full flex items-center justify-center shrink-0 border",
@@ -226,8 +234,8 @@ export const Notifications: React.FC = () => {
         )}
       </div>
 
-      <div className="space-y-2">
-        <AnimatePresence mode="popLayout">
+      <div className="space-y-1">
+        <AnimatePresence mode="popLayout" initial={false}>
           {notifications.map((notif) => (
             <NotificationItem
               key={notif.id}

@@ -1,10 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
     
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: auth.uid
+    // Fields:
+    //   - name: string (required)
+    //   - email: string (required)
+    //   - role: string (student, delegate, admin)
+    //   - class_name: string (required)
+    //   - points: number (immutable for students)
+    //
+    // Collection: messages
+    // Fields:
+    //   - text: string
+    //   - type: string (text, sticker, media)
+    //   - userId: string
+    //   - className: string (scoping)
+    //   - createdAt: timestamp
+    //
+    // ===============================================================
+
+    // Helper Functions
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -14,200 +35,155 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.email == "fadalfaye75@gmail.com" || 
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          getUserData().get('role', '') == 'ADMIN'));
+      let data = getUserData();
+      return isAuthenticated() && (
+        (data != null && data.role == 'admin') ||
+        (request.auth.token.email == "fadalfaye75@gmail.com" && request.auth.token.email_verified == true)
+      );
     }
 
     function isDelegate() {
-      return isAuthenticated() && 
-        (isAdmin() || 
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          getUserData().get('role', '') == 'DELEGATE'));
+      let data = getUserData();
+      return isAuthenticated() && data != null && data.role == 'delegate';
     }
 
-    function isValidString(val, maxLen) {
-      return val is string && val.size() <= maxLen;
+    function sameClass(className) {
+      let data = getUserData();
+      return data != null && data.class_name == className;
     }
 
-    function getUserClass() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
-        getUserData().get('class_name', '') : '';
+    // Validation Functions
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'class_name', 'role']) &&
+             data.name is string && data.name.size() < 100 &&
+             data.email is string &&
+             data.role in ['student', 'delegate', 'admin'] &&
+             data.class_name is string;
     }
 
-    // ===============================================================
+    function isValidMessage(data) {
+      return data.keys().hasAll(['userId', 'className', 'type', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.className is string &&
+             data.type in ['text', 'sticker', 'media', 'image', 'file'] &&
+             (!('text' in data) || (data.text is string && data.text.size() < 5000));
+    }
+
     // Rules
-    // ===============================================================
-
+    
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin(); 
-      allow create: if (isOwner(userId) && 
-                      request.resource.data.role == 'STUDENT') || 
-                      (isOwner(userId) && isAdmin());
-      allow update: if isAdmin() || (isOwner(userId) && 
-                      (
-                        (request.resource.data.role == 'DELEGATE' && resource.data.role == 'STUDENT') ||
-                        (request.resource.data.role == resource.data.role)
-                      ));
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (isOwner(userId) && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatar', 'bio', 'points', 'badges']) &&
+         isValidUser(request.resource.data)) ||
+        isAdmin()
+      );
       allow delete: if isAdmin();
     }
 
     match /users_public/{userId} {
-      allow get, list: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
-      allow delete: if isAdmin();
-    }
-
-    match /announcements/{annId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isDelegate() || isAdmin();
-      allow update, delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) || isAdmin();
     }
 
     match /classes/{classId} {
-      allow get: if true;
-      allow list: if isAuthenticated();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     match /class_secrets/{classId} {
-      allow read, write: if isAdmin() || (isAuthenticated() && getUserClass() == get(/databases/$(database)/documents/classes/$(classId)).data.name && isDelegate());
-    }
-
-    match /registration_codes/{code} {
-      allow get: if true;
-      allow list: if isAdmin();
+      allow read: if isAdmin() || isDelegate();
       allow write: if isAdmin();
     }
 
-    match /delegate_codes/{code} {
-      allow get: if isAuthenticated();
-      allow list: if isAdmin();
-      allow write: if isAdmin() || (isDelegate() && request.resource.data.className == getUserClass());
+    match /messages/{msgId} {
+      allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow create: if isAuthenticated() && isValidMessage(request.resource.data) && sameClass(request.resource.data.className);
+      allow update, delete: if isAuthenticated() && (isAdmin() || (resource.data.userId == request.auth.uid));
     }
 
-    match /exams/{examId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isDelegate() || isAdmin();
-      allow update, delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
+    match /meetings/{meetId} {
+      allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow write: if isAuthenticated() && (isAdmin() || isDelegate() || (resource != null && resource.data.userId == request.auth.uid) || (request.resource != null && request.resource.data.userId == request.auth.uid));
     }
 
-    match /meetings/{meetingId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isDelegate() || isAdmin();
-      allow update, delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
+    match /typing/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
-    match /polls/{pollId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if (isDelegate() || isAdmin()) && 
-                      request.resource.data.userId == request.auth.uid &&
-                      request.resource.data.totalVotes == 0 &&
-                      request.resource.data.isActive == true;
-      allow update: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid) ||
-                      (isAuthenticated() && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalVotes', 'updatedAt']) &&
-                       (request.resource.data.totalVotes == resource.data.totalVotes + 1 || request.resource.data.totalVotes == resource.data.totalVotes));
-      allow delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
-    }
-
-    match /resources/{resId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isDelegate() || isAdmin();
-      allow update, delete: if isAdmin() || (isDelegate() && resource.data.userId == request.auth.uid);
-    }
-
-    match /posts/{postId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isAuthenticated() && 
-                      (isAdmin() || request.resource.data.className == getUserClass()) &&
-                      isValidString(request.resource.data.content, 5000) &&
-                      isValidString(request.resource.data.title, 200);
-      allow update: if isAdmin() || isOwner(resource.data.userId) || 
-                      (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votesScore', 'commentsCount', 'updatedAt']));
-      allow delete: if isAdmin() || isOwner(resource.data.userId);
-    }
-
-    match /comments/{commentId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.get('className', '') == getUserClass() || resource.data.get('postId', '') != '');
-      allow create: if isAuthenticated() && isValidString(request.resource.data.content, 1000);
-      allow update: if isAdmin() || isOwner(resource.data.userId) ||
-                      (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votesScore', 'updatedAt']));
-      allow delete: if isAdmin() || isOwner(resource.data.userId);
-    }
-
-    match /notifications/{notifId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-    }
-
-    match /activity_logs/{logId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
+    match /announcements/{annId} {
+      allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow write: if isAdmin() || isDelegate();
     }
 
     match /announcement_read_statuses/{statusId} {
-      allow read: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid || 
-        isAdmin() ||
-        (isDelegate() && get(/databases/$(database)/documents/announcements/$(resource.data.announcementId)).data.userId == request.auth.uid)
-      );
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow delete: if isAdmin() || 
-                      (isAuthenticated() && resource.data.userId == request.auth.uid) ||
-                      (isDelegate() && get(/databases/$(database)/documents/announcements/$(resource.data.announcementId)).data.userId == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
-    match /votes/{voteId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    match /exams/{examId} {
+      allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow write: if isAdmin() || isDelegate();
     }
 
-    match /poll_options/{optionId} {
+    match /resources/{resId} {
+      allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow write: if isAdmin() || isDelegate();
+    }
+
+    match /polls/{pollId} {
+      allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow write: if isAdmin() || isDelegate();
+    }
+
+    match /poll_options/{optId} {
       allow read: if isAuthenticated();
-      allow create: if isDelegate() || isAdmin();
-      allow update: if isAuthenticated() && 
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes']) &&
-                      (request.resource.data.votes == resource.data.votes + 1 || request.resource.data.votes == resource.data.votes - 1);
-      allow delete: if isAdmin() || 
-                      (isDelegate() && get(/databases/$(database)/documents/polls/$(resource.data.pollId)).data.userId == request.auth.uid);
+      allow write: if isAdmin() || isDelegate();
     }
 
     match /poll_votes/{voteId} {
       allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /results/{resId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin() || isDelegate());
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow delete: if isAdmin() || 
-                      (isAuthenticated() && resource.data.userId == request.auth.uid) ||
-                      (isDelegate() && get(/databases/$(database)/documents/polls/$(resource.data.pollId)).data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
-    match /messages/{messageId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow create: if isAuthenticated() && 
-                      (isAdmin() || request.resource.data.className == getUserClass()) &&
-                      request.resource.data.userId == request.auth.uid &&
-                      (
-                        (request.resource.data.type == 'text' && isValidString(request.resource.data.text, 2000)) ||
-                        (request.resource.data.type == 'sticker' && isValidUrl(request.resource.data.stickerUrl)) ||
-                        (request.resource.data.type == 'media')
-                      );
-      allow update: if isAdmin() || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy', 'reactions']));
-      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isAuthenticated();
     }
 
-    match /typing/{userId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.className == getUserClass());
-      allow write: if isOwner(userId);
+    match /activity_logs/{logId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /registration_codes/{codeId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /delegate_codes/{codeId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }

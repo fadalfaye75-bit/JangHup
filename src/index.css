@@ -51,6 +51,7 @@
     @apply text-[var(--text-main)] antialiased transition-colors duration-300 min-h-screen overflow-x-hidden leading-relaxed;
     font-family: var(--font-sans);
     background-color: var(--bg-main);
+    touch-action: manipulation;
   }
 
   html {

@@ -1,28 +1,43 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
 import { UserRole } from './types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, WifiOff } from 'lucide-react';
 import { ThemeProvider } from './theme/theme';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NotificationListener } from './components/NotificationListener';
 import { AnimatePresence, motion } from 'motion/react';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 
-// Standard imports for instant tab switching (no network delay)
-import { Dashboard } from './pages/Dashboard';
-import { Announcements } from './pages/Announcements';
-import { Exams } from './pages/Exams';
-import { Meet } from './pages/Meet';
-import { Class } from './pages/Class';
-import { Profile } from './pages/Profile';
-import { Admin } from './pages/Admin';
-import { Sondages as Polls } from './pages/Sondages';
-import { Resources } from './pages/Resources';
-import { Forum } from './pages/Forum';
-import { Notifications } from './pages/Notifications';
-import { PollAnalyticsPage } from './pages/PollAnalyticsPage';
+// Senior Architecture: Code Splitting (React.lazy)
+// Reduces initial bundle size and improves performance Metrics (LCP/FID)
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Announcements = lazy(() => import('./pages/Announcements').then(m => ({ default: m.Announcements })));
+const Exams = lazy(() => import('./pages/Exams').then(m => ({ default: m.Exams })));
+const Meet = lazy(() => import('./pages/Meet').then(m => ({ default: m.Meet })));
+const Class = lazy(() => import('./pages/Class').then(m => ({ default: m.Class })));
+const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const Admin = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
+const Polls = lazy(() => import('./pages/Sondages').then(m => ({ default: m.Sondages })));
+const Resources = lazy(() => import('./pages/Resources').then(m => ({ default: m.Resources })));
+const Forum = lazy(() => import('./pages/Forum').then(m => ({ default: m.Forum })));
+const Notifications = lazy(() => import('./pages/Notifications').then(m => ({ default: m.Notifications })));
+const PollAnalyticsPage = lazy(() => import('./pages/PollAnalyticsPage').then(m => ({ default: m.PollAnalyticsPage })));
+
+const PageFallback = () => (
+  <div className="flex-1 flex items-center justify-center p-20">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col items-center gap-4"
+    >
+      <Loader2 className="animate-spin text-primary/30" size={32} />
+      <span className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Chargement...</span>
+    </motion.div>
+  </div>
+);
 
 const ProtectedLayout: React.FC = () => {
   const { user, loading } = useAuth();
@@ -48,7 +63,9 @@ const ProtectedLayout: React.FC = () => {
 
   return (
     <Layout>
-      <Outlet />
+      <Suspense fallback={<PageFallback />}>
+        <Outlet />
+      </Suspense>
     </Layout>
   );
 };
@@ -68,10 +85,10 @@ const AnimatedRoutes = () => {
     <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
-        initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
-        animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15, ease: "easeInOut" }}
         className="h-full"
       >
         <Routes location={location}>
@@ -96,6 +113,7 @@ const AnimatedRoutes = () => {
 
 function App() {
   const { user, loading } = useAuth();
+  const isOnline = useOnlineStatus();
 
   if (loading) {
     return (
@@ -109,6 +127,19 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <NotificationListener />
+        
+        {/* Offline Interaction Lock */}
+        {!isOnline && (
+          <motion.div 
+            initial={{ y: -100 }}
+            animate={{ y: 0 }}
+            className="fixed top-0 left-0 right-0 z-[200] bg-orange-500 text-white py-2 px-4 flex items-center justify-center gap-3 text-xs font-bold uppercase tracking-wider shadow-lg"
+          >
+            <WifiOff size={14} />
+            Mode hors ligne — Certaines fonctionnalités sont limitées
+          </motion.div>
+        )}
+
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
           <Route element={<ProtectedLayout />}>
