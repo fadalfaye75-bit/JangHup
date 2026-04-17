@@ -16,8 +16,10 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', 
       style={style}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={`glass-card ${className} ${onClick ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+      whileHover={onClick ? { y: -4, scale: 1.01 } : {}}
+      whileTap={onClick ? { scale: 0.98 } : {}}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className={`glass-card ${className} ${onClick ? 'cursor-pointer hover:shadow-xl' : ''}`}
     >
       <div className="h-full">
         {children}

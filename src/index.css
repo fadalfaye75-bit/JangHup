@@ -59,6 +59,7 @@
 
   * {
     @apply border-[var(--border-main)];
+    -webkit-tap-highlight-color: transparent;
     transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
     transition-duration: 300ms;
   }
@@ -80,7 +81,7 @@
 
   /* Buttons */
   .btn-standard {
-    @apply relative inline-flex items-center justify-center px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none gap-2;
+    @apply relative inline-flex items-center justify-center px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 active:scale-95 hover:shadow-md disabled:opacity-50 disabled:pointer-events-none gap-2;
   }
   
   .btn-primary {

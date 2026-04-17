@@ -1,7 +1,8 @@
 import React from 'react';
+import { motion, HTMLMotionProps } from 'motion/react';
 import { cn } from '../../lib/utils';
 
-interface AppCardProps {
+interface AppCardProps extends HTMLMotionProps<"div"> {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
@@ -24,18 +25,23 @@ export const AppCard: React.FC<AppCardProps> = ({
   badge,
   icon,
   variant = 'default',
-  hover = true
+  hover = true,
+  ...props
 }) => {
   const paddingClass = variant === 'compact' ? 'p-3' : 'p-4';
   
   return (
-    <div
+    <motion.div
       onClick={onClick}
+      whileHover={hover && onClick ? { y: -4, scale: 1.01 } : {}}
+      whileTap={hover && onClick ? { scale: 0.98 } : {}}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={cn(
-        "bg-white dark:bg-[#1F2937] border border-[#E5E7EB] dark:border-white/10 rounded-[12px] flex flex-col transition-all duration-150",
-        hover && onClick && "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-300 dark:hover:border-white/20",
+        "bg-white dark:bg-[#1F2937] border border-[#E5E7EB] dark:border-white/10 rounded-[12px] flex flex-col transition-shadow",
+        hover && onClick && "cursor-pointer hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:border-gray-300 dark:hover:border-white/20",
         className
       )}
+      {...props as any}
     >
       {/* Header */}
       {(header || title || badge) && (
@@ -61,7 +67,7 @@ export const AppCard: React.FC<AppCardProps> = ({
           {footer}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

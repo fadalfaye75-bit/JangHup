@@ -129,7 +129,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                onClick={isMobileMenuOpen ? () => setIsMobileMenuOpen(false) : undefined}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group active:scale-95 ${
                   isActive 
                     ? 'text-primary bg-primary/5' 
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--bg-main)]'
@@ -257,7 +258,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center gap-1 transition-all duration-200",
+                  "flex flex-col items-center gap-1 transition-all duration-200 active:scale-90",
                   isActive ? "text-primary" : "text-[var(--text-secondary)]"
                 )}
               >
@@ -268,7 +269,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           })}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-col items-center gap-1 text-[var(--text-secondary)]"
+            className="flex flex-col items-center gap-1 text-[var(--text-secondary)] active:scale-90 transition-transform"
           >
             <Menu size={20} />
             <span className="text-[10px] font-medium">Menu</span>
