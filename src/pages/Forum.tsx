@@ -97,16 +97,6 @@ const MessageBubble = React.memo<{
 
   const reactions = message.reactions || {};
   const hasReactions = Object.keys(reactions).length > 0;
-  
-  const longPressProps = useLongPress({
-    onLongPress: () => {
-      setShowActions(true);
-    },
-    onClick: () => {
-      if (showActions) setShowActions(false);
-    },
-    delay: 400
-  });
 
   const renderText = (text: string) => {
     if (!text) return null;
@@ -219,7 +209,7 @@ const MessageBubble = React.memo<{
                 onReply(message);
               }
             }}
-            {...longPressProps}
+            onClick={() => setShowActions(!showActions)}
             className={cn(
             "px-4 py-3 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] relative group/bubble transition-all cursor-pointer tap-feedback select-none",
             message.type === 'sticker' 
@@ -287,11 +277,12 @@ const MessageBubble = React.memo<{
                   <button
                     key={emoji}
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       onReaction?.(message.id, emoji);
                     }}
                     className={cn(
-                      "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] shadow-sm border transition-all",
+                      "flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] shadow-sm border transition-all active:scale-95",
                       uids.includes(user?.id || '')
                         ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400"
                         : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500"
@@ -303,66 +294,70 @@ const MessageBubble = React.memo<{
                 ))}
               </div>
             )}
+          </motion.div>
 
-            {/* Quick Actions Overlay */}
-            <div className={cn(
-              "absolute top-0 transition-opacity flex gap-1 z-20",
-              showActions ? "opacity-100" : "opacity-0 md:group-hover/bubble:opacity-100 pointer-events-none md:pointer-events-auto",
-              isMe ? "right-full mr-2" : "left-full ml-2"
-            )}>
-              {/* Reaction Picker Bar */}
-              <div className="flex bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 shadow-sm gap-1">
-                {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
-                  <button
-                    key={emoji}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onReaction?.(message.id, emoji);
-                      setShowActions(false);
-                    }}
-                    className="hover:scale-110 transition-transform p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-              
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopy(message.text || '');
-                  setShowActions(false);
-                }}
-                className="p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white shadow-sm"
-                title="Copier"
-              >
-                <CopyIcon size={14} />
-              </button>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onReply?.(message);
-                  setShowActions(false);
-                }}
-                className="p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white shadow-sm"
-                title="Répondre"
-              >
-                <CornerUpLeft size={14} />
-              </button>
-              {isMe && (
-                <button 
+          {/* Quick Actions Overlay (Moved outside motion.div to prevent gesture interference) */}
+          <div className={cn(
+            "absolute transition-opacity flex flex-wrap gap-1 z-30 w-max max-w-[85vw]",
+            showActions ? "opacity-100 pointer-events-auto" : "opacity-0 md:group-hover/bubble:opacity-100 pointer-events-none md:pointer-events-auto",
+            isMe ? "right-0 bottom-full mb-1 justify-end" : "left-0 bottom-full mb-1 justify-start"
+          )}>
+            {/* Reaction Picker Bar */}
+            <div className="flex bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 shadow-sm gap-1">
+              {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                <button
+                  key={emoji}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
-                    onDelete?.(message.id);
+                    onReaction?.(message.id, emoji);
                     setShowActions(false);
                   }}
-                  className="p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-red-500 shadow-sm"
+                  className="hover:scale-110 transition-transform p-2 md:p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95"
                 >
-                  <Trash2 size={14} />
+                  {emoji}
                 </button>
-              )}
+              ))}
             </div>
-          </motion.div>
+            
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleCopy(message.text || '');
+                setShowActions(false);
+              }}
+              className="p-2 md:p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white shadow-sm active:scale-95 transition-transform"
+              title="Copier"
+            >
+              <CopyIcon size={14} />
+            </button>
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onReply?.(message);
+                setShowActions(false);
+              }}
+              className="p-2 md:p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white shadow-sm active:scale-95 transition-transform"
+              title="Répondre"
+            >
+              <CornerUpLeft size={14} />
+            </button>
+            {isMe && (
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete?.(message.id);
+                  setShowActions(false);
+                }}
+                className="p-2 md:p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-red-500 shadow-sm active:scale-95 transition-transform"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>

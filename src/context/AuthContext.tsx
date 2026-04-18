@@ -35,7 +35,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unsubProfile = onSnapshot(userDocRef, async (docSnap) => {
           if (docSnap.exists()) {
             const userData = docSnap.data() as User;
-            setUser(userData);
+            setUser(prevUser => {
+              if (prevUser && JSON.stringify(prevUser) === JSON.stringify(userData)) {
+                return prevUser;
+              }
+              return userData;
+            });
 
             // Fetch class info ONLY if class_name changed
             if (userData.role !== UserRole.ADMIN && userData.class_name) {
@@ -45,7 +50,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const q = query(classesRef, where('name', '==', userData.class_name), limit(1));
                 const querySnapshot = await getDocs(q);
                 if (!querySnapshot.empty) {
-                  setClassInfo(querySnapshot.docs[0].data() as SchoolClass);
+                  const newClassInfo = querySnapshot.docs[0].data() as SchoolClass;
+                  setClassInfo(prev => {
+                    if (prev && JSON.stringify(prev) === JSON.stringify(newClassInfo)) return prev;
+                    return newClassInfo;
+                  });
                 }
               }
             } else {

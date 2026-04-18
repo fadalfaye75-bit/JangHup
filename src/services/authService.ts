@@ -61,15 +61,42 @@ export const authService = {
         throw new Error("Code d'inscription invalide. Veuillez vérifier le code fourni par votre délégué.");
       }
 
-      const { className, classId } = codeDoc.data() as { className: string, classId: string };
+      const { className, classId, capacity } = codeDoc.data() as { className: string, classId: string, capacity?: number };
 
       if (!className || !classId) {
         throw new Error("Données du code d'inscription corrompues. Veuillez contacter un administrateur.");
       }
 
+      // 1.5. Capacity checking
+      if (capacity && capacity > 0) {
+        try {
+          // Since user is unauthenticated at this stage and cannot list users_public,
+          // we assume the admin tracks it, OR we could relax users_public strictly for counts
+          // However, for immediate bypass while guaranteeing security, we perform this check 
+          // AFTER creating the user but BEFORE completing setup, so they are authenticated
+        } catch (err: any) {}
+      }
+
       // 2. Create auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
+
+      // Now authenticated: we can perform the capacity checking
+      if (capacity && capacity > 0) {
+        try {
+          const classUsersQ = query(collection(db, 'users_public'), where('class_name', '==', className));
+          const snap = await getDocs(classUsersQ);
+          // snap size includes the user we are about to add (if we added it, but we haven't added them to DB yet, just FirebaseAuth)
+          if (snap.size >= capacity) {
+            // Delete the created auth user to rollback
+            await firebaseUser.delete();
+            throw new Error(`L'effectif maximum de la classe ${className} est atteint (${capacity} places). Inscription impossible.`);
+          }
+        } catch (err: any) {
+          if (err.message && err.message.includes("effectif maximum")) throw err;
+          console.warn("Capacity check could not complete:", err);
+        }
+      }
 
       // Fetch class info for the return value (now authenticated)
       let classData: SchoolClass | null = null;
@@ -203,7 +230,8 @@ export const authService = {
       const batch = writeBatch(db);
       batch.update(userDocRef, {
         role: UserRole.DELEGATE,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        _delegateCode: code.toUpperCase().trim()
       });
       
       // Use set with merge: true for public profile in case it's missing

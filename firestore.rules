@@ -35,26 +35,26 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      let path = request.auth != null ? /databases/$(database)/documents/users/$(request.auth.uid) : null;
-      return path != null && exists(path) ? get(path).data : null;
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
     }
 
     function isAdmin() {
       let data = getUserData();
       return isAuthenticated() && (
-        (data != null && (data.role == 'admin' || data.role == 'ADMIN')) ||
+        (data != null && ('role' in data) && (data.role == 'admin' || data.role == 'ADMIN')) ||
         (request.auth.token.email == "fadalfaye75@gmail.com" && request.auth.token.email_verified == true)
       );
     }
 
     function isDelegate() {
       let data = getUserData();
-      return isAuthenticated() && data != null && (data.role == 'delegate' || data.role == 'DELEGATE');
+      return isAuthenticated() && data != null && ('role' in data) && (data.role == 'delegate' || data.role == 'DELEGATE');
     }
 
     function sameClass(className) {
       let data = getUserData();
-      return data != null && data.class_name == className;
+      return data != null && ('class_name' in data) && data.class_name == className;
     }
 
     // Validation Functions
@@ -81,7 +81,19 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isAuthenticated() && (
         (isOwner(userId) && 
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatar', 'bio', 'points', 'badges']) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatar', 'bio', 'points', 'badges', 'theme', 'password_changed', 'updatedAt', 'updated_at', 'class_name']) &&
+         isValidUser(request.resource.data)) ||
+        (isOwner(userId) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updated_at', '_delegateCode']) &&
+         request.resource.data.role in ['delegate', 'DELEGATE'] &&
+         '_delegateCode' in request.resource.data &&
+         exists(/databases/$(database)/documents/delegate_codes/$(request.resource.data._delegateCode)) &&
+         get(/databases/$(database)/documents/delegate_codes/$(request.resource.data._delegateCode)).data.className == resource.data.class_name &&
+         isValidUser(request.resource.data)) ||
+        (isOwner(userId) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'class_name', 'updated_at']) &&
+         request.resource.data.role in ['student', 'STUDENT'] &&
+         request.resource.data.class_name == "" &&
          isValidUser(request.resource.data)) ||
         isAdmin()
       );
@@ -106,7 +118,12 @@ service cloud.firestore {
     match /messages/{msgId} {
       allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
       allow create: if isAuthenticated() && isValidMessage(request.resource.data) && sameClass(request.resource.data.className);
-      allow update, delete: if isAuthenticated() && (isAdmin() || (resource.data.userId == request.auth.uid));
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.userId == request.auth.uid ||
+        (sameClass(resource.data.className) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy']))
+      );
+      allow delete: if isAuthenticated() && (isAdmin() || (resource.data.userId == request.auth.uid));
     }
 
     match /meetings/{meetId} {

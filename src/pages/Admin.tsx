@@ -59,13 +59,16 @@ import {
   getDocs, 
   doc, 
   updateDoc, 
-  writeBatch 
+  writeBatch,
+  getCountFromServer 
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export const Admin: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'content' | 'logs'>('overview');
+  const [counts, setCounts] = useState({ users: 0, classes: 0, polls: 0, announcements: 0 });
+  const [classMemberCounts, setClassMemberCounts] = useState<Record<string, number>>({});
   
   // Data fetching
   const userConstraints = React.useMemo(() => [orderBy('created_at', 'desc')], []);
@@ -75,7 +78,8 @@ export const Admin: React.FC = () => {
     loading: usersLoading, 
     loadMore: loadMoreUsers, 
     hasMore: hasMoreUsers,
-    loadingMore: loadingMoreUsers
+    loadingMore: loadingMoreUsers,
+    refetch: refetchUsers
   } = usePaginatedTable<User>('users', userConstraints, 20, user?.role === UserRole.ADMIN && (activeTab === 'users' || activeTab === 'overview'));
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -83,6 +87,50 @@ export const Admin: React.FC = () => {
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.role === UserRole.ADMIN && (activeTab === 'classes' || activeTab === 'overview')) {
+      const fetchTotalCounts = async () => {
+        try {
+          const [uSnap, cSnap, pSnap, aSnap] = await Promise.all([
+            getCountFromServer(collection(db, 'users')),
+            getCountFromServer(collection(db, 'classes')),
+            getCountFromServer(collection(db, 'polls')),
+            getCountFromServer(collection(db, 'announcements'))
+          ]);
+          setCounts({
+            users: uSnap.data().count,
+            classes: cSnap.data().count,
+            polls: pSnap.data().count,
+            announcements: aSnap.data().count
+          });
+        } catch (err) {
+          console.error("🔥 Error fetching counts:", err);
+        }
+      };
+      
+      fetchTotalCounts();
+    }
+  }, [activeTab, user?.role]);
+
+  useEffect(() => {
+    if (user?.role === UserRole.ADMIN && classes.length > 0) {
+      const fetchClassCounts = async () => {
+        const countsMap: Record<string, number> = {};
+        await Promise.all(classes.map(async (cls) => {
+          try {
+            const q = query(collection(db, 'users'), where('class_name', '==', cls.name));
+            const snap = await getCountFromServer(q);
+            countsMap[cls.id] = snap.data().count;
+          } catch (err) {
+            console.error(`🔥 Error fetching count for class ${cls.name}:`, err);
+          }
+        }));
+        setClassMemberCounts(prev => ({ ...prev, ...countsMap }));
+      };
+      fetchClassCounts();
+    }
+  }, [classes, user?.role]);
 
   useEffect(() => {
     if (user?.role === UserRole.ADMIN && (activeTab === 'classes' || activeTab === 'overview')) {
@@ -132,7 +180,7 @@ export const Admin: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<SchoolClass | null>(null);
-  const [newClassData, setNewClassData] = useState({ name: '', delegate_code: '', class_code: '', color: '#6C63FF', class_email: '', studentCount: 0 });
+  const [newClassData, setNewClassData] = useState({ name: '', delegate_code: '', class_code: '', color: '#6C63FF', class_email: '', studentCount: 0, capacity: 50 });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const generateDelegateCode = (className: string) => {
@@ -168,11 +216,11 @@ export const Admin: React.FC = () => {
 
   // Stats calculation
   const statsList = React.useMemo(() => [
-    { label: 'Utilisateurs', value: users.length, icon: Users, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Classes', value: classes.length, icon: Shield, color: 'text-warning', bg: 'bg-warning/10' },
-    { label: 'Sondages', value: polls.length, icon: Vote, color: 'text-success', bg: 'bg-success/10' },
-    { label: 'Annonces', value: announcements.length, icon: Megaphone, color: 'text-danger', bg: 'bg-danger/10' },
-  ], [users.length, classes.length, polls.length, announcements.length]);
+    { label: 'Utilisateurs', value: counts.users, icon: Users, color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Classes', value: counts.classes, icon: Shield, color: 'text-warning', bg: 'bg-warning/10' },
+    { label: 'Sondages', value: counts.polls, icon: Vote, color: 'text-success', bg: 'bg-success/10' },
+    { label: 'Annonces', value: counts.announcements, icon: Megaphone, color: 'text-danger', bg: 'bg-danger/10' },
+  ], [counts]);
 
   const chartData = React.useMemo(() => {
     const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
@@ -202,8 +250,11 @@ export const Admin: React.FC = () => {
           batch.update(doc(db, 'users', targetUser.id), { role: newRole });
           batch.update(doc(db, 'users_public', targetUser.id), { role: newRole });
           await batch.commit();
-        } catch (err) {
-          console.error(err);
+          refetchUsers();
+          alert('Rôle mis à jour avec succès.');
+        } catch (err: any) {
+          console.error("🔥 Error toggling user role:", err);
+          alert('Erreur lors du changement de rôle: ' + (err.message || err.toString()));
         }
       }
     });
@@ -221,8 +272,11 @@ export const Admin: React.FC = () => {
           batch.delete(doc(db, 'users', targetUser.id));
           batch.delete(doc(db, 'users_public', targetUser.id));
           await batch.commit();
-        } catch (err) {
-          console.error(err);
+          refetchUsers();
+          alert('Utilisateur supprimé avec succès.');
+        } catch (err: any) {
+          console.error("🔥 Error deleting user:", err);
+          alert('Erreur lors de la suppression: ' + (err.message || "Permissions insuffisantes ou erreur réseau."));
         }
       }
     });
@@ -237,7 +291,8 @@ export const Admin: React.FC = () => {
       class_code: secrets.class_code || '',
       color: cls.color || '#6C63FF', 
       class_email: cls.class_email || '', 
-      studentCount: cls.studentCount || 0
+      studentCount: cls.studentCount || 0,
+      capacity: cls.capacity || 50
     });
     setIsClassModalOpen(true);
   };
@@ -290,6 +345,7 @@ export const Admin: React.FC = () => {
         name: newClassData.name,
         color: newClassData.color,
         class_email: newClassData.class_email,
+        capacity: Number(newClassData.capacity) || 50,
         updatedAt: new Date().toISOString()
       };
 
@@ -307,11 +363,12 @@ export const Admin: React.FC = () => {
       batch.set(secretRef, {
         delegate_code: newClassData.delegate_code,
         class_code: newClassData.class_code,
+        capacity: Number(newClassData.capacity) || 50,
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
       const regCodeRef = doc(db, 'registration_codes', newClassData.class_code.toUpperCase().trim());
-      batch.set(regCodeRef, { classId, className: newClassData.name });
+      batch.set(regCodeRef, { classId, className: newClassData.name, capacity: Number(newClassData.capacity) || 50 });
 
       const delCodeRef = doc(db, 'delegate_codes', newClassData.delegate_code.toUpperCase().trim());
       batch.set(delCodeRef, { classId, className: newClassData.name });
@@ -319,7 +376,7 @@ export const Admin: React.FC = () => {
       await batch.commit();
       setIsClassModalOpen(false);
       setEditingClass(null);
-      setNewClassData({ name: '', delegate_code: '', class_code: '', color: '#6C63FF', class_email: '', studentCount: 0 });
+      setNewClassData({ name: '', delegate_code: '', class_code: '', color: '#6C63FF', class_email: '', studentCount: 0, capacity: 50 });
     } catch (err) {
       console.error(err);
     }
@@ -590,7 +647,7 @@ export const Admin: React.FC = () => {
           >
             <div className="flex justify-between items-center">
               <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">Gestion des Classes</h3>
-              <Button onClick={() => { setEditingClass(null); setNewClassData({ name: '', delegate_code: generateDelegateCode(''), class_code: generateClassCode(''), color: '#6C63FF', class_email: '', studentCount: 0 }); setIsClassModalOpen(true); }} className="flex items-center gap-2">
+              <Button onClick={() => { setEditingClass(null); setNewClassData({ name: '', delegate_code: generateDelegateCode(''), class_code: generateClassCode(''), color: '#6C63FF', class_email: '', studentCount: 0, capacity: 50 }); setIsClassModalOpen(true); }} className="flex items-center gap-2">
                 <Plus size={16} />
                 <span>Nouvelle Classe</span>
               </Button>
@@ -608,7 +665,7 @@ export const Admin: React.FC = () => {
                         </div>
                         <div>
                           <h4 className="text-[14px] font-medium text-gray-900 dark:text-white">{cls.name}</h4>
-                          <p className="text-[12px] text-gray-500">{cls.studentCount || 0} étudiants</p>
+                          <p className="text-[12px] text-gray-500">{classMemberCounts[cls.id] || 0} / {cls.capacity || 50} étudiants</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -834,6 +891,19 @@ export const Admin: React.FC = () => {
                 value={newClassData.class_email}
                 onChange={(e) => setNewClassData({ ...newClassData, class_email: e.target.value })}
                 placeholder="classe@example.com"
+                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider ml-1">Effectif de la classe (Prévisionnel)</label>
+              <Input 
+                type="number"
+                min="1"
+                max="500"
+                required
+                value={newClassData.capacity}
+                onChange={(e) => setNewClassData({ ...newClassData, capacity: parseInt(e.target.value, 10) || 1 })}
+                placeholder="Ex: 50"
                 className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-2.5 px-3 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
               />
             </div>

@@ -187,7 +187,7 @@ export const Class: React.FC = () => {
           </div>
           <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">Membres de la Classe</h1>
           <p className="text-xs font-medium text-[var(--text-secondary)]">
-            {members.length} étudiant{members.length > 1 ? 's' : ''} inscrit{members.length > 1 ? 's' : ''} dans votre nexus.
+            {members.length} étudiant{members.length > 1 ? 's' : ''} inscrit{members.length > 1 ? 's' : ''} {classInfo?.capacity ? `sur ${classInfo.capacity} max` : 'dans votre nexus'}
           </p>
         </div>
         

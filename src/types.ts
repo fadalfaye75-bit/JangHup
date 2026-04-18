@@ -27,6 +27,7 @@ export interface SchoolClass {
   created_by: string;
   created_at: string;
   studentCount: number;
+  capacity?: number;
   color: string;
 }
 
