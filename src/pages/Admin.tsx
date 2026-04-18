@@ -229,7 +229,14 @@ export const Admin: React.FC = () => {
     
     logs.forEach(log => {
       if (!log.createdAt) return;
-      const date = new Date(log.createdAt);
+      
+      let date: Date;
+      if (typeof log.createdAt === 'object' && 'seconds' in (log.createdAt as any)) {
+        date = new Date((log.createdAt as any).seconds * 1000);
+      } else {
+        date = new Date(log.createdAt as any);
+      }
+
       const dayIndex = date.getDay();
       if (!isNaN(dayIndex) && data[dayIndex]) {
         data[dayIndex].activity += 1;
@@ -375,6 +382,34 @@ export const Admin: React.FC = () => {
       batch.set(delCodeRef, { classId, className: newClassData.name });
 
       await batch.commit();
+
+      // Notify delegates about new codes
+      if (editingClass) {
+        const oldSecrets = classSecrets[editingClass.id] || {};
+        const isNewClassCode = oldSecrets.class_code !== newClassData.class_code;
+        const isNewDelegateCode = oldSecrets.delegate_code !== newClassData.delegate_code;
+
+        if (isNewClassCode || isNewDelegateCode) {
+          let notificationTitle = "Nouveaux codes générés";
+          let notificationMessage = `Les accès pour votre classe ${newClassData.name} ont été mis à jour par l'administration.`;
+          
+          if (isNewClassCode && !isNewDelegateCode) {
+            notificationTitle = "Nouveau code étudiant";
+            notificationMessage = `Un nouveau code d'invitation étudiant a été généré pour votre classe : ${newClassData.class_code}`;
+          } else if (isNewDelegateCode && !isNewClassCode) {
+            notificationTitle = "Nouveau code délégué";
+            notificationMessage = `Un nouveau code de validation délégué a été généré pour votre classe : ${newClassData.delegate_code}`;
+          }
+
+          notificationService.notifyDelegates(
+            newClassData.name,
+            notificationTitle,
+            notificationMessage,
+            'success'
+          );
+        }
+      }
+
       setIsClassModalOpen(false);
       setEditingClass(null);
       setNewClassData({ name: '', delegate_code: '', class_code: '', color: '#6C63FF', class_email: '', studentCount: 0, capacity: 50 });
@@ -484,46 +519,63 @@ export const Admin: React.FC = () => {
                   </select>
                 </div>
                 <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                      <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 12, fontWeight: 500, fill: '#6B7280' }}
-                      />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 12, fontWeight: 500, fill: '#6B7280' }}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#FFFFFF', 
-                          borderColor: '#E5E7EB',
-                          borderRadius: '8px',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                        }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="activity" 
-                        stroke="#3B82F6" 
-                        strokeWidth={2}
-                        fillOpacity={1} 
-                        fill="url(#colorActivity)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {logsLoading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <Spinner />
+                    </div>
+                  ) : logsError ? (
+                    <div className="h-full flex items-center justify-center p-4">
+                      <ErrBox message={`Impossible de charger les statistiques d'activité.`} />
+                    </div>
+                  ) : logs.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center space-y-3 opacity-50">
+                      <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-400 border border-gray-100 dark:border-gray-800">
+                        <Activity size={24} />
+                      </div>
+                      <p className="text-[13px] text-gray-500 font-medium">Aucune donnée d'activité disponible</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fontSize: 12, fontWeight: 500, fill: '#6B7280' }}
+                        />
+                        <YAxis 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fontSize: 12, fontWeight: 500, fill: '#6B7280' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: '#FFFFFF', 
+                            borderColor: '#E5E7EB',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                          }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="activity" 
+                          stroke="#3B82F6" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorActivity)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
 
@@ -534,15 +586,31 @@ export const Admin: React.FC = () => {
                   Derniers Événements
                 </h3>
                 <div className="space-y-4">
-                  {logs.slice(0, 6).map((log) => (
-                    <div key={log.id} className="flex gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                      <div className="space-y-0.5">
-                        <p className="text-[13px] font-medium text-gray-900 dark:text-white leading-tight">{log.action}</p>
-                        <p className="text-[11px] text-gray-500">{fmtDate(log.createdAt)}</p>
+                  {logsLoading ? (
+                    Array(4).fill(0).map((_, i) => (
+                      <div key={i} className="flex gap-3 animate-pulse">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-200 mt-1.5 shrink-0" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-3 bg-gray-100 rounded w-3/4" />
+                          <div className="h-2 bg-gray-50 rounded w-1/2" />
+                        </div>
                       </div>
+                    ))
+                  ) : logs.length === 0 ? (
+                    <div className="py-8 text-center bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-800">
+                      <p className="text-[12px] text-gray-500">Aucun événement récent</p>
                     </div>
-                  ))}
+                  ) : (
+                    logs.slice(0, 6).map((log) => (
+                      <div key={log.id} className="flex gap-3 group">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0 group-hover:scale-125 transition-transform" />
+                        <div className="space-y-0.5">
+                          <p className="text-[13px] font-medium text-gray-900 dark:text-white leading-tight">{log.action}</p>
+                          <p className="text-[11px] text-gray-500">{fmtDate(log.createdAt)}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                   <Button variant="secondary" className="w-full text-[13px]" onClick={() => setActiveTab('logs')}>
                     Voir tous les logs
                   </Button>

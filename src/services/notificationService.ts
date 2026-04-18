@@ -68,6 +68,49 @@ export const notificationService = {
   },
 
   /**
+   * Send a notification to all delegates of a specific class
+   */
+  async notifyDelegates(className: string, title: string, message: string, type: AppNotification['type'] = 'info', link?: string) {
+    try {
+      // 1. Get all delegates in the class
+      const usersRef = collection(db, 'users_public');
+      const q = query(
+        usersRef, 
+        where('class_name', '==', className),
+        where('role', '==', 'DELEGATE')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) return;
+
+      // 2. Create notifications in a batch
+      const batch = writeBatch(db);
+      
+      querySnapshot.docs.forEach(userDoc => {
+        const notifRef = doc(collection(db, 'notifications'));
+        const notificationData: any = {
+          userId: userDoc.id,
+          title,
+          message,
+          type,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        };
+        
+        if (link !== undefined) {
+          notificationData.link = link;
+        }
+        
+        batch.set(notifRef, notificationData);
+      });
+
+      await batch.commit();
+    } catch (err) {
+      console.error("🔥 Error sending delegate notifications:", err);
+    }
+  },
+
+  /**
    * Request browser notification permission
    */
   async requestPermission() {

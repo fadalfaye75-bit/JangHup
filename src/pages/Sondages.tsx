@@ -73,6 +73,7 @@ export const Sondages: React.FC = () => {
   const { user, classInfo } = useAuth();
   const navigate = useNavigate();
   const [pollsWithOptions, setPollsWithOptions] = useState<Poll[]>([]);
+  const [classCounts, setClassCounts] = useState<Record<string, number>>({});
   const [myVotes, setMyVotes] = useState<Record<string, string>>({});
   const [voting, setVoting] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -187,6 +188,28 @@ export const Sondages: React.FC = () => {
 
     return () => unsubscribeVotes();
   }, [user]);
+
+  useEffect(() => {
+    if (polls.length > 0) {
+      const uniqueClasses = Array.from(new Set(polls.filter(p => !classCounts[p.className]).map(p => p.className)));
+      if (uniqueClasses.length === 0) return;
+
+      const fetchCountsForClasses = async () => {
+        const counts: Record<string, number> = {};
+        await Promise.all(uniqueClasses.map(async (className) => {
+          try {
+            const q = query(collection(db, 'users_public'), where('class_name', '==', className));
+            const snap = await getDocs(q);
+            counts[className] = snap.size;
+          } catch (err) {
+            console.error(`Error fetching class size for ${className}:`, err);
+          }
+        }));
+        setClassCounts(prev => ({ ...prev, ...counts }));
+      };
+      fetchCountsForClasses();
+    }
+  }, [polls]);
 
   const handleVote = async (pollId: string, optionId: string) => {
     if (!user || voting === pollId) return;
@@ -493,7 +516,10 @@ export const Sondages: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
                           <TrendingUp size={12} className="text-gray-400" />
-                          <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">{poll.totalVotes} votes</span>
+                          <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                            {poll.totalVotes} votes 
+                            {classCounts[poll.className] ? ` (${Math.round((poll.totalVotes / classCounts[poll.className]) * 100)}%)` : ''}
+                          </span>
                         </div>
                         {poll.endDate && (
                           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20">
