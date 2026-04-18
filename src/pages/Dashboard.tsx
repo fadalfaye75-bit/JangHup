@@ -256,45 +256,62 @@ export const Dashboard: React.FC = () => {
       </AnimatePresence>
 
       {/* Header */}
-      <motion.header variants={itemVariants} className="space-y-2">
-        <div className="flex items-center gap-2 text-gray-500 mb-1">
-          <Badge variant="primary" className="text-[10px] font-bold uppercase tracking-wider">
+      <motion.header variants={itemVariants} className="space-y-1.5 md:space-y-3">
+        <div className="flex items-center gap-2 text-gray-400 mb-0.5">
+          <Badge variant="primary" className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-2 shadow-sm">
             Tableau de bord
           </Badge>
-          <ChevronRight size={14} />
-          <span className="text-[10px] font-bold text-gray-500 tracking-wider uppercase">{user?.class_name || 'Ma Classe'}</span>
+          <ChevronRight size={12} className="opacity-40" />
+          <span className="text-[9px] md:text-[10px] font-bold text-gray-400 tracking-wider uppercase truncate">{user?.class_name || 'Ma Classe'}</span>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">
+        <h1 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight leading-none">
           Bienvenue, {user?.name}
         </h1>
-        <p className="text-[14px] text-gray-500 dark:text-gray-400">
-          Voici un aperçu de l'activité récente dans votre nexus académique.
+        <p className="text-[13px] md:text-base text-gray-500 dark:text-gray-400 font-medium">
+          Aperçu de votre nexus académique.
         </p>
       </motion.header>
 
       {/* Stats Grid */}
-      <motion.div variants={itemVariants}>
-        <AutoGrid minWidth="200px">
+      <motion.div variants={itemVariants} className="px-0 md:px-0">
+        <AutoGrid minWidth="160px" className="gap-3 md:gap-6">
           {[
-            { icon: BarChart3, label: 'Sondages', value: activePollsCount, unit: 'actifs', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
-            { icon: Megaphone, label: 'Annonces', value: announcements.length, unit: 'récentes', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-            { icon: Clock, label: 'Prochain Cours', value: nextMeeting ? nextMeeting.title : 'Aucun', unit: nextMeeting ? fmtDate(nextMeeting.time) : 'Planifié', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-            { icon: Users, label: 'Ma Classe', value: studentCount, unit: 'étudiants', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20' }
+            { icon: BarChart3, label: 'Sondages', value: activePollsCount, unit: 'actifs', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' },
+            { icon: Megaphone, label: 'Annonces', value: announcements.length, unit: 'récentes', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
+            { icon: Clock, label: 'Cours', value: nextMeeting ? nextMeeting.title : 'Aucun', unit: nextMeeting ? fmtDate(nextMeeting.time) : 'Prochain', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+            { icon: Users, label: 'Classe', value: studentCount, unit: 'étudiants', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30' }
           ].map((stat, i) => (
-            <AppCard key={stat.label} variant="compact" className="group active:scale-[0.98] transition-transform cursor-pointer">
-              <div className="flex items-center justify-between mb-4">
-                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 border border-transparent dark:border-white/5", stat.bg, stat.color)}>
-                  <stat.icon size={20} />
+            <AppCard 
+              key={stat.label} 
+              variant="compact" 
+              className="group tap-feedback cursor-pointer overflow-hidden border-none shadow-md ring-1 ring-black/5 dark:ring-white/5"
+            >
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <div className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 shadow-sm border border-black/5 dark:border-white/5", 
+                  stat.bg, 
+                  stat.color
+                )}>
+                  <stat.icon size={24} />
                 </div>
-                <div className="flex items-center gap-1 text-emerald-500 text-[11px] font-semibold">
-                  <ArrowUpRight size={14} />
+                <div className="flex items-center gap-1.5 text-emerald-500 text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 px-2 py-1 rounded-full">
+                  <motion.div 
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                  />
                   Live
                 </div>
               </div>
-              <div>
-                <p className="text-[24px] font-semibold text-gray-900 dark:text-white tracking-tight">{stat.value}</p>
-                <p className="text-[12px] font-medium text-gray-500">{stat.label}</p>
+              <div className="relative z-10">
+                <p className="text-[28px] font-black text-[var(--text-main)] tracking-tighter leading-none mb-1">{stat.value}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{stat.label}</p>
+                  <span className="text-[10px] font-medium text-[var(--text-muted)]">{stat.unit}</span>
+                </div>
               </div>
+              {/* Subtle background icon */}
+              <stat.icon className="absolute -bottom-4 -right-4 w-24 h-24 opacity-[0.03] dark:opacity-[0.05] -rotate-12" />
             </AppCard>
           ))}
         </AutoGrid>

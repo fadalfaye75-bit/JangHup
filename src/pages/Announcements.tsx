@@ -47,6 +47,9 @@ import { notificationService } from '../services/notificationService';
 import { activityService } from '../services/activityService';
 import { cn } from '../lib/utils';
 
+import { SwipeAction } from '../components/ui';
+import { PullToRefresh } from '../components/PullToRefresh';
+
 // Senior Architecture: Memoized Card component to prevent re-renders in large lists
 const AnnouncementCard = React.memo<{
   ann: Announcement;
@@ -75,12 +78,23 @@ const AnnouncementCard = React.memo<{
       onViewportEnter={() => onMarkAsRead(ann.id)}
       className="group transform-gpu cursor-pointer mb-4"
     >
-      <AppCard 
-        className={cn(
-          "transition-all duration-300",
-          !isRead && "border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-900/10",
-          ann.isPinned && "border-amber-200 dark:border-amber-900/50"
-        )}
+      <SwipeAction
+        onSwipeLeft={canManage ? () => onDelete(ann.id) : undefined}
+        leftContent={canManage ? <Trash2 size={24} className="text-danger" /> : undefined}
+        leftBg={canManage ? "bg-danger/10" : undefined}
+        
+        onSwipeRight={() => onShareWhatsApp(ann)}
+        rightContent={<Share2 size={24} className="text-[#25D366]" />}
+        rightBg="bg-[#25D366]/10"
+        
+        className="rounded-[24px]"
+      >
+        <AppCard 
+          className={cn(
+            "transition-all duration-300 tap-feedback",
+            !isRead && "border-primary/30 bg-primary/5",
+            ann.isPinned && "border-amber-200 dark:border-amber-900/50"
+          )}
         header={
           <div className="flex justify-between items-start w-full gap-3">
             <div className="flex items-center gap-2">
@@ -154,7 +168,8 @@ const AnnouncementCard = React.memo<{
             </Button>
           )}
         </div>
-      </AppCard>
+        </AppCard>
+      </SwipeAction>
     </motion.div>
   );
 });
@@ -479,7 +494,7 @@ export const Announcements: React.FC = () => {
       </div>
 
       {/* Announcements List */}
-      <div className="space-y-4">
+      <PullToRefresh onRefresh={async () => fetchAnnouncements()} className="space-y-4">
         {filteredAnnouncements.length > 0 ? (
           <AnimatePresence mode="popLayout" initial={false}>
             {filteredAnnouncements.map((ann) => (
@@ -517,7 +532,7 @@ export const Announcements: React.FC = () => {
             </Button>
           </div>
         )}
-      </div>
+      </PullToRefresh>
 
       {/* New/Edit Announcement Modal */}
       <Modal 

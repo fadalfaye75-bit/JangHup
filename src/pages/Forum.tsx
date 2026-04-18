@@ -28,6 +28,7 @@ import {
   User as UserIcon,
   Clock,
   Hash,
+  Menu,
   MessageSquare,
   Paperclip,
   Smile,
@@ -59,6 +60,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { notificationService } from '../services/notificationService';
 import { activityService } from '../services/activityService';
+
+import { useLongPress } from '../hooks/useLongPress';
 
 // --- Constants ---
 
@@ -94,6 +97,16 @@ const MessageBubble = React.memo<{
 
   const reactions = message.reactions || {};
   const hasReactions = Object.keys(reactions).length > 0;
+  
+  const longPressProps = useLongPress({
+    onLongPress: () => {
+      setShowActions(true);
+    },
+    onClick: () => {
+      if (showActions) setShowActions(false);
+    },
+    delay: 400
+  });
 
   const renderText = (text: string) => {
     if (!text) return null;
@@ -206,9 +219,9 @@ const MessageBubble = React.memo<{
                 onReply(message);
               }
             }}
-            onClick={() => setShowActions(!showActions)}
+            {...longPressProps}
             className={cn(
-            "px-4 py-3 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] relative group/bubble transition-all cursor-pointer",
+            "px-4 py-3 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] relative group/bubble transition-all cursor-pointer tap-feedback select-none",
             message.type === 'sticker' 
               ? "bg-transparent border-none shadow-none p-0"
               : isMe 
@@ -824,9 +837,9 @@ export const Forum: React.FC = () => {
   };
 
   const renderDateDivider = (date: string) => (
-    <div className="flex justify-center my-6 sticky top-2 z-10">
-      <div className="px-3 py-1 rounded-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-800 shadow-sm">
-        <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">
+    <div className="flex justify-center my-8 sticky top-4 z-10">
+      <div className="px-4 py-1.5 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200/50 dark:border-gray-800/50 shadow-md ring-1 ring-black/5 dark:ring-white/5">
+        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">
           {date}
         </span>
       </div>
@@ -850,7 +863,7 @@ export const Forum: React.FC = () => {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={48} /></div>;
 
   return (
-    <div className="h-full w-full flex overflow-hidden bg-white dark:bg-gray-900">
+    <div className="h-full w-full flex overflow-hidden bg-white dark:bg-gray-900 pb-[120px] md:pb-0">
       
       {/* Sidebar */}
       <AnimatePresence mode="wait">
@@ -860,23 +873,31 @@ export const Forum: React.FC = () => {
             animate={{ x: 0 }}
             exit={{ x: -300 }}
             className={cn(
-              "w-full md:w-72 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 z-20",
-              isMobileView ? "absolute inset-0" : "relative"
+              "w-full md:w-80 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 z-[60]",
+              isMobileView ? "fixed inset-0" : "relative"
             )}
           >
-            <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-              <h2 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-4 px-2 tracking-tight">Discussions</h2>
-              <div className="relative px-2">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+            <div className="p-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Discussions</h2>
+              {isMobileView && (
+                <button onClick={() => setShowSidebarOnMobile(false)} className="p-2 text-gray-500">
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+            
+            <div className="p-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <input 
                   type="text"
                   placeholder="Rechercher..."
-                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-1.5 pl-9 pr-4 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-400"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-2 pl-9 pr-4 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 />
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar py-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
               {rooms.map(room => (
                 <ChatSidebarItem 
                   key={room.id}
@@ -895,34 +916,34 @@ export const Forum: React.FC = () => {
         {activeRoom ? (
           <>
             {/* Chat Header */}
-            <div className="h-14 flex items-center justify-between px-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-20">
+            <div className="h-16 flex items-center justify-between px-4 md:px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 z-20">
               <div className="flex items-center gap-3">
                 {isMobileView && (
                   <button 
                     onClick={() => setShowSidebarOnMobile(true)}
-                    className="p-1.5 -ml-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+                    className="p-2 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 tap-feedback"
                   >
-                    <ChevronLeft size={18} />
+                    <Menu size={20} />
                   </button>
                 )}
                 <div className={cn(
-                  "w-7 h-7 rounded-md flex items-center justify-center",
-                  activeRoom.color || "bg-blue-50 dark:bg-blue-900/20 text-blue-500"
+                  "w-8 h-8 rounded-xl flex items-center justify-center shadow-sm",
+                  activeRoom.color || "bg-primary/10 text-primary border border-primary/20"
                 )}>
-                  <Hash size={14} />
+                  <Hash size={16} />
                 </div>
                 <div className="cursor-pointer" onClick={() => setShowGroupInfo(true)}>
-                  <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">{activeRoom.name}</h3>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-none mb-1">{activeRoom.name}</h3>
                   <div className="flex items-center gap-1.5">
                     {typingUsers.length > 0 ? (
-                      <span className="text-[11px] font-medium text-blue-500 animate-pulse">
-                        {typingUsers.join(', ')} {typingUsers.length > 1 ? 'écrivent...' : 'écrit...'}
+                      <span className="text-[10px] font-bold text-primary animate-pulse">
+                        {typingUsers[0]} {typingUsers.length > 1 ? 'et d\'autres écrivent...' : 'écrit...'}
                       </span>
                     ) : (
-                      <>
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span className="text-[11px] text-gray-500">En ligne</span>
-                      </>
+                      <span className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                        <span className="text-[10px] text-gray-500 font-medium tracking-tight">Nexus Actif</span>
+                      </span>
                     )}
                   </div>
                 </div>
@@ -932,20 +953,17 @@ export const Forum: React.FC = () => {
                 <button 
                   onClick={() => setShowChatSearch(!showChatSearch)}
                   className={cn(
-                    "p-1.5 rounded-md transition-colors",
-                    showChatSearch ? "bg-blue-50 dark:bg-blue-900/20 text-blue-500" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
+                    "p-2 rounded-xl transition-all tap-feedback",
+                    showChatSearch ? "bg-primary/10 text-primary" : "text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   )}
                 >
-                  <Search size={16} />
+                  <Search size={18} />
                 </button>
                 <button 
                   onClick={() => setShowGroupInfo(true)}
-                  className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors"
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all tap-feedback"
                 >
-                  <Info size={16} />
-                </button>
-                <button className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
-                  <MoreVertical size={16} />
+                  <Info size={18} />
                 </button>
               </div>
             </div>
@@ -1024,10 +1042,10 @@ export const Forum: React.FC = () => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 border-l-2 border-blue-500 rounded-md flex items-center justify-between"
+                    className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 border-l-2 border-primary rounded-md flex items-center justify-between"
                   >
                     <div className="flex flex-col gap-0.5 overflow-hidden">
-                      <span className="text-[12px] font-semibold text-blue-500">Réponse à {replyingTo.userName}</span>
+                      <span className="text-[12px] font-semibold text-primary">Réponse à {replyingTo.userName}</span>
                       <p className="text-[13px] text-gray-600 dark:text-gray-300 truncate">{replyingTo.text || 'Média'}</p>
                     </div>
                     <button onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -1075,7 +1093,7 @@ export const Forum: React.FC = () => {
                     className="absolute bottom-full left-6 w-[280px] mb-4 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-4 overflow-hidden"
                   >
                     <div className="flex items-center justify-between mb-4 px-1">
-                      <div className="flex items-center gap-2 text-blue-500">
+                      <div className="flex items-center gap-2 text-primary">
                         <FileText size={16} />
                         <span className="text-[12px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">Formatage Markdown</span>
                       </div>
@@ -1200,14 +1218,14 @@ export const Forum: React.FC = () => {
                     setShowStickerPicker(false);
                   }}
                   placeholder="Écrivez votre message..."
-                  className="flex-1 bg-transparent border-none outline-none text-[15px] py-2 text-gray-900 dark:text-white placeholder:text-gray-400"
+                  className="flex-1 bg-transparent border-none outline-none text-[16px] md:text-[15px] py-2 text-gray-900 dark:text-white placeholder:text-gray-400"
                 />
                 
                 {inputText.trim() ? (
                   <motion.button 
                     whileTap={{ scale: 0.90 }}
                     type="submit"
-                    className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-sm"
+                    className="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-white hover:opacity-90 transition-all shadow-md shadow-primary/20"
                   >
                     <Send size={16} className="ml-0.5" />
                   </motion.button>

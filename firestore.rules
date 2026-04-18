@@ -146,8 +146,7 @@ service cloud.firestore {
         isAdmin() || 
         isDelegate() || 
         (
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalVotes', 'updatedAt']) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalVotes', 'updatedAt', 'options', 'totalVotes']) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalVotes', 'updatedAt']) &&
           (request.resource.data.totalVotes == resource.data.totalVotes + 1 || request.resource.data.totalVotes == resource.data.totalVotes)
         )
       );

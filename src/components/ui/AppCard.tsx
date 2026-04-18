@@ -72,7 +72,7 @@ export const AppCard: React.FC<AppCardProps> = ({
 };
 
 export const CardGrid: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4", className)}>
+  <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6", className)}>
     {children}
   </div>
 );
@@ -80,11 +80,13 @@ export const CardGrid: React.FC<{ children: React.ReactNode; className?: string 
 export const AutoGrid: React.FC<{ children: React.ReactNode; className?: string; minWidth?: string }> = ({ 
   children, 
   className,
-  minWidth = "260px" 
+  minWidth = "280px" 
 }) => (
   <div 
-    className={cn("grid gap-4", className)}
-    style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))` }}
+    className={cn("grid grid-cols-1 gap-4 md:gap-6", className)}
+    style={{ 
+      gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${minWidth}), 1fr))` 
+    } as any}
   >
     {children}
   </div>

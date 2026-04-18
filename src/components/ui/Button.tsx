@@ -17,10 +17,10 @@ export const Button = React.forwardRef<any, ButtonProps>(
     const baseStyles = "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none gap-2";
 
     const variants = {
-      primary: "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200",
-      secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700",
-      danger: "bg-red-600 text-white hover:bg-red-700",
-      ghost: "bg-transparent text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+      primary: "bg-[var(--color-primary)] text-white hover:opacity-90 shadow-[0_2px_10px_-3px_rgba(108,99,255,0.4)]",
+      secondary: "bg-[var(--bg-secondary)] text-[var(--text-main)] border border-[var(--border-main)] hover:bg-[var(--bg-main)] shadow-sm",
+      danger: "bg-[var(--color-danger)] text-white hover:opacity-90 shadow-[0_2px_10px_-3px_rgba(255,71,87,0.4)]",
+      ghost: "bg-transparent text-[var(--text-main)] hover:bg-[var(--border-main)]/20"
     };
 
     const sizes = {

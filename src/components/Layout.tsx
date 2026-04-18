@@ -97,7 +97,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <motion.aside 
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className={`hidden md:flex flex-col bg-[var(--bg-card)] border-r border-[var(--border-main)] transition-all duration-300 z-50 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
+        className={cn(
+          "hidden md:flex flex-col bg-white dark:bg-[#0B0F1A] border-r border-[var(--border-main)] transition-all duration-300 z-50",
+          isSidebarCollapsed ? 'w-20' : 'w-64'
+        )}
       >
         <div className="p-6 flex items-center justify-between">
           {!isSidebarCollapsed ? (
@@ -233,12 +236,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           id="scroll-container" 
           className={cn(
             "flex-1 custom-scrollbar",
-            location.pathname === '/forum' ? "p-0 overflow-hidden" : "p-4 lg:p-8 overflow-y-auto"
+            location.pathname === '/forum' ? "p-0 overflow-hidden" : "p-3 md:p-6 lg:p-10 overflow-y-auto"
           )}
         >
           <div className={cn(
-            "mx-auto",
-            location.pathname === '/forum' ? "max-w-full h-full pb-32 md:pb-0" : "max-w-full pb-32 md:pb-0"
+            "mx-auto h-full",
+            location.pathname === '/forum' ? "max-w-full" : "max-w-full pb-36 md:pb-0"
           )}>
             {children}
           </div>
@@ -248,9 +251,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <motion.nav 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-16 bg-[var(--bg-card)]/90 backdrop-blur-xl border border-[var(--border-main)] rounded-2xl flex items-center justify-around px-2 z-50 shadow-2xl safe-area-bottom"
+          className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-lg h-20 bg-[var(--bg-card)]/90 backdrop-blur-xl border border-[var(--border-main)] rounded-[32px] flex items-center justify-around px-4 z-50 shadow-2xl safe-area-bottom ring-1 ring-black/5 dark:ring-white/5"
         >
-          {menuItems.slice(0, 4).map((item) => {
+          {[
+            { icon: LayoutDashboard, label: 'Dash', path: '/' },
+            { icon: Megaphone, label: 'Annonces', path: '/announcements' },
+            { icon: GraduationCap, label: 'Exams', path: '/exams' },
+            { icon: MessageSquare, label: 'Forum', path: '/forum' },
+            { icon: User, label: 'Profil', path: '/profile' },
+          ].map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
             return (
@@ -258,26 +267,31 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "relative flex flex-col items-center justify-center h-12 w-12 rounded-xl transition-all duration-300 active:scale-90",
-                  isActive ? "text-primary bg-primary/10 shadow-sm" : "text-[var(--text-secondary)] hover:bg-[var(--bg-main)]"
+                  "relative flex flex-col items-center justify-center h-14 w-12 rounded-2xl transition-all duration-300 active:scale-95 tap-feedback",
+                  isActive ? "text-primary" : "text-[var(--text-muted)] hover:text-primary"
                 )}
               >
-                <Icon size={22} className={cn("transition-transform", isActive && "scale-110")} />
+                <div className={cn(
+                  "p-2 rounded-xl transition-all duration-300",
+                  isActive ? "bg-primary/10 shadow-sm scale-110" : ""
+                )}>
+                  <Icon size={20} />
+                </div>
+                <span className={cn(
+                  "text-[9px] font-bold uppercase tracking-widest mt-1 transition-all duration-300",
+                  isActive ? "opacity-100 translate-y-0 text-primary" : "opacity-60"
+                )}>
+                  {item.label}
+                </span>
                 {isActive && (
                   <motion.div 
                     layoutId="activeTab"
-                    className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]"
+                    className="absolute -bottom-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_12px_rgba(108,99,255,0.6)]"
                   />
                 )}
               </Link>
             );
           })}
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-col items-center justify-center h-12 w-12 text-[var(--text-secondary)] active:scale-90 transition-all rounded-xl hover:bg-[var(--bg-main)]"
-          >
-            <Menu size={22} />
-          </button>
         </motion.nav>
       </main>
 

@@ -257,16 +257,17 @@ export const Class: React.FC = () => {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-[14px] font-medium text-gray-900 dark:text-white">{member.name} {member.id === user.id && <span className="text-gray-400 font-normal">(Moi)</span>}</h3>
+                            <h3 className="text-[15px] font-bold text-[var(--text-main)]">{member.name} {member.id === user.id && <span className="text-[var(--text-muted)] font-normal">(Moi)</span>}</h3>
                             <Badge variant={
                               member.role === UserRole.ADMIN ? 'danger' : 
                               member.role === UserRole.DELEGATE ? 'warning' : 'primary'
-                            }>
-                              {member.role}
+                            } className="uppercase tracking-widest text-[9px] font-black">
+                              {member.role === UserRole.ADMIN ? 'Administrateur' : 
+                               member.role === UserRole.DELEGATE ? 'Délégué' : 'Étudiant'}
                             </Badge>
                           </div>
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-0.5">
-                            <Mail size={12} className="text-gray-400"/>
+                          <p className="text-[12px] font-medium text-[var(--text-muted)] flex items-center gap-1.5 mt-0.5">
+                            <Mail size={12} className="opacity-60"/>
                             {member.email}
                           </p>
                         </div>

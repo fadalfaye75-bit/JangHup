@@ -22,15 +22,15 @@
     --bg-main: #f8fafc;
     --bg-secondary: #ffffff;
     --bg-card: #ffffff;
-    --text-main: #020617;
-    --text-secondary: #1e293b;
-    --text-muted: #475569;
-    --border-main: #cbd5e1;
-    --border-card: #e2e8f0;
-    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --ring-color: rgba(37, 99, 235, 0.1);
-    --glass-bg: rgba(255, 255, 255, 0.9);
-    --glass-border: rgba(255, 255, 255, 0.6);
+    --text-main: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --border-main: #e2e8f0;
+    --border-card: #f1f5f9;
+    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --ring-color: rgba(108, 99, 255, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.05);
   }
 
   .dark {
@@ -52,16 +52,24 @@
     @apply text-[var(--text-main)] antialiased transition-colors duration-300 min-h-screen overflow-x-hidden leading-relaxed;
     font-family: var(--font-sans);
     background-color: var(--bg-main);
+    background-image: radial-gradient(circle at 1px 1px, var(--border-main) 0.5px, transparent 0);
+    background-size: 40px 40px;
     touch-action: manipulation;
   }
 
   html {
     scroll-behavior: smooth;
+    @apply text-[14px] md:text-[15px] lg:text-[16px];
   }
 
   * {
     @apply border-[var(--border-main)];
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mobile Touch Feedback */
+  .tap-feedback {
+    @apply active:scale-[0.96] transition-transform duration-200;
   }
 }
 
