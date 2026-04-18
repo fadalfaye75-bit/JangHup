@@ -4,7 +4,9 @@ import {
   signOut, 
   GoogleAuthProvider, 
   signInWithPopup,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset
 } from 'firebase/auth';
 import { 
   doc, 
@@ -199,7 +201,25 @@ export const authService = {
   },
 
   async sendPasswordReset(email: string) {
-    await sendPasswordResetEmail(auth, email);
+    try {
+      const actionCodeSettings = {
+        // The URL to redirect back to. The domain (authDomain) must be in the Authorized Domains list in the Firebase Console.
+        url: `${window.location.origin}/login`,
+        handleCodeInApp: true,
+      };
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      throw error;
+    }
+  },
+
+  async verifyResetCode(code: string) {
+    return await verifyPasswordResetCode(auth, code);
+  },
+
+  async handleConfirmPasswordReset(code: string, newPass: string) {
+    return await confirmPasswordReset(auth, code, newPass);
   },
 
   async claimDelegate(userId: string, className: string, code: string) {
