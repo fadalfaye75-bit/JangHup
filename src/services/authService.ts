@@ -15,7 +15,8 @@ import {
   collection, 
   where, 
   getDocs,
-  writeBatch
+  writeBatch,
+  getCountFromServer
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { User, SchoolClass, UserRole } from '../types';
@@ -85,9 +86,10 @@ export const authService = {
       if (capacity && capacity > 0) {
         try {
           const classUsersQ = query(collection(db, 'users_public'), where('class_name', '==', className));
-          const snap = await getDocs(classUsersQ);
-          // snap size includes the user we are about to add (if we added it, but we haven't added them to DB yet, just FirebaseAuth)
-          if (snap.size >= capacity) {
+          const snap = await getCountFromServer(classUsersQ);
+          // snap.data().count reflects users in DB. Since this user isn't in DB yet, 
+          // we check if count >= capacity.
+          if (snap.data().count >= capacity) {
             // Delete the created auth user to rollback
             await firebaseUser.delete();
             throw new Error(`L'effectif maximum de la classe ${className} est atteint (${capacity} places). Inscription impossible.`);

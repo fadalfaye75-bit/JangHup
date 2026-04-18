@@ -93,10 +93,10 @@ export const Admin: React.FC = () => {
       const fetchTotalCounts = async () => {
         try {
           const [uSnap, cSnap, pSnap, aSnap] = await Promise.all([
-            getCountFromServer(collection(db, 'users')),
-            getCountFromServer(collection(db, 'classes')),
-            getCountFromServer(collection(db, 'polls')),
-            getCountFromServer(collection(db, 'announcements'))
+            getCountFromServer(collection(db, 'users')).catch(e => { console.error("Count users failed:", e); throw e; }),
+            getCountFromServer(collection(db, 'classes')).catch(e => { console.error("Count classes failed:", e); throw e; }),
+            getCountFromServer(collection(db, 'polls')).catch(e => { console.error("Count polls failed:", e); throw e; }),
+            getCountFromServer(collection(db, 'announcements')).catch(e => { console.error("Count announcements failed:", e); throw e; })
           ]);
           setCounts({
             users: uSnap.data().count,
@@ -104,8 +104,9 @@ export const Admin: React.FC = () => {
             polls: pSnap.data().count,
             announcements: aSnap.data().count
           });
-        } catch (err) {
+        } catch (err: any) {
           console.error("🔥 Error fetching counts:", err);
+          // If it's a permission error, it might be due to the global nature of counts on filtered collections
         }
       };
       

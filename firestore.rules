@@ -35,24 +35,28 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      if (!isAuthenticated()) return null;
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(path) ? get(path).data : null;
     }
 
     function isAdmin() {
+      if (!isAuthenticated()) return false;
       let data = getUserData();
-      return isAuthenticated() && (
+      return (
         (data != null && ('role' in data) && (data.role == 'admin' || data.role == 'ADMIN')) ||
-        (request.auth.token.email == "fadalfaye75@gmail.com" && request.auth.token.email_verified == true)
+        (request.auth.token.email == "fadalfaye75@gmail.com")
       );
     }
 
     function isDelegate() {
+      if (!isAuthenticated()) return false;
       let data = getUserData();
-      return isAuthenticated() && data != null && ('role' in data) && (data.role == 'delegate' || data.role == 'DELEGATE');
+      return data != null && ('role' in data) && (data.role == 'delegate' || data.role == 'DELEGATE');
     }
 
     function sameClass(className) {
+      if (!isAuthenticated()) return false;
       let data = getUserData();
       return data != null && ('class_name' in data) && data.class_name == className;
     }
@@ -128,6 +132,7 @@ service cloud.firestore {
 
     match /meetings/{meetId} {
       allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow list: if isAdmin();
       allow write: if isAuthenticated() && (isAdmin() || isDelegate() || (resource != null && resource.data.userId == request.auth.uid) || (request.resource != null && request.resource.data.userId == request.auth.uid));
     }
 
@@ -138,6 +143,7 @@ service cloud.firestore {
 
     match /announcements/{annId} {
       allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow list: if isAdmin();
       allow write: if isAdmin() || isDelegate();
     }
 
@@ -149,6 +155,7 @@ service cloud.firestore {
 
     match /exams/{examId} {
       allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow list: if isAdmin();
       allow write: if isAdmin() || isDelegate();
     }
 
@@ -159,6 +166,7 @@ service cloud.firestore {
 
     match /polls/{pollId} {
       allow read: if isAuthenticated() && (isAdmin() || sameClass(resource.data.className));
+      allow list: if isAdmin();
       allow update: if isAuthenticated() && (
         isAdmin() || 
         isDelegate() || 

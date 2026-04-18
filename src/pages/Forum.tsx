@@ -65,20 +65,66 @@ import { useLongPress } from '../hooks/useLongPress';
 
 // --- Constants ---
 
-const STICKERS = [
-  'https://cdn-icons-png.flaticon.com/512/2584/2584602.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584606.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584610.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584614.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584618.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584622.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584626.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584630.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584634.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584638.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584642.png',
-  'https://cdn-icons-png.flaticon.com/512/2584/2584646.png',
+const STICKER_PACKS = [
+  {
+    id: 'edu',
+    name: '📚 Études',
+    stickers: [
+      'https://cdn-icons-png.flaticon.com/512/3429/3429215.png',
+      'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+      'https://cdn-icons-png.flaticon.com/512/4144/4144464.png',
+      'https://cdn-icons-png.flaticon.com/512/2493/2493311.png',
+      'https://cdn-icons-png.flaticon.com/512/2232/2232688.png',
+      'https://cdn-icons-png.flaticon.com/512/584/584093.png',
+      'https://cdn-icons-png.flaticon.com/512/3112/3112946.png',
+      'https://cdn-icons-png.flaticon.com/512/1067/1067357.png',
+    ]
+  },
+  {
+    id: 'fun',
+    name: '🎉 Fun',
+    stickers: [
+      'https://cdn-icons-png.flaticon.com/512/616/616430.png',
+      'https://cdn-icons-png.flaticon.com/512/616/616408.png',
+      'https://cdn-icons-png.flaticon.com/512/742/742751.png',
+      'https://cdn-icons-png.flaticon.com/512/742/742754.png',
+      'https://cdn-icons-png.flaticon.com/512/743/743007.png',
+      'https://cdn-icons-png.flaticon.com/512/3094/3094711.png',
+      'https://cdn-icons-png.flaticon.com/512/1023/1023656.png',
+      'https://cdn-icons-png.flaticon.com/512/944/944030.png',
+    ]
+  },
+  {
+    id: 'daily',
+    name: '☕ Quotidien',
+    stickers: [
+      'https://cdn-icons-png.flaticon.com/512/924/924514.png',
+      'https://cdn-icons-png.flaticon.com/512/3595/3595455.png',
+      'https://cdn-icons-png.flaticon.com/512/2964/2964514.png',
+      'https://cdn-icons-png.flaticon.com/512/3844/3844724.png',
+      'https://cdn-icons-png.flaticon.com/512/2000/2000962.png',
+      'https://cdn-icons-png.flaticon.com/512/2547/2547330.png',
+      'https://cdn-icons-png.flaticon.com/512/2906/2906206.png',
+      'https://cdn-icons-png.flaticon.com/512/706/706164.png',
+    ]
+  },
+  {
+    id: 'emojis',
+    name: '😀 Stickers Emojis',
+    stickers: [
+      'https://cdn-icons-png.flaticon.com/512/2584/2584602.png',
+      'https://cdn-icons-png.flaticon.com/512/2584/2584606.png',
+      'https://cdn-icons-png.flaticon.com/512/2584/2584610.png',
+      'https://cdn-icons-png.flaticon.com/512/2584/2584614.png',
+      'https://cdn-icons-png.flaticon.com/512/2584/2584618.png',
+      'https://cdn-icons-png.flaticon.com/512/2584/2584622.png',
+      'https://cdn-icons-png.flaticon.com/512/2584/2584626.png',
+      'https://cdn-icons-png.flaticon.com/512/2584/2584630.png',
+    ]
+  }
 ];
+
+const STICKERS = STICKER_PACKS.flatMap(pack => pack.stickers);
 
 // --- Sub-components ---
 
@@ -434,8 +480,10 @@ export const Forum: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isMobileView, setIsMobileView] = useState(false);
   const [showSidebarOnMobile, setShowSidebarOnMobile] = useState(true);
-  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState<'emoji' | 'sticker' | null>(null);
+  const [activeStickerPack, setActiveStickerPack] = useState(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -786,6 +834,11 @@ export const Forum: React.FC = () => {
 
   const handleSendSticker = async (stickerUrl: string) => {
     if (!user || !activeRoom) return;
+    
+    const currentReply = replyingTo;
+    setShowPicker(null);
+    setShowStickerPicker(false);
+    setReplyingTo(null);
 
     try {
       await addDoc(collection(db, 'messages'), {
@@ -796,7 +849,12 @@ export const Forum: React.FC = () => {
         userAvatar: user.avatar || null,
         className: activeRoom.name,
         createdAt: serverTimestamp(),
-        readBy: [user.id]
+        readBy: [user.id],
+        replyTo: currentReply ? {
+          id: currentReply.id,
+          text: currentReply.text || (currentReply.type === 'sticker' ? 'Sticker' : 'Média'),
+          userName: currentReply.userName
+        } : null
       });
       setShowStickerPicker(false);
       scrollToBottom();
@@ -1123,45 +1181,122 @@ export const Forum: React.FC = () => {
                   </motion.div>
                 )}
 
-                {showStickerPicker && (
+                {/* WhatsApp Style Media Picker */}
+                {(showEmojiPicker || showStickerPicker) && (
                   <motion.div 
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                    className="absolute bottom-full left-6 right-6 mb-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-5 z-40"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="absolute bottom-full left-0 right-0 mb-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl overflow-hidden shadow-2xl z-50 flex flex-col h-[420px] mx-4 md:mx-0"
                   >
-                    <div className="flex items-center justify-between mb-5 px-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-500 flex items-center justify-center">
-                          <Sticker size={18} />
-                        </div>
-                        <h4 className="text-[14px] font-bold text-gray-900 dark:text-white tracking-tight">Pack de Stickers Officiels</h4>
-                      </div>
+                    {/* Tabs */}
+                    <div className="flex bg-gray-50 dark:bg-gray-800/50 p-1 border-b border-gray-200 dark:border-gray-800">
                       <button 
-                        onClick={() => setShowStickerPicker(false)}
-                        className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors"
+                        type="button"
+                        onClick={() => { setShowEmojiPicker(true); setShowStickerPicker(false); setShowMarkdownGuide(false); }}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold transition-all",
+                          showEmojiPicker ? "bg-white dark:bg-gray-700 text-blue-500 shadow-sm" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                        )}
                       >
-                        <X size={18} />
+                        <Smile size={18} />
+                        <span>Emojis</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => { setShowStickerPicker(true); setShowEmojiPicker(false); setShowMarkdownGuide(false); }}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold transition-all",
+                          showStickerPicker ? "bg-white dark:bg-gray-700 text-blue-500 shadow-sm" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                        )}
+                      >
+                        <Sticker size={18} />
+                        <span>Stickers</span>
                       </button>
                     </div>
-                    
-                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4 max-h-[320px] overflow-y-auto custom-scrollbar pr-2">
-                      {STICKERS.map((url, idx) => (
-                        <motion.button 
-                          key={idx}
-                          whileHover={{ scale: 1.15, rotate: [0, -5, 5, 0] }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleSendSticker(url)}
-                          className="aspect-square rounded-2xl bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 border-2 border-transparent hover:border-orange-200 dark:hover:border-orange-900/30 p-2.5 shadow-sm hover:shadow-md transition-all flex items-center justify-center overflow-hidden group"
-                        >
-                          <img 
-                            src={url} 
-                            alt={`sticker-${idx}`} 
-                            className="w-full h-full object-contain filter drop-shadow-sm group-hover:drop-shadow-md transition-all" 
-                            referrerPolicy="no-referrer" 
+
+                    <div className="flex-1 overflow-hidden relative">
+                      {showEmojiPicker && (
+                        <div className="h-full emoji-picker-container overflow-y-auto">
+                          <style>{`
+                            .EmojiPickerReact {
+                              --epr-bg-color: transparent !important;
+                              --epr-category-label-bg-color: #f9fafb !important;
+                              border: none !important;
+                              width: 100% !important;
+                              height: 100% !important;
+                            }
+                            .dark .EmojiPickerReact {
+                              --epr-bg-color: transparent !important;
+                              --epr-category-label-bg-color: #111827 !important;
+                              --epr-text-color: #fff !important;
+                              --epr-search-input-bg-color: #1f2937 !important;
+                            }
+                            .EmojiPickerReact .epr-body::-webkit-scrollbar {
+                              width: 5px;
+                            }
+                            .EmojiPickerReact .epr-body::-webkit-scrollbar-thumb {
+                              background: #e5e7eb;
+                              border-radius: 10px;
+                            }
+                          `}</style>
+                          <EmojiPicker 
+                            onEmojiClick={(emojiData) => {
+                              setInputText(prev => prev + emojiData.emoji);
+                              setIsTyping(true);
+                            }}
+                            theme={document.documentElement.classList.contains('dark') ? Theme.DARK : Theme.LIGHT}
+                            emojiStyle={EmojiStyle.NATIVE}
+                            lazyLoadEmojis={true}
+                            searchPlaceHolder="Rechercher un emoji..."
                           />
-                        </motion.button>
-                      ))}
+                        </div>
+                      )}
+
+                      {showStickerPicker && (
+                        <div className="h-full flex flex-col">
+                          {/* Sticker Categories */}
+                          <div className="flex gap-2 p-3 overflow-x-auto no-scrollbar border-b border-gray-100 dark:border-gray-800">
+                            {STICKER_PACKS.map((pack, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setActiveStickerPack(idx)}
+                                className={cn(
+                                  "whitespace-nowrap px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all",
+                                  activeStickerPack === idx 
+                                    ? "bg-blue-500 text-white shadow-md shadow-blue-500/20" 
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                )}
+                              >
+                                {pack.name}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                              {STICKER_PACKS[activeStickerPack].stickers.map((url, idx) => (
+                                <motion.button 
+                                  key={idx}
+                                  type="button"
+                                  whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => handleSendSticker(url)}
+                                  className="aspect-square rounded-2xl bg-gray-50 dark:bg-gray-800/30 hover:bg-white dark:hover:bg-gray-800 border-2 border-transparent hover:border-blue-100 dark:hover:border-blue-900/20 p-2 flex items-center justify-center transition-all group"
+                                >
+                                  <img 
+                                    src={url} 
+                                    alt={`sticker-${idx}`} 
+                                    className="w-full h-full object-contain filter drop-shadow-sm group-hover:drop-shadow-md" 
+                                    referrerPolicy="no-referrer" 
+                                  />
+                                </motion.button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -1175,9 +1310,13 @@ export const Forum: React.FC = () => {
                   <button 
                     type="button" 
                     onClick={() => {
-                      setShowEmojiPicker(!showEmojiPicker);
-                      setShowStickerPicker(false);
-                      setShowMarkdownGuide(false);
+                      if (showEmojiPicker) {
+                        setShowEmojiPicker(false);
+                      } else {
+                        setShowEmojiPicker(true);
+                        setShowStickerPicker(false);
+                        setShowMarkdownGuide(false);
+                      }
                     }}
                     className={cn(
                       "transition-colors p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700",
@@ -1186,6 +1325,25 @@ export const Forum: React.FC = () => {
                     title="Emoji"
                   >
                     <Smile size={18} />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (showStickerPicker) {
+                        setShowStickerPicker(false);
+                      } else {
+                        setShowStickerPicker(true);
+                        setShowEmojiPicker(false);
+                        setShowMarkdownGuide(false);
+                      }
+                    }}
+                    className={cn(
+                      "transition-colors p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700",
+                      showStickerPicker ? "text-blue-500" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    )}
+                    title="Stickers"
+                  >
+                    <Sticker size={18} />
                   </button>
                   <button 
                     type="button" 
