@@ -1,0 +1,205 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "0sSFhBrIt70U"
+      },
+      "source": [
+        "# Jour 1 - 13 Juillet 2026 : Premiers pas en Python et Bases de l'Algorithmique\n",
+        "\n",
+        "Bienvenue dans ce parcours de 5 jours pour passer de zéro à intermédiaire en Python ! Aujourd'hui, nous posons les fondations.\n",
+        "\n",
+        "## 1. Qu'est-ce que Python ?\n",
+        "Python est un langage de programmation **interprété**, ce qui signifie qu'un programme (l'interpréteur) lit et exécute votre code ligne par ligne. Il est réputé pour sa syntaxe claire qui ressemble à de l'anglais simplifié.\n",
+        "\n",
+        "## 2. Les Variables\n",
+        "Une variable est comme une boîte avec une étiquette. On y range une donnée pour s'en servir plus tard."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "metadata": {
+        "id": "F-SeO9gQt70W",
+        "outputId": "fbebd907-a42e-4826-9dca-6cc786a2e0f1",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Bonjour Alice tu as 25 ans.\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Assignation de variables\n",
+        "age = 25          # Un entier (int)\n",
+        "prenom = \"Alice\"  # Une chaîne de caractères (str)\n",
+        "taille = 1.65     # Un nombre à virgule flottante (float)\n",
+        "est_majeur = True # Un booléen (bool : True ou False)\n",
+        "\n",
+        "print(\"Bonjour\", prenom, \"tu as\", age, \"ans.\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "MwFCS_Bct70X"
+      },
+      "source": [
+        "## 3. Les Listes (Première structure de données)\n",
+        "Une liste permet de stocker plusieurs éléments dans un ordre précis. On utilise des crochets `[]`."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "metadata": {
+        "id": "2NKSOaXMt70Y",
+        "outputId": "d7b77aa6-c30f-4e99-a26d-33b77df4b4c7",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "['Pommes', 'Pain', 'Lait']\n",
+            "Premier article : Pommes\n",
+            "Liste mise à jour : ['Pommes', 'Pain', 'Lait', 'Oeufs']\n"
+          ]
+        }
+      ],
+      "source": [
+        "courses = [\"Pommes\", \"Pain\", \"Lait\"]\n",
+        "print(courses)\n",
+        "\n",
+        "# Accéder aux éléments (l'index commence à 0 !)\n",
+        "print(\"Premier article :\", courses[0])\n",
+        "\n",
+        "# Ajouter un élément\n",
+        "courses.append(\"Oeufs\")\n",
+        "print(\"Liste mise à jour :\", courses)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "4xIkdvQAt70Y"
+      },
+      "source": [
+        "## 4. Manipuler les chaînes de caractères (Slicing)\n",
+        "Le *slicing* (tranchage) permet d'extraire des morceaux d'une liste ou d'une chaîne de texte.\n",
+        "Syntaxe : `variable[début:fin:pas]` (la fin n'est pas incluse)."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 3,
+      "metadata": {
+        "id": "YH4n8oLWt70Y",
+        "outputId": "5abbab15-c52d-4a18-e970-b597ee33c537",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Les 5 premières lettres : abcde\n",
+            "Tout sauf les 3 dernières : abcdefghijklmnopqrstuvw\n",
+            "Une lettre sur deux : acegikmoqsuwy\n"
+          ]
+        }
+      ],
+      "source": [
+        "alphabet = \"abcdefghijklmnopqrstuvwxyz\"\n",
+        "\n",
+        "print(\"Les 5 premières lettres :\", alphabet[0:5])\n",
+        "print(\"Tout sauf les 3 dernières :\", alphabet[:-3])\n",
+        "print(\"Une lettre sur deux :\", alphabet[::2])"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "OOF0lfnTt70Y"
+      },
+      "source": [
+        "---\n",
+        "## 🏆 Défi du Jour 1\n",
+        "\n",
+        "Votre mission : Créer une variable `phrase` contenant le texte \"Python est super cool\".\n",
+        "1. Affichez la longueur de cette phrase (indice : utilisez la fonction `len()`).\n",
+        "2. Extrayez et affichez uniquement le mot \"super\" en utilisant le slicing.\n",
+        "3. Créez une liste `nombres` contenant les entiers de 1 à 5. Ajoutez le nombre 6 à la fin, puis affichez la liste."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 13,
+      "metadata": {
+        "id": "zo3dN0REt70Z",
+        "outputId": "f9822296-141b-49c6-d7a9-655142f0f2e0",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "21\n",
+            "afficher seulement: super\n",
+            "['1', '2', '3', '4', '5', '6']\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Écrivez votre code pour le défi ici\n",
+        "# VARIABLE\n",
+        "phrase = \"Python est super cool\"\n",
+        "print(len(phrase))\n",
+        "print( \"afficher seulement:\", phrase[11:16])\n",
+        "nombres= [\"1\",\"2\",\"3\",\"4\",\"5\"]\n",
+        "nombres.append(\"6\")\n",
+        "print(nombres)\n",
+        "\n"
+      ]
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3 (ipykernel)",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3",
+      "version": "3.13.13"
+    },
+    "colab": {
+      "provenance": []
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
